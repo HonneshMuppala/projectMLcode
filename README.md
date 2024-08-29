@@ -12,7 +12,11 @@ This project involves the application of three Machine Learning (ML) methods acr
    - You can directly view the code and XML reports within this repository.
    - The reports provide an overview of model performance, including metrics and visualizations.
 
-2. **Run the Code**:
-   - Download the relevant files from this repository.
-   - Open the files in VS Code or any other Python-supported environment.
-   - Install the necessary packages and libraries (requirements.txt is provided) to run the code successfully.
+
+### 2. Running the Code Locally:
+   - **Download the Code**: Download the relevant files from this repository to execute the ML methods on your local machine.
+   - **Install Necessary Packages**: Install all required packages and libraries using the provided `requirements.txt` file.
+   - **Dataset Preparation**: The datasets used in this project were sourced from [this OSF repository](https://osf.io/d45bw/) and extracted into CSV files. These CSV files are referenced in the code as paths.
+   - **Execution Order**: To replicate the results, execute the ML methods in the provided order after setting up your environment.
+   
+This setup allows users to view results online or replicate the experiment locally for further analysis.
