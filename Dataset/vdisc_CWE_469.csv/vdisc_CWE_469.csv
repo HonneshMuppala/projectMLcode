@@ -1,0 +1,5218 @@
+,testCase_ID,filename,code,bug,type
+0,0,0_vdisc.c,"update_header_entry(t_abootimg* img, char* cmd)
+{
+  char *p;
+  char *token;
+  char *endtoken;
+  char *value;
+
+  p = strchr(cmd, '\n');
+  if (p)
+    *p  = '\0';
+
+  p = cmd;
+  p += strspn(p, "" \t"");
+  token = p;
+  
+  p += strcspn(p, "" =\t"");
+  endtoken = p;
+  p += strspn(p, "" \t"");
+
+  if (*p++ != '=')
+    goto err;
+
+  p += strspn(p, "" \t"");
+  value = p;
+
+  *endtoken = '\0';
+
+  unsigned valuenum = strtoul(value, NULL, 0);
+  
+  if (!strcmp(token, ""cmdline"")) {
+    unsigned len = strlen(value);
+    if (len >= BOOT_ARGS_SIZE) 
+      abort_printf(""cmdline length (%d) is too long (max %d)"", len, BOOT_ARGS_SIZE-1);
+    memset(img->header.cmdline, 0, BOOT_ARGS_SIZE);
+    strcpy(img->header.cmdline, value);
+  }
+  else if (!strncmp(token, ""name"", 4)) {
+    strncpy(img->header.name, value, BOOT_NAME_SIZE);
+    img->header.name[BOOT_NAME_SIZE-1] = '\0';
+  }
+  else if (!strncmp(token, ""bootsize"", 8)) {
+    if (img->is_blkdev && (img->size != valuenum))
+      abort_printf(""%s: cannot change Boot Image size for a block device\n"", img->fname);
+    img->size = valuenum;
+  }
+  else if (!strncmp(token, ""pagesize"", 8)) {
+    img->header.page_size = valuenum;
+  }
+  else if (!strncmp(token, ""kerneladdr"", 10)) {
+    img->header.kernel_addr = valuenum;
+  }
+  else if (!strncmp(token, ""ramdiskaddr"", 11)) {
+    img->header.ramdisk_addr = valuenum;
+  }
+  else if (!strncmp(token, ""secondaddr"", 10)) {
+    img->header.second_addr = valuenum;
+  }
+  else if (!strncmp(token, ""tagsaddr"", 8)) {
+    img->header.tags_addr = valuenum;
+  }
+  else
+    goto err;
+  return;
+
+err:
+  abort_printf(""%s: bad config entry\n"", token);
+}",TRUE,CWE_469
+1,1,1_vdisc.c,"cmd_sort(char *tag, int usinguid)
+{
+    int c;
+    struct sortcrit *sortcrit = NULL;
+    static struct buf arg;
+    int charset = 0;
+    struct searchargs *searchargs;
+    clock_t start = clock();
+    char mytime[100];
+    int n;
+
+    if (backend_current) {
+	/* remote mailbox */
+	char *cmd = usinguid ? ""UID Sort"" : ""Sort"";
+
+	prot_printf(backend_current->out, ""%s %s "", tag, cmd);
+	if (!pipe_command(backend_current, 65536)) {
+	    pipe_including_tag(backend_current, tag, 0);
+	}
+	return;
+    }
+
+    /* local mailbox */
+    c = getsortcriteria(tag, &sortcrit);
+    if (c == EOF) {
+	eatline(imapd_in, ' ');
+	freesortcrit(sortcrit);
+	return;
+    }
+
+    /* get charset */
+    if (c != ' ') {
+	prot_printf(imapd_out, ""%s BAD Missing charset in Sort\r\n"",
+		    tag);
+	eatline(imapd_in, c);
+	freesortcrit(sortcrit);
+	return;
+    }
+
+    c = getword(imapd_in, &arg);
+    if (c != ' ') {
+	prot_printf(imapd_out, ""%s BAD Missing search criteria in Sort\r\n"",
+		    tag);
+	eatline(imapd_in, c);
+	freesortcrit(sortcrit);
+	return;
+    }
+    lcase(arg.s);
+    charset = charset_lookupname(arg.s);
+
+    if (charset == -1) {
+	prot_printf(imapd_out, ""%s NO %s\r\n"", tag,
+	       error_message(IMAP_UNRECOGNIZED_CHARSET));
+	eatline(imapd_in, c);
+	freesortcrit(sortcrit);
+	return;
+    }
+
+    searchargs = (struct searchargs *)xzmalloc(sizeof(struct searchargs));
+
+    c = getsearchprogram(tag, searchargs, &charset, 0);
+    if (c == EOF) {
+	eatline(imapd_in, ' ');
+	freesearchargs(searchargs);
+	freesortcrit(sortcrit);
+	return;
+    }
+
+    if (c == '\r') c = prot_getc(imapd_in);
+    if (c != '\n') {
+	prot_printf(imapd_out, 
+		    ""%s BAD Unexpected extra arguments to Sort\r\n"", tag);
+	eatline(imapd_in, c);
+	freesearchargs(searchargs);
+	freesortcrit(sortcrit);
+	return;
+    }
+
+    n = index_sort(imapd_index, sortcrit, searchargs, usinguid);
+    snprintf(mytime, sizeof(mytime), ""%2.3f"",
+	     (clock() - start) / (double) CLOCKS_PER_SEC);
+    prot_printf(imapd_out, ""%s OK %s (%d msgs in %s secs)\r\n"", tag,
+		error_message(IMAP_OK_COMPLETED), n, mytime);
+
+    freesortcrit(sortcrit);
+    freesearchargs(searchargs);
+    return;
+}",FALSE,CWE_469
+2,2,2_vdisc.c,"mpd_song_feed(struct mpd_song *song, const struct mpd_pair *pair)
+{
+	enum mpd_tag_type tag_type;
+
+	assert(song != NULL);
+	assert(!song->finished);
+	assert(pair != NULL);
+	assert(pair->name != NULL);
+	assert(pair->value != NULL);
+
+	if (strcmp(pair->name, ""file"") == 0) {
+#ifndef NDEBUG
+		song->finished = true;
+#endif
+		return false;
+	}
+
+	if (*pair->value == 0)
+		return true;
+
+	tag_type = mpd_tag_name_parse(pair->name);
+	if (tag_type != MPD_TAG_UNKNOWN) {
+		mpd_song_add_tag(song, tag_type, pair->value);
+		return true;
+	}
+
+	if (strcmp(pair->name, ""Time"") == 0)
+		mpd_song_set_duration(song, atoi(pair->value));
+	else if (strcmp(pair->name, ""Range"") == 0)
+		mpd_song_parse_range(song, pair->value);
+	else if (strcmp(pair->name, ""Last-Modified"") == 0)
+		mpd_song_set_last_modified(song, iso8601_datetime_parse(pair->value));
+	else if (strcmp(pair->name, ""Pos"") == 0)
+		mpd_song_set_pos(song, atoi(pair->value));
+	else if (strcmp(pair->name, ""Id"") == 0)
+		mpd_song_set_id(song, atoi(pair->value));
+
+	return true;
+}",FALSE,CWE_469
+3,3,3_vdisc.c,"fruitadd(char *str)
+{
+    int i;
+    struct fruit *f;
+    struct fruit *lastf = 0;
+    int highest_fruit_id = 0;
+    char buf[PL_FSIZ];
+    bool user_specified = (str == pl_fruit);
+    /* if not user-specified, then it's a fruit name for a fruit on
+     * a bones level...
+     */
+
+    /* Note: every fruit has an id (spe for fruit objects) of at least
+     * 1; 0 is an error.
+     */
+    if (user_specified) {
+        /* disallow naming after other foods (since it'd be impossible
+         * to tell the difference)
+         */
+
+        bool found = false, numeric = false;
+
+        for (i = bases[FOOD_CLASS]; objects[i].oc_class == FOOD_CLASS;
+             i++) {
+            if (!strcmp(OBJ_NAME(objects[i]), pl_fruit)) {
+                found = true;
+                break;
+            }
+        }
+        {
+            char *c;
+
+            c = pl_fruit;
+
+            for(c = pl_fruit; *c >= '0' && *c <= '9'; c++)
+                    ;
+            if (isspace(*c) || *c == 0) numeric = true;
+        }
+        if (found || numeric ||
+            !strncmp(str, ""cursed "", 7) ||
+            !strncmp(str, ""uncursed "", 9) ||
+            !strncmp(str, ""blessed "", 8) ||
+            !strncmp(str, ""partly eaten "", 13) ||
+            (!strncmp(str, ""tin of "", 7) &&
+             (!strcmp(str+7, ""spinach"") ||
+              name_to_mon(str+7) >= LOW_PM)) ||
+            !strcmp(str, ""empty tin"") ||
+            ((!strncmp(eos(str)-7,"" corpse"",7) ||
+              !strncmp(eos(str)-4, "" egg"",4)) &&
+             name_to_mon(str) >= LOW_PM))
+        {
+            strcpy(buf, pl_fruit);
+            strcpy(pl_fruit, ""candied "");
+            nmcpy(pl_fruit+8, buf, PL_FSIZ-8);
+        }
+    }
+    for(f=ffruit; f; f = f->nextf) {
+        lastf = f;
+        if(f->fid > highest_fruit_id) highest_fruit_id = f->fid;
+        if(!strncmp(str, f->fname, PL_FSIZ))
+                goto nonew;
+    }
+    /* if adding another fruit would overflow spe, use a random
+       fruit instead... we've got a lot to choose from. */
+    if (highest_fruit_id >= 127) return rnd(127);
+    highest_fruit_id++;
+    f = newfruit();
+    if (ffruit) lastf->nextf = f;
+    else ffruit = f;
+    strcpy(f->fname, str);
+    f->fid = highest_fruit_id;
+    f->nextf = 0;
+nonew:
+    if (user_specified) current_fruit = highest_fruit_id;
+    return f->fid;
+}",TRUE,CWE_469
+4,4,4_vdisc.c,"main(int argc, char* argv[])
+{
+  int i;
+  const char *prefix = "".."";
+  const char *prev_arg = """";
+
+  struct header_entry entries[] = {
+    {""word_dic"", ""/mkworddic/anthy.wdic""},
+    {""dep_dic"", ""/depgraph/anthy.dep""},
+    {""trans_info"", ""/calctrans/anthy.trans_info""},
+    {""cand_info"", ""/calctrans/anthy.cand_info""},
+    {""weak_words"", ""/calctrans/anthy.weak_words""},
+    {""corpus_bucket"", ""/calctrans/anthy.corpus_bucket""},
+    {""corpus_array"", ""/calctrans/anthy.corpus_array""},
+  };
+
+  for (i = 1; i < argc; i++) {
+    if (!strcmp(""-p"", prev_arg)) {
+      prefix = argv[i];
+    }
+    /**/
+    prev_arg = argv[i];
+  }
+  printf(""file name prefix=[%s] you can change this by -p option.\n"", prefix);
+
+  create_file_dic(DIC_NAME, prefix,
+		  sizeof(entries)/sizeof(struct header_entry),
+		  entries);
+
+  printf(""%s done.\n"", argv[0]);
+  return 0;
+}",TRUE,CWE_469
+5,5,5_vdisc.c,"gretl_start_compiling_function (const char *line, PRN *prn)
+{
+    ufunc *fun = NULL;
+    fn_param *params = NULL;
+    int nf, n_params = 0;
+    int rettype = 0;
+    char fname[FN_NAMELEN];
+    char s1[FN_NAMELEN];
+    char s2[FN_NAMELEN];
+    int err = 0;
+
+    nf = sscanf(line, ""function %31s %31s"", s1, s2);
+    if (nf <= 0) {
+	return E_PARSE;
+    } 
+
+    if (nf == 2) {
+	if (!strcmp(s2, ""clear"") || !strcmp(s2, ""delete"")) {
+	    return maybe_delete_function(s1, prn);
+	}
+    } 
+
+    /* the following takes care of replacing an existing function
+       of the same name, if any */
+
+    *fname = '\0';
+    err = parse_fn_definition(fname, &params, &n_params, &rettype,
+			      line + 8, &fun, prn);
+    if (err) {
+	pprintf(prn, ""> %s\n"", line);
+    }
+
+    if (!err && fun == NULL) {
+	fun = add_ufunc(fname);
+	if (fun == NULL) {
+	    free_params_array(params, n_params);
+	    err = E_ALLOC;
+	}
+    }
+
+    if (!err) {
+	strcpy(fun->name, fname);
+	fun->params = params;
+	fun->n_params = n_params;
+	fun->rettype = rettype;
+	current_fdef = fun;
+	set_compiling_on();
+    } else {
+	current_fdef = NULL;
+    }
+    
+    return err;
+}",TRUE,CWE_469
+6,6,6_vdisc.c,"readProfile() {
+	FILE * file = readOutputFilename();
+
+	int width = atoi(needNextToken());
+	WiggleIterator * regions = readIterator();
+	WiggleIterator * wig = readLastIterator();
+	Multiplexer * profiles = ProfileMultiplexer(regions, width, wig);
+	double * profile = calloc(width, sizeof(double));
+
+	for (; !profiles->done; popMultiplexer(profiles))
+		addProfile(profile, profiles->values, width);
+
+	int i;
+	for (i = 0; i < width; i++)
+		fprintf(file, ""%i\t%lf\n"", i, profile[i]);
+
+	free(profile);
+	fclose(file);
+}",FALSE,CWE_469
+7,7,7_vdisc.c,"sendPADI(PPPoEConnection *conn)
+{
+    PPPoEPacket packet;
+    unsigned char *cursor = packet.payload;
+    PPPoETag *svc = (PPPoETag *) (&packet.payload);
+    UINT16_t namelen = 0;
+    UINT16_t plen;
+    int omit_service_name = 0;
+
+    if (conn->serviceName) {
+	namelen = (UINT16_t) strlen(conn->serviceName);
+	if (!strcmp(conn->serviceName, ""NO-SERVICE-NAME-NON-RFC-COMPLIANT"")) {
+	    omit_service_name = 1;
+	}
+    }
+
+    /* Set destination to Ethernet broadcast address */
+    memset(packet.ethHdr.h_dest, 0xFF, ETH_ALEN);
+    memcpy(packet.ethHdr.h_source, conn->myEth, ETH_ALEN);
+
+    packet.ethHdr.h_proto = htons(Eth_PPPOE_Discovery);
+    packet.vertype = PPPOE_VER_TYPE(1, 1);
+    packet.code = CODE_PADI;
+    packet.session = 0;
+
+    if (!omit_service_name) {
+	plen = TAG_HDR_SIZE + namelen;
+	CHECK_ROOM(cursor, packet.payload, plen);
+
+	svc->type = TAG_SERVICE_NAME;
+	svc->length = htons(namelen);
+
+	if (conn->serviceName) {
+	    memcpy(svc->payload, conn->serviceName, strlen(conn->serviceName));
+	}
+	cursor += namelen + TAG_HDR_SIZE;
+    } else {
+	plen = 0;
+    }
+
+    /* If we're using Host-Uniq, copy it over */
+    if (conn->useHostUniq) {
+	PPPoETag hostUniq;
+	pid_t pid = getpid();
+	hostUniq.type = htons(TAG_HOST_UNIQ);
+	hostUniq.length = htons(sizeof(pid));
+	memcpy(hostUniq.payload, &pid, sizeof(pid));
+	CHECK_ROOM(cursor, packet.payload, sizeof(pid) + TAG_HDR_SIZE);
+	memcpy(cursor, &hostUniq, sizeof(pid) + TAG_HDR_SIZE);
+	cursor += sizeof(pid) + TAG_HDR_SIZE;
+	plen += sizeof(pid) + TAG_HDR_SIZE;
+    }
+
+    /* Add our maximum MTU/MRU */
+    if (MIN(lcp_allowoptions[0].mru, lcp_wantoptions[0].mru) > ETH_PPPOE_MTU) {
+	PPPoETag maxPayload;
+	UINT16_t mru = htons(MIN(lcp_allowoptions[0].mru, lcp_wantoptions[0].mru));
+	maxPayload.type = htons(TAG_PPP_MAX_PAYLOAD);
+	maxPayload.length = htons(sizeof(mru));
+	memcpy(maxPayload.payload, &mru, sizeof(mru));
+	CHECK_ROOM(cursor, packet.payload, sizeof(mru) + TAG_HDR_SIZE);
+	memcpy(cursor, &maxPayload, sizeof(mru) + TAG_HDR_SIZE);
+	cursor += sizeof(mru) + TAG_HDR_SIZE;
+	plen += sizeof(mru) + TAG_HDR_SIZE;
+    }
+
+    packet.length = htons(plen);
+
+    sendPacket(conn, conn->discoverySocket, &packet, (int) (plen + HDR_SIZE));
+}",TRUE,CWE_469
+8,8,8_vdisc.c,"encap_prereq_parse(encapinfo_t *pkginfo, char *line)
+{
+	ENCAP_PREREQ *ep;
+	char *tok, *nextp;
+	int i;
+
+#ifdef DEBUG
+	printf(""==> encap_prereq_parse(0x%lx, \""%s\"")\n"", pkginfo, line);
+#endif
+
+	nextp = line;
+	do
+		tok = strsep(&nextp, "" \t"");
+	while (tok != NULL && *tok == '\0');
+	if (tok == NULL)
+	{
+		errno = EINVAL;
+		return -1;
+	}
+	nextp += strspn(nextp, "" \t"");
+
+#ifdef DEBUG
+	printf(""    encap_prereq_parse(): type=\""%s\""\n"", tok);
+#endif
+
+	for (i = 0; prereq_types[i].pt_type != 0; i++)
+		if (strcmp(tok, prereq_types[i].pt_name) == 0)
+			break;
+	if (prereq_types[i].pt_type == 0)
+	{
+		errno = EINVAL;
+		return -1;
+	}
+
+	ep = (ENCAP_PREREQ *)calloc(1, sizeof(ENCAP_PREREQ));
+	if (ep == NULL)
+		return -1;
+	ep->ep_type = prereq_types[i].pt_type;
+
+#ifdef DEBUG
+	printf(""    encap_prereq_parse(): calling parsefunc() plugin...\n"");
+#endif
+
+	if ((*prereq_types[i].pt_parsefunc)(nextp, ep) == -1)
+		return -1;
+
+#ifdef DEBUG
+	printf(""    encap_prereq_parse(): ep->ep_type = %d\n"", ep->ep_type);
+	if ((ep->ep_type & ENCAP_PREREQ_TYPEMASK) == ENCAP_PREREQ_PKGSPEC)
+	{
+		char buf[MAXPATHLEN];
+
+		pkgspectostr(ep->ep_un.ep_pkgspec, buf, sizeof(buf));
+		printf(""    encap_prereq_parse(): ep->ep_un.ep_pkgspec = ""
+		       ""\""%s\""\n"", buf);
+		printf(""    encap_prereq_parse(): range = %d\n"",
+		       ep->ep_type & ENCAP_PREREQ_RANGEMASK);
+	}
+	else
+		printf(""    encap_prereq_parse(): ep->ep_un.ep_pathname = ""
+		       ""\""%s\""\n"", ep->ep_un.ep_pathname);
+	printf(""    encap_prereq_parse(): adding to prereq list\n"");
+#endif
+
+	encap_list_add(pkginfo->ei_pr_l, ep);
+
+#ifdef DEBUG
+	printf(""<== encap_prereq_parse(): success\n"");
+#endif
+	return 0;
+}",FALSE,CWE_469
+9,9,9_vdisc.c,"cmd_cancel_scan (SANE_Handle handle)
+{
+	KodakAio_Scanner *s = (KodakAio_Scanner *) handle;
+	unsigned char reply[8];
+/* adf added 20/2/12 should it be adf? or adf with paper in? */
+	if (strcmp(source_list[s->val[OPT_SOURCE].w], ADF_STR) == 0) { /* adf */
+		if (kodakaio_txrxack(s, KodakEsp_F, reply)!= SANE_STATUS_GOOD) return SANE_STATUS_IO_ERROR;
+		if (kodakaio_txrxack(s, KodakEsp_UnLock, reply)!= SANE_STATUS_GOOD) return SANE_STATUS_IO_ERROR;
+		DBG(5, ""%s unlocked the scanner with adf F U\n"", __func__);
+	}
+	else { /* no adf */
+		if (kodakaio_txrxack(s, KodakEsp_UnLock, reply)!= SANE_STATUS_GOOD) return SANE_STATUS_IO_ERROR;
+		DBG(5, ""%s unlocked the scanner U\n"", __func__);
+	}
+	s->scanning = SANE_FALSE;
+	return SANE_STATUS_GOOD;
+}",TRUE,CWE_469
+10,10,10_vdisc.c,"readconfig(CONF *config)
+{
+	char buffer[120], option[15], *path;
+	FILE *conf;
+	int i = 0;
+	char lines[IMG_TEXTLINES][13] = {
+		""first_line"",
+		""second_line"",
+		""third_line"",
+		""fourth_line"",
+		""fifth_line"",
+		""sixth_line"",
+		""seventh_line""
+	};
+
+	path = get_path(""casrc"");
+	if (path == NULL) {
+		return 0;
+	}
+
+	if ((conf = fopen(path, ""r"")) == NULL) {
+		printf(""Unable to open %s. Creating it.\n"", path);
+		free(path);
+		if (!writeconfig()) {
+			perror(""readconfig: unable to create initial config file\n"");
+		}
+		return 0;
+	}
+	free(path);
+
+	buffer[0] = 0;
+	while (!feof(conf)) {
+		// Jacobo221 - [ToDo] Only first char per line is comment...
+		if (fgets (buffer,120,conf)) {
+			if (buffer[0] != '#') {
+				/* Only two fileds per line */
+				sscanf(buffer, ""%s %*s"", option);
+				fflush (stdout);
+		// Jacobo221 - [ToDo] So lines can't be swapped...
+				if (strcmp(option, ""font"") == 0) {
+					sscanf(buffer, ""%*s %s"", config->font);
+				}
+				if (strcmp(option, ""font_size"") == 0) {
+					sscanf(buffer, ""%*s %f"", &config->size);
+				}
+				if (strcmp(option, ""source_image"") == 0) {
+					sscanf(buffer, ""%*s %s"", config->source);
+				}
+				if (strcmp(option, ""template"") == 0) {
+					sscanf(buffer, ""%*s %s"", config->template);
+				}
+				if (strcmp(option, ""img_type"") == 0) {
+					sscanf(buffer, ""%*s %d"", &config->img_type);
+				}
+					
+				for (i = 0; i < IMG_TEXTLINES; i++) {
+					if (strcmp(option, lines[i]) == 0) {
+						sscanf(buffer,
+							""%*s %d,%d,%d"",
+							&config->x[i], &config->y[i],
+							&config->enabled[i]);
+					}
+				}
+			}
+		}
+	}
+
+	fclose(conf);
+
+	return 1;
+}",FALSE,CWE_469
+11,11,11_vdisc.c,"setup_hostname(void)
+{
+	char name[HOST_NAME_MAX + 1];
+
+	memset(system_hostname, 0, sizeof(system_hostname));
+
+	if (gethostname(system_hostname, HOST_NAME_MAX) < 0) {
+		connman_error(""Failed to get current hostname"");
+		return -EIO;
+	}
+
+	if (strlen(system_hostname) > 0 &&
+				strcmp(system_hostname, ""(none)"") != 0)
+		connman_info(""System hostname is %s"", system_hostname);
+	else
+		create_hostname();
+
+	memset(name, 0, sizeof(name));
+
+	if (getdomainname(name, HOST_NAME_MAX) < 0) {
+		connman_error(""Failed to get current domainname"");
+		return -EIO;
+	}
+
+	if (strlen(name) > 0 && strcmp(name, ""(none)"") != 0)
+		connman_info(""System domainname is %s"", name);
+
+	return 0;
+}",TRUE,CWE_469
+12,12,12_vdisc.c,"append_fromstream(struct appendstate *as, struct body **body,
+		      struct protstream *messagefile,
+		      unsigned long size,
+		      time_t internaldate,
+		      const char **flag,
+		      int nflags)
+{
+    struct mailbox *mailbox = as->mailbox;
+    struct index_record message_index;
+    char *fname;
+    FILE *destfile;
+    int i, r;
+    int userflag;
+
+    assert(size != 0);
+
+    zero_index(message_index);
+    /* Setup */
+    message_index.uid = as->baseuid + as->nummsg;
+    message_index.internaldate = internaldate;
+
+    /* Create message file */
+    fname = mailbox_message_fname(mailbox, message_index.uid);
+    as->nummsg++;
+
+    unlink(fname);
+    destfile = fopen(fname, ""w+"");
+    if (!destfile) {
+	syslog(LOG_ERR, ""IOERROR: creating message file %s: %m"", fname);
+	append_abort(as);
+	return IMAP_IOERROR;
+    }
+
+    /* Copy and parse message */
+    r = message_copy_strict(messagefile, destfile, size, 0);
+    if (!r) {
+	if (!*body || (as->nummsg - 1))
+	    r = message_parse_file(destfile, NULL, NULL, body);
+	if (!r) r = message_create_record(&message_index, *body);
+    }
+    fclose(destfile);
+    if (r) {
+	append_abort(as);
+	return r;
+    }
+
+    /* Handle flags the user wants to set in the message */
+    for (i = 0; i < nflags; i++) {
+	if (!strcmp(flag[i], ""\\seen"")) {
+	    append_setseen(as, &message_index);
+	}
+	else if (!strcmp(flag[i], ""\\deleted"")) {
+	    if (as->myrights & ACL_DELETEMSG) {
+		message_index.system_flags |= FLAG_DELETED;
+	    }
+	}
+	else if (!strcmp(flag[i], ""\\draft"")) {
+	    if (as->myrights & ACL_WRITE) {
+		message_index.system_flags |= FLAG_DRAFT;
+	    }
+	}
+	else if (!strcmp(flag[i], ""\\flagged"")) {
+	    if (as->myrights & ACL_WRITE) {
+		message_index.system_flags |= FLAG_FLAGGED;
+	    }
+	}
+	else if (!strcmp(flag[i], ""\\answered"")) {
+	    if (as->myrights & ACL_WRITE) {
+		message_index.system_flags |= FLAG_ANSWERED;
+	    }
+	}
+	else if (as->myrights & ACL_WRITE) {
+	    r = mailbox_user_flag(mailbox, flag[i], &userflag);
+	    if (!r)
+		message_index.user_flags[userflag/32] |= 1<<(userflag&31);
+	}
+    }
+
+    /* Write out index file entry; if we abort later, it's not
+       important */
+    r = mailbox_append_index_record(mailbox, &message_index);
+    if (r) {
+	append_abort(as);
+	return r;
+    }
+    
+    return 0;
+}",FALSE,CWE_469
+13,13,13_vdisc.c,"extend_parse_config(const char *token, char *cptr)
+{
+    netsnmp_extend *extension;
+    char exec_name[STRMAX];
+    char exec_name2[STRMAX];     /* For use with UCD execFix directive */
+    char exec_command[STRMAX];
+    oid  oid_buf[MAX_OID_LEN];
+    size_t oid_len;
+    extend_registration_block *eptr;
+    int  flags;
+
+    cptr = copy_nword(cptr, exec_name,    sizeof(exec_name));
+    if ( *exec_name == '.' ) {
+        oid_len = MAX_OID_LEN - 2;
+        if (0 == read_objid( exec_name, oid_buf, &oid_len )) {
+            config_perror(""ERROR: Unrecognised OID"" );
+            return;
+        }
+        cptr = copy_nword(cptr, exec_name,    sizeof(exec_name));
+        if (!strcmp( token, ""sh""   ) ||
+            !strcmp( token, ""exec"" )) {
+            config_perror(""ERROR: This output format has been deprecated - Please use the 'extend' directive instead"" );
+            return;
+        }
+    } else {
+        memcpy( oid_buf, ns_extend_oid, sizeof(ns_extend_oid));
+        oid_len = OID_LENGTH(ns_extend_oid);
+    }
+    cptr = copy_nword(cptr, exec_command, sizeof(exec_command));
+    /* XXX - check 'exec_command' exists & is executable */
+    flags = (NS_EXTEND_FLAGS_ACTIVE | NS_EXTEND_FLAGS_CONFIG);
+    if (!strcmp( token, ""sh""        ) ||
+        !strcmp( token, ""extend-sh"" ) ||
+        !strcmp( token, ""sh2"" ))
+        flags |= NS_EXTEND_FLAGS_SHELL;
+    if (!strcmp( token, ""execFix""   ) ||
+        !strcmp( token, ""extendfix"" ) ||
+        !strcmp( token, ""execFix2"" )) {
+        strcpy( exec_name2, exec_name );
+        strcat( exec_name, ""Fix"" );
+        flags |= NS_EXTEND_FLAGS_WRITEABLE;
+        /* XXX - Check for shell... */
+    }
+
+    eptr      = _register_extend( oid_buf, oid_len );
+    extension = _new_extension( exec_name, flags, eptr );
+    if (extension) {
+        extension->command  = strdup( exec_command );
+        if (cptr)
+            extension->args = strdup( cptr );
+    } else {
+        snmp_log(LOG_ERR, ""Failed to register extend entry '%s' - possibly duplicate name.\n"", exec_name );
+        return;
+    }
+
+#ifndef USING_UCD_SNMP_EXTENSIBLE_MODULE
+    /*
+     *  Compatability with the UCD extTable
+     */
+    if (!strcmp( token, ""execFix""  )) {
+        int  i;
+        for ( i=0; i < num_compatability_entries; i++ ) {
+            if (!strcmp( exec_name2,
+                    compatability_entries[i].exec_entry->token))
+                break;
+        }
+        if ( i == num_compatability_entries )
+            config_perror(""No matching exec entry"" );
+        else
+            compatability_entries[ i ].efix_entry = extension;
+            
+    } else if (!strcmp( token, ""sh""   ) ||
+               !strcmp( token, ""exec"" )) {
+        if ( num_compatability_entries == max_compatability_entries )
+            /* XXX - should really use dynamic allocation */
+            config_perror(""No further UCD-compatible entries"" );
+        else
+            compatability_entries[
+                num_compatability_entries++ ].exec_entry = extension;
+    }
+#endif
+}",TRUE,CWE_469
+14,14,14_vdisc.c,"bed_read(const char *fn)
+{
+	reghash_t *h = kh_init(reg);
+	gzFile fp;
+	kstream_t *ks;
+	int dret;
+	kstring_t *str;
+	// read the list
+	fp = strcmp(fn, ""-"")? gzopen(fn, ""r"") : gzdopen(fileno(stdin), ""r"");
+	if (fp == 0) return 0;
+	str = calloc(1, sizeof(kstring_t));
+	ks = ks_init(fp);
+	while (ks_getuntil(ks, 0, str, &dret) >= 0) { // read the chr name
+		int beg = -1, end = -1;
+		bed_reglist_t *p;
+		khint_t k = kh_get(reg, h, str->s);
+		if (k == kh_end(h)) { // absent from the hash table
+			int ret;
+			char *s = strdup(str->s);
+			k = kh_put(reg, h, s, &ret);
+			memset(&kh_val(h, k), 0, sizeof(bed_reglist_t));
+		}
+		p = &kh_val(h, k);
+		if (dret != '\n') { // if the lines has other characters
+			if (ks_getuntil(ks, 0, str, &dret) > 0 && isdigit(str->s[0])) {
+				beg = atoi(str->s); // begin
+				if (dret != '\n') {
+					if (ks_getuntil(ks, 0, str, &dret) > 0 && isdigit(str->s[0]))
+						end = atoi(str->s); // end
+				}
+			}
+		}
+		if (dret != '\n') while ((dret = ks_getc(ks)) > 0 && dret != '\n'); // skip the rest of the line
+		if (end < 0 && beg > 0) end = beg, beg = beg - 1; // if there is only one column
+		if (beg >= 0 && end > beg) {
+			if (p->n == p->m) {
+				p->m = p->m? p->m<<1 : 4;
+				p->a = realloc(p->a, p->m * 8);
+			}
+			p->a[p->n++] = (uint64_t)beg<<32 | end;
+		}
+	}
+	ks_destroy(ks);
+	gzclose(fp);
+	free(str->s); free(str);
+	bed_index(h);
+	return h;
+}",FALSE,CWE_469
+15,15,15_vdisc.c,"scg_drag_data_get (SheetControlGUI *scg, GtkSelectionData *selection_data)
+{
+	GdkAtom target = gtk_selection_data_get_target (selection_data);
+	gchar *target_name = gdk_atom_name (target);
+	GSList *objects = scg->selected_objects
+		? go_hash_keys (scg->selected_objects)
+		: NULL;
+
+	if (strcmp (target_name, ""GNUMERIC_SAME_PROC"") == 0)
+		/* Set dummy selection for process internal dnd */
+		gtk_selection_data_set (selection_data, target,
+					8, (const guint8 *)"""", 1);
+	else if (strcmp (target_name, ""GNUMERIC_SHEET"") == 0)
+		gtk_selection_data_set (selection_data, target,
+					8, (void *)scg, sizeof (scg));
+	else if (strcmp (target_name, ""application/x-gnumeric"") == 0)
+		scg_drag_send_clipboard_objects (SHEET_CONTROL (scg),
+			selection_data, objects);
+	else if (strcmp (target_name, ""application/x-goffice-graph"") == 0)
+		scg_drag_send_graph (scg, selection_data, objects, target_name);
+	else if (strncmp (target_name, ""image/"", 6) == 0)
+		scg_drag_send_image (scg, selection_data, objects, target_name);
+	else if (strcmp (target_name, ""UTF8_STRING"") == 0)
+		scg_drag_send_text (scg, selection_data);
+
+	g_free (target_name);
+	g_slist_free (objects);
+}",TRUE,CWE_469
+16,16,16_vdisc.c,"list_addentry (GSList ** list, char *cmd, char *name)
+{
+	struct popup *pop;
+	size_t name_len;
+	size_t cmd_len = 1;
+
+	/* remove <2.8.0 stuff */
+	if (!strcmp (cmd, ""away"") && !strcmp (name, ""BACK""))
+		return;
+
+	if (cmd)
+		cmd_len = strlen (cmd) + 1;
+	name_len = strlen (name) + 1;
+
+	pop = malloc (sizeof (struct popup) + cmd_len + name_len);
+	pop->name = (char *) pop + sizeof (struct popup);
+	pop->cmd = pop->name + name_len;
+
+	memcpy (pop->name, name, name_len);
+	if (cmd)
+		memcpy (pop->cmd, cmd, cmd_len);
+	else
+		pop->cmd[0] = 0;
+
+	*list = g_slist_append (*list, pop);
+}",FALSE,CWE_469
+17,17,17_vdisc.c,"writelog(FILE *fp, unsigned char *ptr, int len)
+{
+	time_t		t;
+	char		*s;
+	char		tmp[8];
+	int		olen = len;
+	int		dosync = 0;
+	int		tlen;
+
+	while (len > 0) {
+		tmp[0] = 0;
+		if (didnl) {
+			time(&t);
+			s = ctime(&t);
+			fprintf(fp, ""%.24s: "", s);
+			didnl = 0;
+		}
+		switch (*ptr) {
+			case 27: /* ESC */
+				strcpy(tmp, ""^["");
+				break;
+			case '\r':
+				line.pos = 0;
+				break;
+			case 8: /* ^H */
+				if (line.pos > 0) line.pos--;
+				break;
+			case '\n':
+				didnl = 1;
+				dosync = 1;
+				break;
+			case '\t':
+				line.pos += (line.pos / 8 + 1) * 8;
+				if (line.pos >= (int)sizeof(line.buf))
+					line.pos = sizeof(line.buf) - 1;
+				break;
+			case  32 ... 127:
+			case 161 ... 255:
+				tmp[0] = *ptr;
+				tmp[1] = 0;
+				break;
+			default:
+				sprintf(tmp, ""\\%03o"", *ptr);
+				break;
+		}
+		ptr++;
+		len--;
+
+		tlen = strlen(tmp);
+		if (tlen && (line.pos + tlen < (int)sizeof(line.buf))) {
+			memcpy(line.buf + line.pos, tmp, tlen);
+			line.pos += tlen;
+		}
+		if (didnl) {
+			fprintf(fp, ""%s\n"", line.buf);
+			memset(&line, 0, sizeof(line));
+		}
+	}
+
+	if (dosync) {
+		fflush(fp);
+		if (syncalot) {
+			fdatasync(fileno(fp));
+		}
+	}
+
+	outptr += olen;
+	if (outptr >= endptr)
+		outptr = ringbuf;
+
+}",FALSE,CWE_469
+18,18,18_vdisc.c,"print_summary(const char *prefix, const unsigned char *sha1)
+{
+	struct rev_info rev;
+	struct commit *commit;
+	static const char *format = ""format:%h: \""%s\"""";
+	unsigned char junk_sha1[20];
+	const char *head = resolve_ref(""HEAD"", junk_sha1, 0, NULL);
+
+	commit = lookup_commit(sha1);
+	if (!commit)
+		die(""couldn't look up newly created commit"");
+	if (!commit || parse_commit(commit))
+		die(""could not parse newly created commit"");
+
+	init_revisions(&rev, prefix);
+	setup_revisions(0, NULL, &rev, NULL);
+
+	rev.abbrev = 0;
+	rev.diff = 1;
+	rev.diffopt.output_format =
+		DIFF_FORMAT_SHORTSTAT | DIFF_FORMAT_SUMMARY;
+
+	rev.verbose_header = 1;
+	rev.show_root_diff = 1;
+	get_commit_format(format, &rev);
+	rev.always_show_header = 0;
+	rev.diffopt.detect_rename = 1;
+	rev.diffopt.rename_limit = 100;
+	rev.diffopt.break_opt = 0;
+	diff_setup_done(&rev.diffopt);
+
+	printf(""[%s%s]: created "",
+		!prefixcmp(head, ""refs/heads/"") ?
+			head + 11 :
+			!strcmp(head, ""HEAD"") ?
+				""detached HEAD"" :
+				head,
+		initial_commit ? "" (root-commit)"" : """");
+
+	if (!log_tree_commit(&rev, commit)) {
+		struct strbuf buf = STRBUF_INIT;
+		format_commit_message(commit, format + 7, &buf, DATE_NORMAL);
+		printf(""%s\n"", buf.buf);
+		strbuf_release(&buf);
+	}
+}",TRUE,CWE_469
+19,19,19_vdisc.c,"SetMask(char action,int value,int affected,mode_t *p,mode_t *m)
+
+{
+Debug1(""SetMask(%c%o,%o)\n"",action,value,affected);
+
+switch(action)
+   {
+   case '+':
+             *p |= value;
+             *m |= 0;
+             return;
+   case '-':
+             *p |= 0;
+             *m |= value;
+             return;
+   case '=':
+             *p |= value;
+             *m |= ((~value) & 07777 & affected);
+             return;
+   default:
+             sprintf(VBUFF,""Mode directive %c is unknown"",action);
+             yyerror(VBUFF);
+             return;
+   }
+}",TRUE,CWE_469
+20,20,20_vdisc.c,"glade_gtk_box_set_child_property (GladeWidgetAdaptor * adaptor,
+                                  GObject * container,
+                                  GObject * child,
+                                  const gchar * property_name, GValue * value)
+{
+  GladeWidget *gbox, *gchild, *gchild_iter;
+  GList *children, *list;
+  gboolean is_position;
+  gint old_position, iter_position, new_position;
+  static gboolean recursion = FALSE;
+
+  g_return_if_fail (GTK_IS_BOX (container));
+  g_return_if_fail (GTK_IS_WIDGET (child));
+  g_return_if_fail (property_name != NULL || value != NULL);
+
+  gbox = glade_widget_get_from_gobject (container);
+  gchild = glade_widget_get_from_gobject (child);
+
+  g_return_if_fail (GLADE_IS_WIDGET (gbox));
+
+  if (gtk_widget_get_parent (GTK_WIDGET (child)) != GTK_WIDGET (container))
+    return;
+
+  /* Get old position */
+  if ((is_position = (strcmp (property_name, ""position"") == 0)) != FALSE)
+    {
+      gtk_container_child_get (GTK_CONTAINER (container),
+                               GTK_WIDGET (child),
+                               property_name, &old_position, NULL);
+
+
+      /* Get the real value */
+      new_position = g_value_get_int (value);
+    }
+
+  if (is_position && recursion == FALSE)
+    {
+      children = glade_widget_get_children (gbox);
+      children = g_list_sort (children, (GCompareFunc) sort_box_children);
+
+      for (list = children; list; list = list->next)
+        {
+          gchild_iter = glade_widget_get_from_gobject (list->data);
+
+          if (gchild_iter == gchild)
+            {
+              gtk_box_reorder_child (GTK_BOX (container),
+                                     GTK_WIDGET (child), new_position);
+              continue;
+            }
+
+          /* Get the old value from glade */
+          glade_widget_pack_property_get
+              (gchild_iter, ""position"", &iter_position);
+
+          /* Search for the child at the old position and update it */
+          if (iter_position == new_position &&
+              glade_property_superuser () == FALSE)
+            {
+              /* Update glade with the real value */
+              recursion = TRUE;
+              glade_widget_pack_property_set
+                  (gchild_iter, ""position"", old_position);
+              recursion = FALSE;
+              continue;
+            }
+          else
+            {
+              gtk_box_reorder_child (GTK_BOX (container),
+                                     GTK_WIDGET (list->data), iter_position);
+            }
+        }
+
+      for (list = children; list; list = list->next)
+        {
+          gchild_iter = glade_widget_get_from_gobject (list->data);
+
+          /* Refresh values yet again */
+          glade_widget_pack_property_get
+              (gchild_iter, ""position"", &iter_position);
+
+          gtk_box_reorder_child (GTK_BOX (container),
+                                 GTK_WIDGET (list->data), iter_position);
+
+        }
+
+      if (children)
+        g_list_free (children);
+    }
+
+  /* Chain Up */
+  if (!is_position)
+    GWA_GET_CLASS
+        (GTK_TYPE_CONTAINER)->child_set_property (adaptor,
+                                                  container,
+                                                  child, property_name, value);
+
+  gtk_container_check_resize (GTK_CONTAINER (container));
+
+}",FALSE,CWE_469
+21,21,21_vdisc.c,"tdsdump_append(void)
+{
+	if (!g_dump_filename)
+		return NULL;
+
+	if (!strcmp(g_dump_filename, ""stdout"")) {
+		return stdout;
+	} else if (!strcmp(g_dump_filename, ""stderr"")) {
+		return stderr;
+	}
+	return fopen(g_dump_filename, ""a"");
+}",TRUE,CWE_469
+22,22,22_vdisc.c,"build_config_feature_list(struct config_record *config_ptr)
+{
+	struct features_record *feature_ptr;
+	ListIterator feature_iter;
+	int i, j;
+	char *tmp_str, *token, *last = NULL;
+
+	/* Clear these nodes from the feature_list record,
+	 * then restore as needed */
+	feature_iter = list_iterator_create(feature_list);
+	bit_not(config_ptr->node_bitmap);
+	while ((feature_ptr = (struct features_record *)
+			list_next(feature_iter))) {
+		bit_and(feature_ptr->node_bitmap, config_ptr->node_bitmap);
+	}
+	list_iterator_destroy(feature_iter);
+	bit_not(config_ptr->node_bitmap);
+
+	if (config_ptr->feature) {
+		i = strlen(config_ptr->feature) + 1;	/* oversized */
+		tmp_str = xmalloc(i);
+		/* Remove white space from feature specification */
+		for (i=0, j=0; config_ptr->feature[i]; i++) {
+			if (!isspace((int)config_ptr->feature[i]))
+				tmp_str[j++] = config_ptr->feature[i];
+		}
+		if (i != j)
+			strcpy(config_ptr->feature, tmp_str);
+		token = strtok_r(tmp_str, "","", &last);
+		while (token) {
+			_add_config_feature(token, config_ptr->node_bitmap);
+			token = strtok_r(NULL, "","", &last);
+		}
+		xfree(tmp_str);
+	}
+}",TRUE,CWE_469
+23,23,23_vdisc.c,"bundle_write_java(struct SRBRoot *bundle, const char *outputDir,const char* outputEnc,
+                  char *writtenFilename, int writtenFilenameLen,
+                  const char* packageName, const char* bundleName,
+                  UErrorCode *status) {
+
+    char fileName[256] = {'\0'};
+    char className[256]={'\0'};
+    /*char constructor[1000] = { 0 };*/
+    /*UBool j1 =FALSE;*/
+    /*outDir = outputDir;*/
+
+    start = TRUE;                        /* Reset the start indictor*/
+
+    bName = (bundleName==NULL) ? ""LocaleElements"" : bundleName;
+    pName = (packageName==NULL)? ""com.ibm.icu.impl.data"" : packageName;
+
+    uprv_strcpy(className, bName);
+    srBundle = bundle;
+    if(uprv_strcmp(srBundle->fLocale,""root"")!=0){
+        uprv_strcat(className,""_"");
+        uprv_strcat(className,srBundle->fLocale);
+    }
+    if(outputDir){
+        uprv_strcpy(fileName, outputDir);
+        if(outputDir[uprv_strlen(outputDir)-1] !=U_FILE_SEP_CHAR){
+            uprv_strcat(fileName,U_FILE_SEP_STRING);
+        }
+        uprv_strcat(fileName,className);
+        uprv_strcat(fileName,"".java"");
+    }else{
+        uprv_strcat(fileName,className);
+        uprv_strcat(fileName,"".java"");
+    }
+
+    if (writtenFilename) {
+        uprv_strncpy(writtenFilename, fileName, writtenFilenameLen);
+    }
+
+    if (U_FAILURE(*status)) {
+        return;
+    }
+
+    out= T_FileStream_open(fileName,""w"");
+
+    if(out==NULL){
+        *status = U_FILE_ACCESS_ERROR;
+        return;
+    }
+    if(getIncludeCopyright()){
+        T_FileStream_write(out, copyRight, (int32_t)uprv_strlen(copyRight));
+        T_FileStream_write(out, warningMsg, (int32_t)uprv_strlen(warningMsg));
+    }
+    T_FileStream_write(out,""package "",(int32_t)uprv_strlen(""package ""));
+    T_FileStream_write(out,pName,(int32_t)uprv_strlen(pName));
+    T_FileStream_write(out,"";\n\n"",3);
+    T_FileStream_write(out, javaClass, (int32_t)uprv_strlen(javaClass));
+    T_FileStream_write(out, className, (int32_t)uprv_strlen(className));
+	T_FileStream_write(out, javaClass1, (int32_t)uprv_strlen(javaClass1));
+
+    /* if(j1){
+          T_FileStream_write(out, javaClass1, (int32_t)uprv_strlen(javaClass1));
+       }else{
+           sprintf(constructor,javaClassICU,className);
+           T_FileStream_write(out, constructor, (int32_t)uprv_strlen(constructor));
+       }
+    */
+
+    if(outputEnc && *outputEnc!='\0'){
+        /* store the output encoding */
+        enc = outputEnc;
+        conv=ucnv_open(enc,status);
+        if(U_FAILURE(*status)){
+            return;
+        }
+    }
+    res_write_java(bundle->fRoot, status);
+
+    T_FileStream_write(out, closeClass, (int32_t)uprv_strlen(closeClass));
+
+    T_FileStream_close(out);
+
+    ucnv_close(conv);
+}",FALSE,CWE_469
+24,24,24_vdisc.c,"folder_set_xml(Folder *folder, XMLTag *tag)
+{
+	GList *cur;
+	FolderItem *rootitem = NULL;
+
+	if ((folder->node != NULL) && (folder->node->data != NULL))
+		rootitem = (FolderItem *) folder->node->data;
+
+	for (cur = tag->attr; cur != NULL; cur = g_list_next(cur)) {
+		XMLAttr *attr = (XMLAttr *) cur->data;
+
+		if (!attr || !attr->name || !attr->value) continue;
+		if (!strcmp(attr->name, ""name"")) {
+			g_free(folder->name);
+			folder->name = g_strdup(attr->value);
+			if (rootitem != NULL) {
+				g_free(rootitem->name);
+				rootitem->name = g_strdup(attr->value);
+			}
+		} else if (!strcmp(attr->name, ""account_id"")) {
+			PrefsAccount *account;
+
+			account = account_find_from_id(atoi(attr->value));
+			if (!account)
+				g_warning(""account_id: %s not found\n"", attr->value);
+			else {
+				folder->account = account;
+				account->folder = folder;
+			}
+		} else if (!strcmp(attr->name, ""collapsed"")) {
+			if (rootitem != NULL)
+				rootitem->collapsed = *attr->value == '1' ? TRUE : FALSE;
+		} else if (!strcmp(attr->name, ""sort"")) {
+			folder->sort = atoi(attr->value);
+		}
+	}
+}",TRUE,CWE_469
+25,25,25_vdisc.c,"get_config_entry(char * in_data, const char *section, const char *key)
+{
+    char *ptr = NULL, *p, *tmp;
+    char *line;
+    int in_section = 0;
+    char * data = strdup(in_data);
+
+    for (line = strtok_r(data, ""\n"", &ptr); line != NULL;
+         line = strtok_r(NULL, ""\n"", &ptr)) {
+        /* Skip initial whitespace. */
+        while (isspace((unsigned char)*line) && (*line != '\0'))
+            line++;
+
+        /* If it's a comment, bail. */
+        if (*line == '#') {
+            continue;
+        }
+
+        /* If it's the beginning of a section, process it and clear the key
+         * and value values. */
+        if (*line == '[') {
+            line++;
+            p = strchr(line, ']');
+            if (p) {
+                tmp = strndup(line, p - line);
+                if (in_section) {
+                    /* We exited the matching section without a match */
+                    free(data);
+                    return NULL;
+                }
+                if (strcmp(section, tmp) == 0) {
+                    free(tmp);
+                    in_section = 1;
+                    continue;
+                }
+            }
+        } /* [ */
+
+        p = strchr(line, '=');
+        if (p != NULL && in_section) {
+            /* Trim any trailing whitespace off the key name. */
+            while (p != line && isspace((unsigned char)p[-1]))
+                p--;
+
+            /* Save the key. */
+            tmp = strndup(line, p - line);
+            if (strcmp(key, tmp) != 0) {
+                free(tmp);
+            } else {
+                free(tmp);
+
+                /* Skip over any whitespace after the equal sign. */
+                line = strchr(line, '=');
+                line++;
+                while (isspace((unsigned char)*line) && (*line != '\0'))
+                    line++;
+
+                /* Trim off any trailing whitespace. */
+                p = strchr(line, '\0');
+                while (p != line && isspace((unsigned char)p[-1]))
+                    p--;
+
+                /* Save the value. */
+                tmp = strndup(line, p - line);
+
+                free(data);
+                return tmp;
+            }
+        }
+    }
+    free(data);
+    return NULL;
+}",TRUE,CWE_469
+26,26,26_vdisc.c,"iptoken_set(int argc, char **argv)
+{
+	struct {
+		struct nlmsghdr n;
+		struct ifinfomsg ifi;
+		char buf[512];
+	} req;
+	struct rtattr *afs, *afs6;
+	bool have_token = false, have_dev = false;
+	inet_prefix addr;
+
+	memset(&addr, 0, sizeof(addr));
+	memset(&req, 0, sizeof(req));
+
+	req.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+	req.n.nlmsg_flags = NLM_F_REQUEST;
+	req.n.nlmsg_type = RTM_SETLINK;
+	req.ifi.ifi_family = AF_INET6;
+
+	while (argc > 0) {
+		if (strcmp(*argv, ""dev"") == 0) {
+			NEXT_ARG();
+			if (!have_dev) {
+				if ((req.ifi.ifi_index =
+				     ll_name_to_index(*argv)) == 0)
+					invarg(""dev is invalid\n"", *argv);
+				have_dev = true;
+			}
+		} else {
+			if (matches(*argv, ""help"") == 0)
+				usage();
+			if (!have_token) {
+				afs = addattr_nest(&req.n, sizeof(req), IFLA_AF_SPEC);
+				afs6 = addattr_nest(&req.n, sizeof(req), AF_INET6);
+				get_prefix(&addr, *argv, req.ifi.ifi_family);
+				addattr_l(&req.n, sizeof(req), IFLA_INET6_TOKEN,
+					  &addr.data, addr.bytelen);
+				addattr_nest_end(&req.n, afs6);
+				addattr_nest_end(&req.n, afs);
+				have_token = true;
+			}
+		}
+		argc--; argv++;
+	}
+
+	if (!have_token) {
+		fprintf(stderr, ""Not enough information: token ""
+			""is required.\n"");
+		return -1;
+	}
+	if (!have_dev) {
+		fprintf(stderr, ""Not enough information: \""dev\"" ""
+			""argument is required.\n"");
+		return -1;
+	}
+
+	if (rtnl_talk(&rth, &req.n, 0, 0, NULL) < 0)
+		return -2;
+
+	return 0;
+}",FALSE,CWE_469
+27,27,27_vdisc.c,"elfcore_write_note (bfd *abfd,
+		    char *buf,
+		    int *bufsiz,
+		    const char *name,
+		    int type,
+		    const void *input,
+		    int size)
+{
+  Elf_External_Note *xnp;
+  size_t namesz;
+  size_t newspace;
+  char *dest;
+
+  namesz = 0;
+  if (name != NULL)
+    namesz = strlen (name) + 1;
+
+  newspace = 12 + ((namesz + 3) & -4) + ((size + 3) & -4);
+
+  buf = (char *) realloc (buf, *bufsiz + newspace);
+  if (buf == NULL)
+    return buf;
+  dest = buf + *bufsiz;
+  *bufsiz += newspace;
+  xnp = (Elf_External_Note *) dest;
+  H_PUT_32 (abfd, namesz, xnp->namesz);
+  H_PUT_32 (abfd, size, xnp->descsz);
+  H_PUT_32 (abfd, type, xnp->type);
+  dest = xnp->name;
+  if (name != NULL)
+    {
+      memcpy (dest, name, namesz);
+      dest += namesz;
+      while (namesz & 3)
+	{
+	  *dest++ = '\0';
+	  ++namesz;
+	}
+    }
+  memcpy (dest, input, size);
+  dest += size;
+  while (size & 3)
+    {
+      *dest++ = '\0';
+      ++size;
+    }
+  return buf;
+}",TRUE,CWE_469
+28,28,28_vdisc.c,"RemovePgTempFiles(void)
+{
+	char		temp_path[MAXPGPATH];
+	DIR		   *spc_dir;
+	struct dirent *spc_de;
+
+	/*
+	 * First process temp files in pg_default ($PGDATA/base)
+	 */
+	snprintf(temp_path, sizeof(temp_path), ""base/%s"", PG_TEMP_FILES_DIR);
+	RemovePgTempFilesInDir(temp_path);
+
+	/*
+	 * Cycle through temp directories for all non-default tablespaces.
+	 */
+	spc_dir = AllocateDir(""pg_tblspc"");
+
+	while ((spc_de = ReadDir(spc_dir, ""pg_tblspc"")) != NULL)
+	{
+		if (strcmp(spc_de->d_name, ""."") == 0 ||
+			strcmp(spc_de->d_name, "".."") == 0)
+			continue;
+
+		snprintf(temp_path, sizeof(temp_path), ""pg_tblspc/%s/%s"",
+				 spc_de->d_name, PG_TEMP_FILES_DIR);
+		RemovePgTempFilesInDir(temp_path);
+	}
+
+	FreeDir(spc_dir);
+
+	/*
+	 * In EXEC_BACKEND case there is a pgsql_tmp directory at the top level of
+	 * DataDir as well.
+	 */
+#ifdef EXEC_BACKEND
+	RemovePgTempFilesInDir(PG_TEMP_FILES_DIR);
+#endif
+}",TRUE,CWE_469
+29,29,29_vdisc.c,"read_json(const char *dbname, heim_object_t *out, heim_error_t *error)
+{
+    struct stat st;
+    char *str = NULL;
+    int ret;
+    int fd = -1;
+    ssize_t bytes;
+
+    *out = NULL;
+    ret = open_file(dbname, 0, 0, &fd, error);
+    if (ret)
+	return ret;
+
+    ret = fstat(fd, &st);
+    if (ret == -1) {
+	(void) close(fd);
+	return HEIM_ERROR(error, errno,
+			  (ret, N_(""Could not stat JSON DB %s: %s"", """"),
+			   dbname, strerror(errno)));
+    }
+
+    if (st.st_size == 0) {
+	(void) close(fd);
+	return 0;
+    }
+
+    str = malloc(st.st_size + 1);
+    if (str == NULL) {
+	 (void) close(fd);
+	return HEIM_ENOMEM(error);
+    }
+
+    bytes = read(fd, str, st.st_size);
+     (void) close(fd);
+    if (bytes != st.st_size) {
+	free(str);
+	if (bytes >= 0)
+	    errno = EINVAL; /* ?? */
+	return HEIM_ERROR(error, errno,
+			  (ret, N_(""Could not read JSON DB %s: %s"", """"),
+			   dbname, strerror(errno)));
+    }
+    str[st.st_size] = '\0';
+    *out = heim_json_create(str, 10, 0, error);
+    free(str);
+    if (*out == NULL)
+	return (error && *error) ? heim_error_get_code(*error) : EINVAL;
+    return 0;
+}",FALSE,CWE_469
+30,30,30_vdisc.c,"I_ReadSigSet(FILE * fd, struct SigSet *S)
+{
+    char tag[256];
+
+    I_InitSigSet(S);
+
+    while (gettag(fd, tag)) {
+	if (eq(tag, ""title:""))
+	    get_title(fd, S);
+	if (eq(tag, ""nbands:""))
+	    get_nbands(fd, S);
+	if (eq(tag, ""class:""))
+	    get_class(fd, S);
+    }
+    return 1;			/* for now assume success */
+}",TRUE,CWE_469
+31,31,31_vdisc.c,"sha256_process_bytes(const void *buffer, size_t len, struct sha256_ctx *ctx)
+{
+    /* When we already have some bits in our internal buffer concatenate
+       both inputs first.  */
+    if (ctx->buflen != 0) {
+	size_t left_over = ctx->buflen;
+	size_t add = 128 - left_over > len ? len : 128 - left_over;
+
+	memcpy(&ctx->buffer[left_over], buffer, add);
+	ctx->buflen += add;
+
+	if (ctx->buflen > 64) {
+	    sha256_process_block(ctx->buffer, ctx->buflen & ~63, ctx);
+
+	    ctx->buflen &= 63;
+	    /* The regions in the following copy operation cannot overlap.  */
+	    memcpy(ctx->buffer, &ctx->buffer[(left_over + add) & ~63],
+		   ctx->buflen);
+	}
+
+	buffer = (const char *)buffer + add;
+	len -= add;
+    }
+
+    /* Process available complete blocks.  */
+    if (len >= 64) {
+/* To check alignment gcc has an appropriate operator.  Other
+   compilers don't.  */
+#if __GNUC__ >= 2
+# define UNALIGNED_P(p) (((uintptr_t) p) % __alignof__ (uint32_t) != 0)
+#else
+# define UNALIGNED_P(p) (((uintptr_t) p) % sizeof (uint32_t) != 0)
+#endif
+	if (UNALIGNED_P(buffer))
+	    while (len > 64) {
+		sha256_process_block(memcpy(ctx->buffer, buffer, 64), 64, ctx);
+		buffer = (const char *)buffer + 64;
+		len -= 64;
+	} else {
+	    sha256_process_block(buffer, len & ~63, ctx);
+	    buffer = (const char *)buffer + (len & ~63);
+	    len &= 63;
+	}
+    }
+
+    /* Move remaining bytes into internal buffer.  */
+    if (len > 0) {
+	size_t left_over = ctx->buflen;
+
+	memcpy(&ctx->buffer[left_over], buffer, len);
+	left_over += len;
+	if (left_over >= 64) {
+	    sha256_process_block(ctx->buffer, 64, ctx);
+	    left_over -= 64;
+	    memcpy(ctx->buffer, &ctx->buffer[64], left_over);
+	}
+	ctx->buflen = left_over;
+    }
+}",TRUE,CWE_469
+32,32,32_vdisc.c,"glusterd_dict_set_volid (dict_t *dict, char *volname, char **op_errstr)
+{
+        int                     ret = -1;
+        glusterd_volinfo_t      *volinfo = NULL;
+        char                    *volid = NULL;
+        char                    msg[1024] = {0,};
+        xlator_t                *this = NULL;
+
+        this = THIS;
+        GF_ASSERT (this);
+
+        if (!dict || !volname)
+                goto out;
+
+        ret = glusterd_volinfo_find (volname, &volinfo);
+        if (ret) {
+                snprintf (msg, sizeof (msg), FMTSTR_CHECK_VOL_EXISTS, volname);
+                goto out;
+        }
+        volid = gf_strdup (uuid_utoa (volinfo->volume_id));
+        if (!volid) {
+                ret = -1;
+                goto out;
+        }
+        ret = dict_set_dynstr (dict, ""vol-id"", volid);
+        if (ret) {
+                snprintf (msg, sizeof (msg), ""Failed to set volume id of volume""
+                          "" %s"", volname);
+                goto out;
+        }
+out:
+        if (msg[0] != '\0') {
+                gf_log (this->name, GF_LOG_ERROR, ""%s"", msg);
+                *op_errstr = gf_strdup (msg);
+        }
+        return ret;
+}",TRUE,CWE_469
+33,33,33_vdisc.c,"Ns_AdpRequestEx(Ns_Conn *conn, char *file, Ns_Time *ttlPtr)
+{
+    Conn	     *connPtr = (Conn *) conn;
+    Tcl_Interp       *interp;
+    NsInterp         *itPtr;
+    char             *start, *type;
+    Ns_Set           *query;
+    NsServer	     *servPtr;
+    Tcl_Obj	     *objv[2];
+    int		      result;
+    
+    interp = Ns_GetConnInterp(conn);
+    itPtr = NsGetInterpData(interp);
+
+    /*
+     * Verify the file exists.
+     */
+
+    if (access(file, R_OK) != 0) {
+	return Ns_ConnReturnNotFound(conn);
+    }
+
+    /*
+     * Set the output type based on the file type.
+     */
+
+    type = Ns_GetMimeType(file);
+    if (type == NULL || STREQ(type, ""*/*"")) {
+	type = NSD_TEXTHTML;
+    }
+    Ns_ConnSetType(conn, type);
+    Ns_ConnSetStatus(conn, 200);
+
+    /*
+     * Enable TclPro debugging if requested.
+     */
+
+    servPtr = connPtr->servPtr;
+    if ((itPtr->servPtr->adp.flags & ADP_DEBUG) &&
+	STREQ(conn->request->method, ""GET"") &&
+	(query = Ns_ConnGetQuery(conn)) != NULL) {
+	itPtr->adp.debugFile = Ns_SetIGet(query, ""debug"");
+    }
+
+    /*
+     * Include the ADP with the special start page and null args.
+     */
+
+    itPtr->adp.conn = conn;
+    start = servPtr->adp.startpage ? servPtr->adp.startpage : file;
+    objv[0] = Tcl_NewStringObj(start, -1);
+    objv[1] = Tcl_NewStringObj(file, -1);
+    Tcl_IncrRefCount(objv[0]);
+    Tcl_IncrRefCount(objv[1]);
+    result = NsAdpInclude(itPtr, 2, objv, start, ttlPtr);
+    Tcl_DecrRefCount(objv[0]);
+    Tcl_DecrRefCount(objv[1]);
+    if (NsAdpFlush(itPtr, 0) != TCL_OK || result != TCL_OK) {
+	return NS_ERROR;
+    }
+    return NS_OK;
+}",TRUE,CWE_469
+34,34,34_vdisc.c,"SearchList(SpotList *list, char *str)
+{
+  ListNodeType *ref;
+  int      index = 0;
+
+  if (list == NULL)
+    printf(""Error in list\n"");
+
+  ref = list->head;
+
+  while (ref != NULL) {
+    if (STRCMP(ref->refname,str) == 0)
+     return(ref->offset);
+    index++;
+    ref = ref->next;
+  }
+  return(0);  /* node not found */
+}",TRUE,CWE_469
+35,35,35_vdisc.c,"linux_mandrake_version(void)
+{
+
+/* We are looking for one of the following strings... */
+#define MANDRAKE_ID ""Linux Mandrake""
+#define MANDRAKE_REV_ID ""Mandrake Linux""
+#define MANDRAKE_10_1_ID ""Mandrakelinux""
+
+#define RELEASE_FLAG ""release ""
+#define MANDRAKE_REL_FILENAME ""/etc/mandrake-release""
+
+FILE *fp;
+
+/* The full string read in from mandrake-release */
+char relstring[CF_MAXVARSIZE];
+char classbuf[CF_MAXVARSIZE];
+
+/* I've never seen Mandrake-Move or the other 'editions', so
+   I'm not going to try and support them here.  Contributions welcome. */
+
+/* Where the numerical release will be found */
+char *release=NULL;
+char *vendor=NULL;
+int major = -1;
+char strmajor[CF_MAXVARSIZE];
+int minor = -1;
+char strminor[CF_MAXVARSIZE];
+
+/* Grab the first line from the file and then close it. */
+ if ((fp = fopen(MANDRAKE_REL_FILENAME,""r"")) == NULL)
+    {
+    return 1;
+    }
+ fgets(relstring, sizeof(relstring), fp);
+ fclose(fp);
+
+ Verbose(""Looking for Mandrake linux info in \""%s\""\n"",relstring);
+
+  /* Older Mandrakes had the 'Mandrake Linux' string in reverse order */
+ if(!strncmp(relstring, MANDRAKE_ID, strlen(MANDRAKE_ID)))
+    {
+    vendor = ""mandrake"";
+    }
+ else if(!strncmp(relstring, MANDRAKE_REV_ID, strlen(MANDRAKE_REV_ID)))
+    {
+    vendor = ""mandrake"";
+    }
+
+ else if(!strncmp(relstring, MANDRAKE_10_1_ID, strlen(MANDRAKE_10_1_ID)))
+    {
+    vendor = ""mandrake"";
+    }
+ else
+    {
+    Verbose(""Could not identify OS distro from %s\n"", MANDRAKE_REL_FILENAME);
+    return 2;
+    }
+
+ /* Now, grok the release. We assume that all the strings will
+  * have the word 'release' before the numerical release.
+  */
+ release = strstr(relstring, RELEASE_FLAG);
+ if(release == NULL)
+    {
+    Verbose(""Could not find a numeric OS release in %s\n"",
+     MANDRAKE_REL_FILENAME);
+    return 2;
+    }
+ else
+    {
+    release += strlen(RELEASE_FLAG);
+    if (sscanf(release, ""%d.%d"", &major, &minor) == 2)
+       {
+       sprintf(strmajor, ""%d"", major);
+       sprintf(strminor, ""%d"", minor);
+       }
+    else
+       {
+       Verbose(""Could not break down release version numbers in %s\n"",
+       MANDRAKE_REL_FILENAME);
+       }
+    }
+
+ if (major != -1 && minor != -1 && strcmp(vendor, """"))
+    {
+    classbuf[0] = '\0';
+    strcat(classbuf, vendor);
+    AddClassToHeap(classbuf);
+    strcat(classbuf, ""_"");
+    strcat(classbuf, strmajor);
+    AddClassToHeap(classbuf);
+    if (minor != -2)
+       {
+       strcat(classbuf, ""_"");
+       strcat(classbuf, strminor);
+       AddClassToHeap(classbuf);
+       }
+    }
+ return 0;
+}",FALSE,CWE_469
+36,36,36_vdisc.c,"compresspath(char *base, char *path, size_t pathlen)
+{
+    register int i;
+    int  depth = 0;
+    char *p;
+    char *stack[32];
+    char  pathbuf[NLINE];
+
+#define PUSHD(X)  (stack[depth++] = X)
+#define POPD()    ((depth > 0) ? stack[--depth] : """")
+
+#ifndef _WINDOWS
+    if(*path == '~'){
+	fixpath(path, pathlen);
+	strncpy(pathbuf, path, sizeof(pathbuf));
+	pathbuf[sizeof(pathbuf)-1] = '\0';
+    }
+    else if(*path != C_FILESEP)
+      snprintf(pathbuf, sizeof(pathbuf), ""%s%c%s"", base, C_FILESEP, path);
+    else{
+      strncpy(pathbuf, path, sizeof(pathbuf));
+      pathbuf[sizeof(pathbuf)-1] = '\0';
+    }
+#else /* _WINDOWS */
+    strncpy(pathbuf, path, sizeof(pathbuf));
+    pathbuf[sizeof(pathbuf)-1] = '\0';
+    fixpath(pathbuf, sizeof(pathbuf));
+#endif /* _WINDOWS */
+
+    p = &pathbuf[0];
+    for(i=0; pathbuf[i] != '\0'; i++){		/* pass thru path name */
+	if(pathbuf[i] == C_FILESEP){
+	    if(p != pathbuf)
+	      PUSHD(p);				/* push dir entry */
+
+	    p = &pathbuf[i+1];			/* advance p */
+	    pathbuf[i] = '\0';			/* cap old p off */
+	    continue;
+	}
+
+	if(pathbuf[i] == '.'){			/* special cases! */
+	    if(pathbuf[i+1] == '.' 		/* parent */
+	       && (pathbuf[i+2] == C_FILESEP || pathbuf[i+2] == '\0')){
+		if(!strcmp(POPD(), """"))		/* bad news! */
+		  return(0);
+
+		i += 2;
+		p = (pathbuf[i] == '\0') ? """" : &pathbuf[i+1];
+	    }
+	    else if(pathbuf[i+1] == C_FILESEP || pathbuf[i+1] == '\0'){
+		i++;
+		p = (pathbuf[i] == '\0') ? """" : &pathbuf[i+1];
+	    }
+	}
+    }
+
+    if(*p != '\0')
+      PUSHD(p);					/* get last element */
+
+    path[0] = '\0';
+    for(i = 0; i < depth; i++){
+	strncat(path, S_FILESEP, pathlen-strlen(path)-1);
+	path[pathlen-1] = '\0';
+	strncat(path, stack[i], pathlen-strlen(path)-1);
+	path[pathlen-1] = '\0';
+    }
+
+    return(1);					/* everything's ok */
+}",FALSE,CWE_469
+37,37,37_vdisc.c,"multivalued_entry_dump (FILE * stream, int first,
+			const char * fmt_first, const char * fmt_others,
+			struct multivalued_entry * entry)
+{
+  char ** values;
+  int i;
+
+  /* Get all the values in a malloc'd storage.
+   * We sort them because:
+   * 1. it looks better,
+   * 2. fewer sources of differences in regression tests */
+  values = (char **) string_htable_dump_sorted (entry->entries);
+  for (i = 0 ; values[i] ; i++)
+    if (first) {
+      fprintf (stream, fmt_first, entry->key, values[i]);
+      first = false;
+    } else {
+      fprintf (stream, fmt_others, entry->key, values[i]);
+    }
+
+  /* Release mem */
+  free (values);
+}",TRUE,CWE_469
+38,38,38_vdisc.c,"proxy_fill_in_session(netsnmp_mib_handler *handler,
+                      netsnmp_agent_request_info *reqinfo,
+                      void **configured)
+{
+    netsnmp_session *session;
+    struct simple_proxy *sp;
+
+    sp = (struct simple_proxy *) handler->myvoid;
+    if (!sp) {
+        return 0;
+    }
+    session = sp->sess;
+    if (!session) {
+        return 0;
+    }
+
+#if !defined(NETSNMP_DISABLE_SNMPV1) || !defined(NETSNMP_DISABLE_SNMPV2C)
+#if defined(NETSNMP_DISABLE_SNMPV1)
+    if (session->version == SNMP_VERSION_2c) {
+#else
+#if defined(NETSNMP_DISABLE_SNMPV2C)
+    if (session->version == SNMP_VERSION_1) {
+#else
+    if (session->version == SNMP_VERSION_1 ||
+        session->version == SNMP_VERSION_2c) {
+#endif
+#endif
+
+        /*
+         * Check if session has community string defined for it.
+         * If not, need to extract community string from the pdu.
+         * Copy to session and set 'configured' to indicate this.
+         */
+        if (session->community_len == 0) {
+            DEBUGMSGTL((""proxy"", ""session has no community string\n""));
+            if (reqinfo->asp == NULL || reqinfo->asp->pdu == NULL ||
+                reqinfo->asp->pdu->community_len == 0) {
+                return 0;
+            }
+
+            *configured = malloc(strlen(""-c"") + 1);
+            strcpy((char*)*configured, ""-c"");
+            DEBUGMSGTL((""proxy"", ""pdu has community string\n""));
+            session->community_len = reqinfo->asp->pdu->community_len;
+            session->community = (u_char*)malloc(session->community_len + 1);
+            strncpy((char *)session->community,
+                    (const char *)reqinfo->asp->pdu->community,
+                    session->community_len);
+        }
+    }
+#endif
+
+    return 1;
+}",TRUE,CWE_469
+39,39,39_vdisc.c,"setup_ol_tls_conn(LDAP *ld, int clientauth)
+{
+    char *certdir = config_get_certdir();
+    int optval = 0;
+    int ssl_strength = 0;
+    int rc = 0;
+
+    if (config_get_ssl_check_hostname()) {
+	ssl_strength = LDAP_OPT_X_TLS_HARD;
+    } else {
+	/* verify certificate only */
+	ssl_strength = LDAP_OPT_X_TLS_NEVER;
+    }
+
+    if ((rc = ldap_set_option(ld, LDAP_OPT_X_TLS_REQUIRE_CERT, &ssl_strength))) {
+	slapi_log_error(SLAPI_LOG_FATAL, ""setup_ol_tls_conn"",
+			""failed: unable to set REQUIRE_CERT option to %d\n"", ssl_strength);
+    }
+    /* tell it where our cert db is */
+    if ((rc = ldap_set_option(ld, LDAP_OPT_X_TLS_CACERTDIR, certdir))) {
+	slapi_log_error(SLAPI_LOG_FATAL, ""setup_ol_tls_conn"",
+			""failed: unable to set CACERTDIR option to %s\n"", certdir);
+    }
+    slapi_ch_free_string(&certdir);
+#if defined(LDAP_OPT_X_TLS_PROTOCOL_MIN)
+    optval = LDAP_OPT_X_TLS_PROTOCOL_SSL3;
+    if ((rc = ldap_set_option(ld, LDAP_OPT_X_TLS_PROTOCOL_MIN, &optval))) {
+	slapi_log_error(SLAPI_LOG_FATAL, ""setup_ol_tls_conn"",
+			""failed: unable to set minimum TLS protocol level to SSL3\n"");
+    }
+#endif /* LDAP_OPT_X_TLS_PROTOCOL_MIN */
+    if (clientauth) {
+	rc = slapd_SSL_client_auth(ld);
+	if (rc) {
+	    slapi_log_error(SLAPI_LOG_FATAL, ""setup_ol_tls_conn"",
+			    ""failed: unable to setup connection for TLS/SSL EXTERNAL client cert authentication - %d\n"", rc);
+	}
+    }
+
+    /* have to do this last - this creates the new TLS handle and sets/copies
+       all of the parameters set above into that TLS handle context - note
+       that optval is ignored - what matters is that it is not NULL */
+    if ((rc = ldap_set_option(ld, LDAP_OPT_X_TLS_NEWCTX, &optval))) {
+	slapi_log_error(SLAPI_LOG_FATAL, ""setup_ol_tls_conn"",
+			""failed: unable to create new TLS context\n"");
+    }
+
+    return rc;
+}",TRUE,CWE_469
+40,40,40_vdisc.c,"RenameRole(const char *oldname, const char *newname)
+{
+	HeapTuple	oldtuple,
+				newtuple;
+	TupleDesc	dsc;
+	Relation	rel;
+	Datum		datum;
+	bool		isnull;
+	Datum		repl_val[Natts_pg_authid];
+	bool		repl_null[Natts_pg_authid];
+	bool		repl_repl[Natts_pg_authid];
+	int			i;
+	Oid			roleid;
+
+	rel = heap_open(AuthIdRelationId, RowExclusiveLock);
+	dsc = RelationGetDescr(rel);
+
+	oldtuple = SearchSysCache1(AUTHNAME, CStringGetDatum(oldname));
+	if (!HeapTupleIsValid(oldtuple))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg(""role \""%s\"" does not exist"", oldname)));
+
+	/*
+	 * XXX Client applications probably store the session user somewhere, so
+	 * renaming it could cause confusion.  On the other hand, there may not be
+	 * an actual problem besides a little confusion, so think about this and
+	 * decide.	Same for SET ROLE ... we don't restrict renaming the current
+	 * effective userid, though.
+	 */
+
+	roleid = HeapTupleGetOid(oldtuple);
+
+	if (roleid == GetSessionUserId())
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg(""session user cannot be renamed"")));
+	if (roleid == GetOuterUserId())
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg(""current user cannot be renamed"")));
+
+	/* make sure the new name doesn't exist */
+	if (SearchSysCacheExists1(AUTHNAME, CStringGetDatum(newname)))
+		ereport(ERROR,
+				(errcode(ERRCODE_DUPLICATE_OBJECT),
+				 errmsg(""role \""%s\"" already exists"", newname)));
+
+	if (strcmp(newname, ""public"") == 0 ||
+		strcmp(newname, ""none"") == 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_RESERVED_NAME),
+				 errmsg(""role name \""%s\"" is reserved"",
+						newname)));
+
+	/*
+	 * createrole is enough privilege unless you want to mess with a superuser
+	 */
+	if (((Form_pg_authid) GETSTRUCT(oldtuple))->rolsuper)
+	{
+		if (!superuser())
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg(""must be superuser to rename superusers"")));
+	}
+	else
+	{
+		if (!have_createrole_privilege())
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg(""permission denied to rename role"")));
+	}
+
+	/* OK, construct the modified tuple */
+	for (i = 0; i < Natts_pg_authid; i++)
+		repl_repl[i] = false;
+
+	repl_repl[Anum_pg_authid_rolname - 1] = true;
+	repl_val[Anum_pg_authid_rolname - 1] = DirectFunctionCall1(namein,
+												   CStringGetDatum(newname));
+	repl_null[Anum_pg_authid_rolname - 1] = false;
+
+	datum = heap_getattr(oldtuple, Anum_pg_authid_rolpassword, dsc, &isnull);
+
+	if (!isnull && isMD5(TextDatumGetCString(datum)))
+	{
+		/* MD5 uses the username as salt, so just clear it on a rename */
+		repl_repl[Anum_pg_authid_rolpassword - 1] = true;
+		repl_null[Anum_pg_authid_rolpassword - 1] = true;
+
+		ereport(NOTICE,
+				(errmsg(""MD5 password cleared because of role rename"")));
+	}
+
+	newtuple = heap_modify_tuple(oldtuple, dsc, repl_val, repl_null, repl_repl);
+	simple_heap_update(rel, &oldtuple->t_self, newtuple);
+
+	CatalogUpdateIndexes(rel, newtuple);
+
+	ReleaseSysCache(oldtuple);
+
+	/*
+	 * Close pg_authid, but keep lock till commit.
+	 */
+	heap_close(rel, NoLock);
+}",FALSE,CWE_469
+41,41,41_vdisc.c,"CommandExportGameLaTeX(char *sz)
+{
+
+    FILE *pf;
+
+    sz = NextToken(&sz);
+
+    if (!plGame) {
+        outputl(_(""No game in progress (type `new game' to start one).""));
+        return;
+    }
+
+    if (!confirmOverwrite(sz, fConfirmSave))
+        return;
+
+    if (!sz || !*sz) {
+        outputl(_(""You must specify a file to export to (see `help export "" ""game latex').""));
+        return;
+    }
+
+    if (!strcmp(sz, ""-""))
+        pf = stdout;
+    else if ((pf = g_fopen(sz, ""w"")) == 0) {
+        outputerr(sz);
+        return;
+    }
+
+    LaTeXPrologue(pf);
+
+    ExportGameLaTeX(pf, plGame);
+
+    LaTeXEpilogue(pf);
+
+    if (pf != stdout)
+        fclose(pf);
+
+    setDefaultFileName(sz);
+
+}",TRUE,CWE_469
+42,42,42_vdisc.c,"LookInList(struct icon_info *item)
+{
+  int isdefault=0;
+  char *value=NULL;
+  struct iconfile *nptr;
+
+  for (nptr = IconListHead; nptr != NULL; nptr = nptr->next){
+    if (nptr == DefaultIcon)
+      isdefault = 1;
+
+    if (matchWildcards(nptr->name, item->res_class) == TRUE){
+      value = nptr->iconfile;            
+      if (nptr != DefaultIcon)
+	isdefault = 0;
+    }
+
+    if (matchWildcards(nptr->name, item->res_name) == TRUE){
+      value = nptr->iconfile;
+      if (nptr != DefaultIcon)
+	isdefault = 0;
+    }
+
+    if (matchWildcards(nptr->name, item->window_name) == TRUE){
+      value = nptr->iconfile;
+      if (nptr != DefaultIcon)
+	isdefault = 0;
+    }
+  }
+
+  if (!isdefault){
+    item->icon_file = value;
+    item->defaulticon = 0;
+  }else 
+    item->icon_file = DefaultIcon->iconfile;
+  
+  /* Icon is not shown if ""-"" is specified */
+  if (item->icon_file != NULL && (strcmp(item->icon_file, ""-"") == 0)){
+    DeleteItem(item->id);
+    return 0;
+  }
+  return 1;
+}",FALSE,CWE_469
+43,43,43_vdisc.c,"encoder_progress_begin( lame_global_flags const* gf
+                      , char              const* inPath
+                      , char              const* outPath
+                      )
+{
+    if (silent < 10) {
+        lame_print_config(gf); /* print useful information about options being used */
+
+        console_printf(""Encoding %s%s to %s\n"",
+                       strcmp(inPath, ""-"") ? inPath : ""<stdin>"",
+                       strlen(inPath) + strlen(outPath) < 66 ? """" : ""\n     "",
+                       strcmp(outPath, ""-"") ? outPath : ""<stdout>"");
+
+        console_printf(""Encoding as %g kHz "", 1.e-3 * lame_get_out_samplerate(gf));
+
+        {
+            static const char *mode_names[2][4] = {
+                {""stereo"", ""j-stereo"", ""dual-ch"", ""single-ch""},
+                {""stereo"", ""force-ms"", ""dual-ch"", ""single-ch""}
+            };
+            switch (lame_get_VBR(gf)) {
+            case vbr_rh:
+                console_printf(""%s MPEG-%u%s Layer III VBR(q=%g) qval=%i\n"",
+                               mode_names[lame_get_force_ms(gf)][lame_get_mode(gf)],
+                               2 - lame_get_version(gf),
+                               lame_get_out_samplerate(gf) < 16000 ? "".5"" : """",
+                               lame_get_VBR_quality(gf),
+                               lame_get_quality(gf));
+                break;
+            case vbr_mt:
+            case vbr_mtrh:
+                console_printf(""%s MPEG-%u%s Layer III VBR(q=%g)\n"",
+                               mode_names[lame_get_force_ms(gf)][lame_get_mode(gf)],
+                               2 - lame_get_version(gf),
+                               lame_get_out_samplerate(gf) < 16000 ? "".5"" : """",
+                               lame_get_VBR_quality(gf));
+                break;
+            case vbr_abr:
+                console_printf(""%s MPEG-%u%s Layer III (%gx) average %d kbps qval=%i\n"",
+                               mode_names[lame_get_force_ms(gf)][lame_get_mode(gf)],
+                               2 - lame_get_version(gf),
+                               lame_get_out_samplerate(gf) < 16000 ? "".5"" : """",
+                               0.1 * (int) (10. * lame_get_compression_ratio(gf) + 0.5),
+                               lame_get_VBR_mean_bitrate_kbps(gf),
+                               lame_get_quality(gf));
+                break;
+            default:
+                console_printf(""%s MPEG-%u%s Layer III (%gx) %3d kbps qval=%i\n"",
+                               mode_names[lame_get_force_ms(gf)][lame_get_mode(gf)],
+                               2 - lame_get_version(gf),
+                               lame_get_out_samplerate(gf) < 16000 ? "".5"" : """",
+                               0.1 * (int) (10. * lame_get_compression_ratio(gf) + 0.5),
+                               lame_get_brate(gf),
+                               lame_get_quality(gf));
+                break;
+            }
+        }
+
+        if (silent <= -10) {
+            lame_print_internals(gf);
+        }
+    }
+}",TRUE,CWE_469
+44,44,44_vdisc.c,"check_version(int report) {
+	int fd;
+
+	if (report) {
+		printf(""isdnctrl version %s\n"", VERSION);
+	}
+	fd = open(""/dev/isdn/isdninfo"", O_RDWR);
+	if (fd < 0)
+	        fd = open(""/dev/isdninfo"", O_RDONLY);
+	if (fd < 0) {
+                perror(""Can't open /dev/isdninfo or /dev/isdn/isdninfo"");
+		exit(-1);
+	}
+	data_version = ioctl(fd, IIOCGETDVR, 0);
+	if (data_version < 0) {
+		fprintf(stderr, ""Could not get version of kernel ioctl structs!\n"");
+		fprintf(stderr, ""Make sure that you are using the correct version.\n"");
+		fprintf(stderr, ""(Try recompiling isdnctrl).\n"");
+		exit(-1);
+	}
+	close(fd);
+	if (report) {
+		printf(""Kernel's view of API-versions:\n"");
+		printf(""ttyI: %d, net: %d, info: %d\n"",
+			data_version & 0xff,
+			(data_version >> 8) & 0xff,
+			(data_version >> 16) & 0xff);
+		return;
+	}
+	data_version = (data_version >> 8) & 0xff;
+
+	if (data_version < 4) {
+		fprintf(stderr, ""Kernel-version too old, terminating.\n"");
+		fprintf(stderr, ""UPDATE YOUR KERNEL.\n"");
+		exit(-1);
+	}
+	if (data_version > 6) {
+		fprintf(stderr, ""Kernel-version newer than isdnctrl-version, terminating.\n"");
+		fprintf(stderr, ""GET A NEW VERSION OF isdn4k-utils.\n"");
+		exit(-1);
+	}
+}",FALSE,CWE_469
+45,45,45_vdisc.c,"relation_load(cst_relation *r, const char *filename)
+{
+    cst_tokenstream *fd;
+    cst_item *item;
+    const char *token=0;
+
+    if ((fd = ts_open(filename,NULL,"";"","""","""")) == 0)
+    {
+	cst_errmsg(""relation_load: can't open file \""%s\"" for reading\n"",
+		   filename);
+	return CST_ERROR_FORMAT;
+    }
+
+    for ( ; !ts_eof(fd); )
+    {
+	token = ts_get(fd);
+	if (cst_streq(""#"",token))
+	    break;
+    }
+    if (!cst_streq(""#"",token))
+    {
+	cst_errmsg(""relation_load: no end of header marker in \""%s\""\n"",
+		   filename);
+	ts_close(fd);
+	return CST_ERROR_FORMAT;
+    }
+	
+    while (!ts_eof(fd))
+    {
+	token = ts_get(fd);
+	if (cst_streq(token,""""))
+	    continue;
+	item = relation_append(r,NULL);
+	item_set_float(item,""end"",(float)cst_atof(token));
+	token = ts_get(fd);
+	token = ts_get(fd);
+	item_set_string(item,""name"",token);
+    }
+
+    ts_close(fd);
+    return CST_OK_FORMAT;
+}",TRUE,CWE_469
+46,46,46_vdisc.c,"dns_journal_open(isc_mem_t *mctx, const char *filename, unsigned int mode,
+		 dns_journal_t **journalp)
+{
+	isc_result_t result;
+	size_t namelen;
+	char backup[1024];
+	isc_boolean_t write, create;
+
+	create = ISC_TF(mode & DNS_JOURNAL_CREATE);
+	write = ISC_TF(mode & (DNS_JOURNAL_WRITE|DNS_JOURNAL_CREATE));
+
+	result = journal_open(mctx, filename, write, create, journalp);
+	if (result == ISC_R_NOTFOUND) {
+		namelen = strlen(filename);
+		if (namelen > 4U && strcmp(filename + namelen - 4, "".jnl"") == 0)
+			namelen -= 4;
+
+		result = isc_string_printf(backup, sizeof(backup), ""%.*s.jbk"",
+					   (int)namelen, filename);
+		if (result != ISC_R_SUCCESS)
+			return (result);
+		result = journal_open(mctx, backup, write, write, journalp);
+	}
+	return (result);
+}",FALSE,CWE_469
+47,47,47_vdisc.c,"parse_arg (Parser      *parser,
+           const char  *element_name,
+           const char **attribute_names,
+           const char **attribute_values,
+           GError     **error)
+{
+  const char *name;
+  const char *type;
+  const char *direction;
+  ArgDirection dir;
+  ArgInfo *arg;
+  char *generated_name;
+  
+  if (!(parser->method || parser->signal) ||
+      parser->node_stack == NULL ||
+      parser->property ||
+      parser->in_annotation ||
+      parser->arg)
+    {
+      g_set_error (error, G_MARKUP_ERROR,
+                   G_MARKUP_ERROR_PARSE,
+                   ""Can't put <%s> element here"",
+                   element_name);
+      return FALSE;      
+    }
+
+  name = NULL;
+  if (!locate_attributes (element_name, attribute_names,
+                          attribute_values, error,
+                          ""name"", &name,
+                          ""type"", &type,
+                          ""direction"", &direction,
+                          NULL))
+    return FALSE;
+
+  /* name can be null for args */
+  
+  if (type == NULL)
+    {
+      g_set_error (error, G_MARKUP_ERROR,
+                   G_MARKUP_ERROR_PARSE,
+                   ""\""%s\"" attribute required on <%s> element "",
+                   ""type"", element_name);
+      return FALSE;
+    }
+
+  if (direction == NULL)
+    {
+      /* methods default to in, signal to out */
+      if (parser->method)
+        direction = ""in"";
+      else if (parser->signal)
+        direction = ""out"";
+      else
+        g_assert_not_reached ();
+    }
+
+  dir = ARG_INVALID;
+  
+  if (strcmp (direction, ""in"") == 0)
+    dir = ARG_IN;
+  else if (strcmp (direction, ""out"") == 0)
+    dir = ARG_OUT;
+  
+  if (dir == ARG_INVALID ||
+      (parser->signal && dir == ARG_IN))
+    {
+      if (parser->signal)
+        g_set_error (error, G_MARKUP_ERROR,
+                     G_MARKUP_ERROR_PARSE,
+                     ""Signals must have direction=\""out\"" (just omit the direction attribute)"");
+      else
+        g_set_error (error, G_MARKUP_ERROR,
+                     G_MARKUP_ERROR_PARSE,
+                     ""\""%s\"" attribute on <%s> has value \""in\"" or \""out\"""",
+                     ""direction"", element_name);
+      return FALSE;
+    }
+
+  if (!validate_signature (type, element_name, error))
+    return FALSE;
+
+  generated_name = NULL;
+  if (name == NULL)
+    generated_name = g_strdup_printf (""arg%d"",
+                                      parser->method ?
+                                      method_info_get_n_args (parser->method) :
+                                      signal_info_get_n_args (parser->signal));
+                                      
+  arg = arg_info_new (name ? name : generated_name, dir, type);
+  if (parser->method)
+    method_info_add_arg (parser->method, arg);
+  else if (parser->signal)
+    signal_info_add_arg (parser->signal, arg);
+  else
+    g_assert_not_reached ();
+
+  g_free (generated_name);
+  
+  arg_info_unref (arg);
+
+  parser->arg = arg;
+  
+  return TRUE;
+}",TRUE,CWE_469
+48,48,48_vdisc.c,"readProfiles() {
+	FILE * file = readOutputFilename();
+
+	int width = atoi(needNextToken());
+	WiggleIterator * regions = readIterator();
+	WiggleIterator * wig = readLastIterator();
+	Multiplexer * profiles;
+
+	for (profiles = ProfileMultiplexer(regions, width, wig); !profiles->done; popMultiplexer(profiles)) {
+		fprintf(file, ""%s\t%i\t%i\t"", profiles->chrom, profiles->start, profiles->finish);
+		fprintfProfile(file, profiles->values, width);
+	}
+
+	fclose(file);
+}",FALSE,CWE_469
+49,49,49_vdisc.c,"GWEN_Directory_GetMatchingFilesRecursively(const char *folder,
+					       GWEN_STRINGLIST *sl,
+					       const char *mask) {
+  GWEN_DIRECTORY *d;
+  int rv;
+  char buffer[256];
+  GWEN_BUFFER *pbuf;
+  uint32_t pos;
+  GWEN_STRINGLIST *folderList;
+
+  folderList=GWEN_StringList_new();
+
+  d=GWEN_Directory_new();
+  rv=GWEN_Directory_Open(d, folder);
+  if (rv<0) {
+    DBG_INFO(GWEN_LOGDOMAIN, ""here (%d)"", rv);
+    GWEN_Directory_free(d);
+    GWEN_StringList_free(folderList);
+    return rv;
+  }
+
+  pbuf=GWEN_Buffer_new(0, 256, 0, 1);
+  GWEN_Buffer_AppendString(pbuf, folder);
+  GWEN_Buffer_AppendString(pbuf, GWEN_DIR_SEPARATOR_S);
+  pos=GWEN_Buffer_GetPos(pbuf);
+
+  while(0==GWEN_Directory_Read(d, buffer, sizeof(buffer)-2)) {
+    if (strcmp(buffer, ""."")!=0 &&
+        strcmp(buffer, "".."")!=0) {
+      struct stat st;
+
+      GWEN_Buffer_AppendString(pbuf, buffer);
+      if (stat(GWEN_Buffer_GetStart(pbuf), &st)==0) {
+	if (S_ISDIR(st.st_mode))
+	  /* add folders to the folder list */
+	  GWEN_StringList_AppendString(folderList, GWEN_Buffer_GetStart(pbuf), 0, 1);
+	else {
+	  if (mask==NULL || GWEN_Text_ComparePattern(buffer, mask, 0)!=-1)
+	    GWEN_StringList_AppendString(sl, GWEN_Buffer_GetStart(pbuf), 0, 1);
+	}
+      }
+      GWEN_Buffer_Crop(pbuf, 0, pos);
+    }
+  }
+
+  GWEN_Directory_Close(d);
+  GWEN_Directory_free(d);
+
+  if (GWEN_StringList_Count(folderList)) {
+    GWEN_STRINGLISTENTRY *se;
+
+    se=GWEN_StringList_FirstEntry(folderList);
+    while(se) {
+      const char *s;
+
+      s=GWEN_StringListEntry_Data(se);
+      if (s && *s)
+	GWEN_Directory_GetMatchingFilesRecursively(s, sl, mask);
+      se=GWEN_StringListEntry_Next(se);
+    }
+  }
+  GWEN_StringList_free(folderList);
+  GWEN_Buffer_free(pbuf);
+
+  return 0;
+}",TRUE,CWE_469
+50,50,50_vdisc.c,"pg_available_extensions(PG_FUNCTION_ARGS)
+{
+	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
+	TupleDesc	tupdesc;
+	Tuplestorestate *tupstore;
+	MemoryContext per_query_ctx;
+	MemoryContext oldcontext;
+	char	   *location;
+	DIR		   *dir;
+	struct dirent *de;
+
+	/* check to see if caller supports us returning a tuplestore */
+	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg(""set-valued function called in context that cannot accept a set"")));
+	if (!(rsinfo->allowedModes & SFRM_Materialize))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg(""materialize mode required, but it is not "" \
+						""allowed in this context"")));
+
+	/* Build a tuple descriptor for our result type */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		elog(ERROR, ""return type must be a row type"");
+
+	/* Build tuplestore to hold the result rows */
+	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
+	oldcontext = MemoryContextSwitchTo(per_query_ctx);
+
+	tupstore = tuplestore_begin_heap(true, false, work_mem);
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	MemoryContextSwitchTo(oldcontext);
+
+	location = get_extension_control_directory();
+	dir = AllocateDir(location);
+
+	/*
+	 * If the control directory doesn't exist, we want to silently return an
+	 * empty set.  Any other error will be reported by ReadDir.
+	 */
+	if (dir == NULL && errno == ENOENT)
+	{
+		/* do nothing */
+	}
+	else
+	{
+		while ((de = ReadDir(dir, location)) != NULL)
+		{
+			ExtensionControlFile *control;
+			char	   *extname;
+			Datum		values[3];
+			bool		nulls[3];
+
+			if (!is_extension_control_filename(de->d_name))
+				continue;
+
+			/* extract extension name from 'name.control' filename */
+			extname = pstrdup(de->d_name);
+			*strrchr(extname, '.') = '\0';
+
+			/* ignore it if it's an auxiliary control file */
+			if (strstr(extname, ""--""))
+				continue;
+
+			control = read_extension_control_file(extname);
+
+			memset(values, 0, sizeof(values));
+			memset(nulls, 0, sizeof(nulls));
+
+			/* name */
+			values[0] = DirectFunctionCall1(namein,
+											CStringGetDatum(control->name));
+			/* default_version */
+			if (control->default_version == NULL)
+				nulls[1] = true;
+			else
+				values[1] = CStringGetTextDatum(control->default_version);
+			/* comment */
+			if (control->comment == NULL)
+				nulls[2] = true;
+			else
+				values[2] = CStringGetTextDatum(control->comment);
+
+			tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+		}
+
+		FreeDir(dir);
+	}
+
+	/* clean up and return the tuplestore */
+	tuplestore_donestoring(tupstore);
+
+	return (Datum) 0;
+}",FALSE,CWE_469
+51,51,51_vdisc.c,"test_version (void)
+{
+  const char *version;
+
+  /* VL: I get the following error on an OpenSUSE machine, and changing
+     the value of shlibpath_overrides_runpath in the libtool file from
+     'no' to 'yes' fixes the problem. */
+
+  version = mpfr_get_version ();
+  if (strcmp (MPFR_VERSION_STRING, version) == 0)
+    {
+      char buffer[16];
+      int i;
+
+      sprintf (buffer, ""%d.%d.%d"", MPFR_VERSION_MAJOR, MPFR_VERSION_MINOR,
+               MPFR_VERSION_PATCHLEVEL);
+      for (i = 0; buffer[i] == version[i]; i++)
+        if (buffer[i] == '\0')
+          return;
+      if (buffer[i] == '\0' && version[i] == '-')
+        return;
+      printf (""MPFR_VERSION_MAJOR.MPFR_VERSION_MINOR.MPFR_VERSION_PATCHLEVEL""
+              "" (%s)\nand MPFR_VERSION_STRING (%s) do not match!\nIt seems ""
+              ""that the mpfr.h file has been corrupted.\n"", buffer, version);
+      exit (1);
+    }
+
+  printf (""Incorrect MPFR version! (%s header vs %s library)\n""
+          ""Nothing else has been tested since for this reason,\n""
+          ""any other test may fail. Please fix this one first.\n\n""
+          ""You can try to avoid this problem by changing the value of\n""
+          ""shlibpath_overrides_runpath in the libtool file and rebuild\n""
+          ""MPFR (make clean && make && make check).\n""
+          ""Otherwise this error may be due to a corrupted mpfr.h, an\n""
+          ""incomplete build (try to rebuild MPFR from scratch and/or\n""
+          ""use 'make clean'), or something wrong in the system.\n"",
+          MPFR_VERSION_STRING, version);
+  exit (1);
+}",FALSE,CWE_469
+52,52,52_vdisc.c,"cg_read_stat(FILE *fp, struct cgroup_stat *cgroup_stat)
+{
+	int ret = 0;
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t read_bytes;
+	char *token;
+	char *saveptr = NULL;
+
+	read_bytes = getline(&line, &len, fp);
+	if (read_bytes == -1) {
+		ret = ECGEOF;
+		goto out_free;
+	}
+
+	token = strtok_r(line, "" "", &saveptr);
+	if (!token) {
+		ret = ECGINVAL;
+		goto out_free;
+	}
+	strncpy(cgroup_stat->name, token, FILENAME_MAX);
+
+	token = strtok_r(NULL, "" "", &saveptr);
+	if (!token) {
+		ret = ECGINVAL;
+		goto out_free;
+	}
+	strncpy(cgroup_stat->value, token, CG_VALUE_MAX);
+
+out_free:
+	free(line);
+	return ret;
+}",TRUE,CWE_469
+53,53,53_vdisc.c,"nfs3_fill_readdir3res (readdir3res *res, nfsstat3 stat, struct nfs3_fh *dirfh,
+                       uint64_t cverf, struct iatt *dirstat,
+                       gf_dirent_t *entries, count3 count, int is_eof,
+                       uint64_t deviceid)
+{
+        post_op_attr    dirattr;
+        entry3          *ent = NULL;
+        entry3          *headentry = NULL;
+        entry3          *preventry = NULL;
+        count3          filled = 0;
+        gf_dirent_t     *listhead = NULL;
+
+        memset (res, 0, sizeof (*res));
+        res->status = stat;
+        if (stat != NFS3_OK)
+                return;
+
+        nfs3_map_deviceid_to_statdev (dirstat, deviceid);
+        dirattr = nfs3_stat_to_post_op_attr (dirstat);
+        res->readdir3res_u.resok.dir_attributes = dirattr;
+        res->readdir3res_u.resok.reply.eof = (bool_t)is_eof;
+        memcpy (res->readdir3res_u.resok.cookieverf, &cverf, sizeof (cverf));
+
+        filled = NFS3_READDIR_RESOK_SIZE;
+        /* First entry is just the list head */
+        listhead = entries;
+        entries = entries->next;
+        while (((entries) && (entries != listhead)) && (filled < count)) {
+                /*
+                if ((strcmp (entries->d_name, ""."") == 0) ||
+                    (strcmp (entries->d_name, "".."") == 0))
+                        goto nextentry;
+                        */
+                ent = nfs3_fill_entry3 (entries, dirfh);
+                if (!ent)
+                        break;
+
+                if (!headentry)
+                        headentry = ent;
+
+                if (preventry) {
+                        preventry->nextentry = ent;
+                        preventry = ent;
+                } else
+                        preventry = ent;
+
+                filled += NFS3_ENTRY3_FIXED_SIZE + strlen (ent->name);
+//nextentry:
+                entries = entries->next;
+        }
+
+        res->readdir3res_u.resok.reply.entries = headentry;
+
+        return;
+}",TRUE,CWE_469
+54,54,54_vdisc.c,"utest_tmpfile_named(void)
+{
+  char  msg[]        = ""tmpfile_named unit test failed"";
+  char  tmpfile[32]  = ""esltmpXXXXXX"";
+  FILE *fp           = NULL;
+  char  buf[256];
+
+  if (esl_tmpfile_named(tmpfile, &fp) != eslOK) esl_fatal(msg);
+  fprintf(fp, ""Unit test.\n"");
+  fclose(fp);
+  if ((fp = fopen(tmpfile, ""r""))   == NULL)  esl_fatal(msg);
+  if (fgets(buf, 256, fp)          == NULL)  esl_fatal(msg);
+  if (strcmp(buf, ""Unit test.\n"")  != 0)     esl_fatal(msg);
+  fclose(fp);
+  remove(tmpfile);
+  return;
+}",FALSE,CWE_469
+55,55,55_vdisc.c,"kegs_expand_path(char *out_ptr, const char *in_ptr, int maxlen)
+{
+	char	name_buf[256];
+	char	*tmp_ptr;
+	int	name_len;
+	int	in_char;
+	int	state;
+
+	out_ptr[0] = 0;
+
+	name_len = 0;
+	state = 0;
+
+	/* See if in_ptr has ${} notation, replace with getenv or argv0 */
+	while(maxlen > 0) {
+		in_char = *in_ptr++;
+		*out_ptr++ = in_char;
+		maxlen--;
+		if(state == 0) {
+			/* No $ seen yet, look for it */
+			if(in_char == '$') {
+				state = 1;
+			}
+		} else if(state == 1) {
+			/* See if next char is '{' (dummy }) */
+			if(in_char == '{') {		/* add dummy } */
+				state = 2;
+				name_len = 0;
+				out_ptr -= 2;
+			} else {
+				state = 0;
+			}
+		} else if(state == 2) {
+			/* fill name_buf ... dummy '{' */
+			out_ptr--;
+			if(in_char == '}') {
+				name_buf[name_len] = 0;
+
+				/* got token, now look it up */
+				tmp_ptr = """";
+				if(!strncmp(""0"", name_buf, 128)) {
+					/* Replace ${0} with g_argv0_path */
+					tmp_ptr = &(g_argv0_path[0]);
+				} else {
+					tmp_ptr = getenv(name_buf);
+					if(tmp_ptr == 0) {
+						tmp_ptr = """";
+					}
+				}
+				strncpy(out_ptr, tmp_ptr, maxlen);
+				out_ptr += strlen(tmp_ptr);
+				maxlen -= strlen(tmp_ptr);
+				state = 0;
+			} else {
+				name_buf[name_len++] = in_char;
+			}
+		}
+		if(in_char == 0) {
+			/* make sure its null terminated */
+			*out_ptr++ = 0;
+			break;
+		}
+	}
+}",TRUE,CWE_469
+56,56,56_vdisc.c,"load_session(int ignored,
+		      const char *file)
+{
+  FILE *f;  
+  const  int lens=PATH_MAX;
+  char s[lens+1], cwd[lens+1];
+
+  if(is_null(file)) return FALSE;
+
+  cwd[0]=0;
+  if((f=fopen(file, ""r""))==NULL) {
+    showerr(file, _(""could not open file '%s' for read: %s""));
+    return FALSE; 
+  }
+  { int e;
+#if GLIB_MAJOR_VERSION == 1
+    gchar * dir = g_dirname(file);
+#else
+    gchar * dir = g_path_get_dirname (file);
+#endif
+    e=chdir(dir);
+    if(e) g_critical(""cannot ch dir to %s : %s"",dir,strerror(e));
+    g_free(dir);
+  }
+  fgets(s,lens,f);
+  if(strcmp(s,""<gtkmorph session>\n"")) {
+    show_error( _(""parsing of session failed at first header!"") );
+    return FALSE;
+  }
+  fgets(s,lens,f);  de_n(s);
+  while(!feof(f) && strcmp(s,""</gtkmorph session>"") ) {
+    /* attemp syncronization    */
+    if( s[0]!='<' || s[1]=='/' ) {
+      /* attemp syncronization */
+      g_warning(""malformed session: '%s' is not an opening tag"",s);
+    } else
+      if( 0==strcmp(s,""<cwd>"") ) {
+	fgets(cwd,lens,f); de_n(cwd);      
+	if(chdir(cwd)) {
+	  g_warning(""Cannot change to CWD %s\n   as specified in the session file"",cwd);
+	  perror("""");
+	}
+	close_tag(f);	
+      } else
+	if( 0==strcmp(s,""<resulting_size>"") ) {
+	  fgets(s,lens,f);
+	  sscanf(s,""%d %d"",
+		 &sp->resulting_width_sp,&sp->resulting_height_sp);
+	  spinbutton_res_set();
+	  on_resulting_apply_clicked(NULL,NULL);
+	  close_tag(f);
+	} else 
+	  if ( 0==strcmp(s,""<image>"") ) {
+	    load_session_stanza(f);
+	  } 
+	  else
+	    g_warning(""session file: line '%s' was unrecognized\n"",s);
+    fgets(s,lens,f);de_n(s);
+  }
+
+  if(strcmp(s,""</gtkmorph session>"")) {
+    show_error(_(""parsing of session failed""));
+    return FALSE;
+  }
+  // WHY? setup_handlebox_factors();
+  fclose(f);
+  return TRUE;
+}",TRUE,CWE_469
+57,57,57_vdisc.c,"open_csvlogfile(void)
+{
+	char	   *filename;
+
+	filename = logfile_getname(time(NULL), "".csv"");
+
+	csvlogFile = logfile_open(filename, ""a"", false);
+
+	if (last_csv_file_name != NULL)		/* probably shouldn't happen */
+		pfree(last_csv_file_name);
+
+	last_csv_file_name = filename;
+}",FALSE,CWE_469
+58,58,58_vdisc.c,"Single_Player_Menu(void)
+{
+	int can_continue = FALSE;
+	int MenuPosition = 1;
+	char *MenuTexts[MAX_MENU_ITEMS];
+	char *char_name = NULL;
+
+	enum {
+		NEW_HERO_POSITION = 1,
+		LOAD_EXISTING_HERO_POSITION,
+		DELETE_EXISTING_HERO_POSITION,
+		BACK_POSITION
+	};
+
+	MenuTexts[0] = _(""New Hero"");
+	MenuTexts[1] = _(""Load existing Hero"");
+	MenuTexts[2] = _(""Delete existing Hero"");
+	MenuTexts[3] = _(""Back"");
+	MenuTexts[4] = """";
+
+	while (!can_continue) {
+
+		if (!skip_initial_menus)
+			MenuPosition = DoMenuSelection("""", MenuTexts, 1, ""title.jpg"", Menu_BFont);
+		else
+			MenuPosition = NEW_HERO_POSITION;
+
+		switch (MenuPosition) {
+		case NEW_HERO_POSITION:
+			while (EnterPressed() || SpacePressed()) ;
+			char_name = get_new_character_name();
+			if (char_name && strlen(char_name)) {
+				char fp[2048];
+				find_file(""levels.dat"", MAP_DIR, fp, 0);
+				LoadShip(fp, 0);
+				PrepareStartOfNewCharacter(""NewTuxStartGameSquare"");
+				free(Me.character_name);
+				Me.character_name = strdup(char_name);
+				can_continue = TRUE;
+				free(char_name);
+			}
+			break;
+
+		case LOAD_EXISTING_HERO_POSITION:
+			while (EnterPressed() || SpacePressed()) ;
+
+			if (Load_Existing_Hero_Menu() == TRUE)
+				can_continue = TRUE;
+			break;
+
+		case DELETE_EXISTING_HERO_POSITION:
+			while (EnterPressed() || SpacePressed()) ;
+			Delete_Existing_Hero_Menu();
+			break;
+
+		case (-1):
+		case BACK_POSITION:
+			while (EnterPressed() || SpacePressed() || EscapePressed()) ;
+			return FALSE;
+			break;
+		default:
+			break;
+		}
+	}
+	return (TRUE);
+}",TRUE,CWE_469
+59,59,59_vdisc.c,"gsc_read_line_locale (sc_char *buffer,
+                      sc_int length, const gsc_locale_t *locale)
+{
+  event_t event;
+
+  /*
+   * If we have unicode, we have to use it to ensure that characters not in
+   * the Latin1 locale are properly translated.
+   */
+  if (gsc_unicode_enabled)
+    {
+      glui32 *unicode;
+
+      /*
+       * Allocate a unicode buffer long enough to hold all the characters,
+       * then read in a unicode line.
+       */
+      unicode = gsc_malloc (length * sizeof (*unicode));
+      glk_request_line_event_uni (gsc_main_window, unicode, length, 0);
+      gsc_event_wait (evtype_LineInput, &event);
+
+      /* Convert the unicode buffer out, then free it. */
+      gsc_unicode_buffer_to_locale (unicode, event.val1, buffer, locale);
+      free (unicode);
+
+      /* Return the count of characters placed in the buffer. */
+      return event.val1;
+    }
+
+  /* No success with unicode, so fall back to standard line input. */
+  glk_request_line_event (gsc_main_window, buffer, length, 0);
+  gsc_event_wait (evtype_LineInput, &event);
+
+  /* Return the count of characters placed in the buffer. */
+  return event.val1;
+}",TRUE,CWE_469
+60,60,60_vdisc.c,"_gftpui_common_cmd_transfer_files (void *fromuidata, gftp_request * fromrequest,
+                                   void *touidata, gftp_request * torequest,
+                                   const char *cmd, const char *filespec)
+{
+  gftp_transfer * tdata;
+  gftp_file * fle;
+
+  if (!GFTP_IS_CONNECTED (fromrequest) ||
+      !GFTP_IS_CONNECTED (torequest))
+    {
+      fromrequest->logging_function (gftp_logging_error, fromrequest,
+                                  _(""Error: Not connected to a remote site\n""));
+      return;
+    }
+
+  if (*filespec == '\0')
+    {
+      fromrequest->logging_function (gftp_logging_error, fromrequest, 
+                                     _(""usage: %s <filespec>\n""), cmd);
+      return;
+    }
+
+  tdata = gftp_tdata_new ();
+  tdata->fromreq = fromrequest;
+  tdata->toreq = torequest;
+
+  if (gftp_list_files (tdata->fromreq) != 0)
+    {
+      tdata->fromreq = tdata->toreq = NULL;
+      free_tdata (tdata);
+      return;
+    }
+
+  fle = g_malloc0 (sizeof (*fle));
+  while (gftp_get_next_file (tdata->fromreq, filespec, fle) > 0)
+    {
+      if (strcmp (fle->file, ""."") == 0 || strcmp (fle->file, "".."") == 0)
+        {
+          gftp_file_destroy (fle, 0);
+          continue;
+        }
+
+      tdata->files = g_list_append (tdata->files, fle);
+      fle = g_malloc0 (sizeof (*fle));
+    }
+
+  g_free (fle);
+
+  gftp_end_transfer (tdata->fromreq);
+
+  if (tdata->files == NULL)
+    {
+      tdata->fromreq = tdata->toreq = NULL;
+      free_tdata (tdata);
+      return;
+    }
+
+  if (gftp_get_all_subdirs (tdata, NULL) != 0)
+    {
+      tdata->fromreq = tdata->toreq = NULL;
+      free_tdata (tdata);
+      return;
+    }
+
+  if (tdata->files == NULL)
+    {
+      tdata->fromreq = tdata->toreq = NULL;
+      free_tdata (tdata);
+      return;
+    }
+
+  gftpui_common_add_file_transfer (tdata->fromreq, tdata->toreq,
+                                   fromuidata, touidata, tdata->files);
+
+  g_free (tdata);
+
+  return;
+}",FALSE,CWE_469
+61,61,61_vdisc.c,"cmdline_package(int argc, char **argv)
+{
+	int i;
+	for (i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], ""--package=tqg144""))
+			return TQG144;
+		if (!strcmp(argv[i], ""--package=ftg256""))
+			return FTG256;
+	}
+	return TQG144;
+}",TRUE,CWE_469
+62,62,62_vdisc.c,"main(int argc, char **argv) {
+   static char optstring[] = ""o:chl:Lbpf:n"";
+   char *inputfile;
+   int ch;
+   
+   int out_fmt = 0; /* In what format to output. */
+
+   while (0 < (ch = getopt(argc, argv, optstring)) ) {
+      switch (ch) {
+         case 'c': clear_screen = true; break;
+         case 'o': outputfile = strdup(optarg); break;
+         case 'l': layer_number = atoi(optarg); break;
+         case 'L': out_fmt = FMT_LAYERS; break;
+         case 'p': layer_number = -1; break;
+         case 'b': use_color = false; break;
+	 case 'n': suppress_newlines = true; break;
+         case 'f':
+            if (strcmp(optarg, ""text"") == 0)
+               out_fmt = FMT_TEXT;
+            else if (strcmp(optarg, ""html"") == 0)
+               out_fmt = FMT_HTML;
+            else if (strcmp(optarg, ""comment"") == 0)
+               out_fmt = FMT_COMMENT;
+            else {
+               fprintf(stderr, ""Invalid format \""%s\""\n"", optarg);
+               exit(1);
+            }
+            break;
+         default : rtfm();
+      }
+   }
+
+   if (!out_fmt)
+      out_fmt = FMT_TEXT;
+   
+   if (out_fmt != FMT_TEXT && clear_screen) 
+      fprintf(stderr, ""Warning: -c option only valid when outputting text\n"");
+
+   if (out_fmt != FMT_TEXT && suppress_newlines)
+      fprintf(stderr, ""Warning: -n option only valid when ""
+                      ""outputting text\n"");
+   
+   if (optind >= argc) rtfm();
+   inputfile = strdup(argv[optind]);
+
+   if (! (doc = document_load_from(inputfile)) ) {
+      fprintf(stderr, ""Error loading document from %s (bad format?).\n"", 
+                                                        inputfile);
+      fprintf(stderr, ""Error description:\n   %s\n"", aeff_get_error());
+      exit(1);
+   }
+
+   if (layer_number >= doc->layer_count) {
+      if (layer_number)
+         fprintf(stderr, ""Document %s does not have the specified layer: %d\n"",
+                inputfile, layer_number);
+      else
+         fprintf(stderr, ""Document %s has no layers.\n"", inputfile);
+      exit(1);
+   }
+
+   width = doc->layers[0]->width;
+   height = doc->layers[0]->height;
+   lyr = layer_number >= 0 ? doc->layers[layer_number] : NULL;
+   
+   if (outputfile && !(f = fopen(outputfile, ""w""))) {
+      fprintf(stderr, ""Error opening %s for writing.\n"", outputfile);
+      exit(1);
+   }
+   else f = stdout; /* print to standard output if no output file specified */
+
+   switch(out_fmt) {
+      case FMT_TEXT: output_text(); break;
+      case FMT_HTML: output_html(); break;
+      case FMT_COMMENT: output_comment(); break;
+      case FMT_LAYERS: output_layercount(); break;
+   }
+
+   if (f != stdout) fclose(f);
+   return 0;
+}",TRUE,CWE_469
+63,63,63_vdisc.c,"ecpg_raise_backend(int line, PGresult *result, PGconn *conn, int compat)
+{
+	struct sqlca_t *sqlca = ECPGget_sqlca();
+	char	   *sqlstate;
+	char	   *message;
+
+	if (result)
+	{
+		sqlstate = PQresultErrorField(result, PG_DIAG_SQLSTATE);
+		if (sqlstate == NULL)
+			sqlstate = ECPG_SQLSTATE_ECPG_INTERNAL_ERROR;
+		message = PQresultErrorField(result, PG_DIAG_MESSAGE_PRIMARY);
+	}
+	else
+	{
+		sqlstate = ECPG_SQLSTATE_ECPG_INTERNAL_ERROR;
+		message = PQerrorMessage(conn);
+	}
+
+	if (strcmp(sqlstate, ECPG_SQLSTATE_ECPG_INTERNAL_ERROR) == 0)
+	{
+		/* we might get here if the connection breaks down, so let's
+		 * check for this instead of giving just the generic internal error */
+		if (PQstatus(conn) == CONNECTION_BAD)
+		{
+			sqlstate = ""57P02"";
+			message = ecpg_gettext(""the connection to the server was lost"");
+		}
+	}
+
+	/* copy error message */
+	snprintf(sqlca->sqlerrm.sqlerrmc, sizeof(sqlca->sqlerrm.sqlerrmc), ""%s on line %d"", message, line);
+	sqlca->sqlerrm.sqlerrml = strlen(sqlca->sqlerrm.sqlerrmc);
+
+	/* copy SQLSTATE */
+	strncpy(sqlca->sqlstate, sqlstate, sizeof(sqlca->sqlstate));
+
+	/* assign SQLCODE for backward compatibility */
+	if (strncmp(sqlca->sqlstate, ""23505"", sizeof(sqlca->sqlstate)) == 0)
+		sqlca->sqlcode = INFORMIX_MODE(compat) ? ECPG_INFORMIX_DUPLICATE_KEY : ECPG_DUPLICATE_KEY;
+	else if (strncmp(sqlca->sqlstate, ""21000"", sizeof(sqlca->sqlstate)) == 0)
+		sqlca->sqlcode = INFORMIX_MODE(compat) ? ECPG_INFORMIX_SUBSELECT_NOT_ONE : ECPG_SUBSELECT_NOT_ONE;
+	else
+		sqlca->sqlcode = ECPG_PGSQL;
+
+	ecpg_log(""raising sqlstate %.*s (sqlcode %d) on line %d: %s\n"",
+			 sizeof(sqlca->sqlstate), sqlca->sqlstate, sqlca->sqlcode, line, sqlca->sqlerrm.sqlerrmc);
+
+	/* free all memory we have allocated for the user */
+	ECPGfree_auto_mem();
+}",FALSE,CWE_469
+64,64,64_vdisc.c,"dnpds40_build_cmd(struct dnpds40_cmd *cmd, char *arg1, char *arg2, uint32_t arg3_len)
+{
+	memset(cmd, 0x20, sizeof(*cmd));
+	cmd->esc = 0x1b;
+	cmd->p = 0x50;
+	memcpy(cmd->arg1, arg1, min(strlen(arg1), sizeof(cmd->arg1)));
+	memcpy(cmd->arg2, arg2, min(strlen(arg2), sizeof(cmd->arg2)));
+	if (arg3_len) {
+		char buf[9];
+		snprintf(buf, sizeof(buf), ""%08u"", arg3_len);
+		memcpy(cmd->arg3, buf, 8);
+	}
+
+}",TRUE,CWE_469
+65,65,65_vdisc.c,"do_show(int argc, char **argv)
+{
+	struct {
+		struct nlmsghdr		n;
+		struct netconfmsg	ncm;
+		char			buf[1024];
+	} req;
+
+	ipnetconf_reset_filter();
+	filter.family = preferred_family;
+	if (filter.family == AF_UNSPEC)
+		filter.family = AF_INET;
+
+	while (argc > 0) {
+		if (strcmp(*argv, ""dev"") == 0) {
+			NEXT_ARG();
+			filter.ifindex = ll_name_to_index(*argv);
+			if (filter.ifindex <= 0) {
+				fprintf(stderr, ""Device \""%s\"" does not exist.\n"",
+					*argv);
+				return -1;
+			}
+		}
+		argv++; argc--;
+	}
+
+	ll_init_map(&rth);
+	if (filter.ifindex) {
+		memset(&req, 0, sizeof(req));
+		req.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct netconfmsg));
+		req.n.nlmsg_flags = NLM_F_REQUEST|NLM_F_ACK;
+		req.n.nlmsg_type = RTM_GETNETCONF;
+		req.ncm.ncm_family = filter.family;
+		if (filter.ifindex)
+			addattr_l(&req.n, sizeof(req), NETCONFA_IFINDEX,
+				  &filter.ifindex, sizeof(filter.ifindex));
+
+		rtnl_send(&rth, &req.n, req.n.nlmsg_len);
+		rtnl_listen(&rth, print_netconf, stdout);
+	} else {
+dump:
+		if (rtnl_wilddump_request(&rth, filter.family, RTM_GETNETCONF) < 0) {
+			perror(""Cannot send dump request"");
+			exit(1);
+		}
+		if (rtnl_dump_filter(&rth, print_netconf, stdout) < 0) {
+			fprintf(stderr, ""Dump terminated\n"");
+			exit(1);
+		}
+		if (preferred_family == AF_UNSPEC) {
+			preferred_family = AF_INET6;
+			filter.family = AF_INET6;
+			goto dump;
+		}
+	}
+	return 0;
+}",TRUE,CWE_469
+66,66,66_vdisc.c,"ntx_tags(char *id)
+{
+  if(!id) { /* List all tags in the database. */
+    char *name;
+    n_dir dir = ntx_dopen(TAGS_DIR);
+
+    if(!dir) die(""Unable to read directory %s."", TAGS_DIR);
+    while((name = ntx_dread(dir))) if(name[0] != '.') puts(name);
+
+    ntx_dclose(dir);
+  } else { /* List all tags of a note. */
+    char file[FILE_MAX];
+    char *buf, *cur;
+    char *state = NULL;
+
+    seprintf(file, FILE_MAX, REFS_DIR""/%.2s"", id);
+    if(!(buf = ntx_find(file, id)))
+      die(""Unable to locate note %s in %s."", id, file);
+
+    for(cur = strrtok(buf + SUMMARY_OFFSET, &state, FIELD_SEP);
+        cur != NULL;
+        cur = strrtok(NULL, &state, FIELD_SEP))
+      puts(cur);
+
+    release(buf);
+  }
+}",TRUE,CWE_469
+67,67,67_vdisc.c,"setup_real_mode(void)
+{
+	u16 real_mode_seg;
+	const u32 *rel;
+	u32 count;
+	unsigned char *base;
+	unsigned long phys_base;
+	struct trampoline_header *trampoline_header;
+	size_t size = PAGE_ALIGN(real_mode_blob_end - real_mode_blob);
+#ifdef CONFIG_X86_64
+	u64 *trampoline_pgd;
+	u64 efer;
+#endif
+
+	base = (unsigned char *)real_mode_header;
+
+	memcpy(base, real_mode_blob, size);
+
+	phys_base = __pa(base);
+	real_mode_seg = phys_base >> 4;
+
+	rel = (u32 *) real_mode_relocs;
+
+	/* 16-bit segment relocations. */
+	count = *rel++;
+	while (count--) {
+		u16 *seg = (u16 *) (base + *rel++);
+		*seg = real_mode_seg;
+	}
+
+	/* 32-bit linear relocations. */
+	count = *rel++;
+	while (count--) {
+		u32 *ptr = (u32 *) (base + *rel++);
+		*ptr += phys_base;
+	}
+
+	/* Must be perfomed *after* relocation. */
+	trampoline_header = (struct trampoline_header *)
+		__va(real_mode_header->trampoline_header);
+
+#ifdef CONFIG_X86_32
+	trampoline_header->start = __pa_symbol(startup_32_smp);
+	trampoline_header->gdt_limit = __BOOT_DS + 7;
+	trampoline_header->gdt_base = __pa_symbol(boot_gdt);
+#else
+	/*
+	 * Some AMD processors will #GP(0) if EFER.LMA is set in WRMSR
+	 * so we need to mask it out.
+	 */
+	rdmsrl(MSR_EFER, efer);
+	trampoline_header->efer = efer & ~EFER_LMA;
+
+	trampoline_header->start = (u64) secondary_startup_64;
+	trampoline_cr4_features = &trampoline_header->cr4;
+	*trampoline_cr4_features = __read_cr4();
+
+	trampoline_pgd = (u64 *) __va(real_mode_header->trampoline_pgd);
+	trampoline_pgd[0] = init_level4_pgt[pgd_index(__PAGE_OFFSET)].pgd;
+	trampoline_pgd[511] = init_level4_pgt[511].pgd;
+#endif
+}",TRUE,CWE_469
+68,68,68_vdisc.c,"check_mbox_type(const char *path)
+{
+	struct stat sb;
+
+	if (stat(path, &sb))
+		return T_UNKNOWN;
+	if (S_ISDIR(sb.st_mode)) {
+		char* newdir;
+		char* curdir;
+
+		if (maildir_names(path, &newdir, &curdir, NULL))
+			error(""maildir name is not set (%s)"", path);
+		if (stat(newdir, &sb))
+			return T_UNKNOWN;
+		if (!S_ISDIR(sb.st_mode) || access(newdir, R_OK|W_OK|X_OK))
+			return T_UNKNOWN;
+
+		if (Backup) {
+			if (stat(curdir, &sb))
+				return T_UNKNOWN;
+			if (!S_ISDIR(sb.st_mode) || access(curdir, W_OK))
+				return T_UNKNOWN;
+		}
+		return T_MAILDIR;
+	}
+	else if (S_ISREG(sb.st_mode))
+		return T_MBOX;
+	else
+		return T_UNKNOWN;
+}",TRUE,CWE_469
+69,69,69_vdisc.c,"I_InitGraphics(void)
+{
+    SDL_Event dummy;
+    byte *doompal;
+    char *env;
+
+    // Pass through the XSCREENSAVER_WINDOW environment variable to 
+    // SDL_WINDOWID, to embed the SDL window into the Xscreensaver
+    // window.
+
+    env = getenv(""XSCREENSAVER_WINDOW"");
+
+    if (env != NULL)
+    {
+        char winenv[30];
+        int winid;
+
+        sscanf(env, ""0x%x"", &winid);
+        sprintf(winenv, ""SDL_WINDOWID=%i"", winid);
+
+        putenv(winenv);
+    }
+
+    SetSDLVideoDriver();
+    SetWindowPositionVars();
+
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) 
+    {
+        I_Error(""Failed to initialize video: %s"", SDL_GetError());
+    }
+
+    // Set up title and icon.  Windows cares about the ordering; this
+    // has to be done before the call to SDL_SetVideoMode.
+
+    I_InitWindowTitle();
+#if !SDL_VERSION_ATLEAST(1, 3, 0)
+    I_InitWindowIcon();
+#endif
+
+    // Warning to OS X users... though they might never see it :(
+#ifdef __MACOSX__
+    if (fullscreen)
+    {
+        printf(""Some old versions of OS X might crash in fullscreen mode.\n""
+               ""If this happens to you, switch back to windowed mode.\n"");
+    }
+#endif
+
+    //
+    // Enter into graphics mode.
+    //
+    // When in screensaver mode, run full screen and auto detect
+    // screen dimensions (don't change video mode)
+    //
+
+    if (screensaver_mode)
+    {
+        SetVideoMode(NULL, 0, 0);
+    }
+    else
+    {
+        int w, h;
+
+        if (autoadjust_video_settings)
+        {
+            I_AutoAdjustSettings();
+        }
+
+        w = screen_width;
+        h = screen_height;
+
+        screen_mode = I_FindScreenMode(w, h);
+
+        if (screen_mode == NULL)
+        {
+            I_Error(""I_InitGraphics: Unable to find a screen mode small ""
+                    ""enough for %ix%i"", w, h);
+        }
+
+        if (w != screen_mode->width || h != screen_mode->height)
+        {
+            printf(""I_InitGraphics: %s (%ix%i within %ix%i)\n"",
+                   WindowBoxType(screen_mode, w, h),
+                   screen_mode->width, screen_mode->height, w, h);
+        }
+
+        SetVideoMode(screen_mode, w, h);
+    }
+
+    // Start with a clear black screen
+    // (screen will be flipped after we set the palette)
+
+    SDL_FillRect(screenbuffer, NULL, 0);
+
+    // Set the palette
+
+    doompal = W_CacheLumpName(DEH_String(""PLAYPAL""), PU_CACHE);
+    I_SetPalette(doompal);
+    SDL_SetColors(screenbuffer, palette, 0, 256);
+
+    CreateCursors();
+
+    UpdateFocus();
+    UpdateGrab();
+
+    // On some systems, it takes a second or so for the screen to settle
+    // after changing modes.  We include the option to add a delay when
+    // setting the screen mode, so that the game doesn't start immediately
+    // with the player unable to see anything.
+
+    if (fullscreen && !screensaver_mode)
+    {
+        SDL_Delay(startup_delay);
+    }
+
+    // Check if we have a native surface we can use
+    // If we have to lock the screen, draw to a buffer and copy
+    // Likewise if the screen pitch is not the same as the width
+    // If we have to multiply, drawing is done to a separate 320x200 buf
+
+    native_surface = screen == screenbuffer
+                  && !SDL_MUSTLOCK(screen)
+                  && screen_mode == &mode_scale_1x
+                  && screen->pitch == SCREENWIDTH
+                  && aspect_ratio_correct;
+
+    // If not, allocate a buffer and copy from that buffer to the
+    // screen when we do an update
+
+    if (native_surface)
+    {
+	I_VideoBuffer = (unsigned char *) screen->pixels;
+
+        I_VideoBuffer += (screen->h - SCREENHEIGHT) / 2;
+    }
+    else
+    {
+	I_VideoBuffer = (unsigned char *) Z_Malloc (SCREENWIDTH * SCREENHEIGHT, 
+                                                    PU_STATIC, NULL);
+    }
+
+    V_RestoreBuffer();
+
+    // Clear the screen to black.
+
+    memset(I_VideoBuffer, 0, SCREENWIDTH * SCREENHEIGHT);
+
+    // We need SDL to give us translated versions of keys as well
+
+    SDL_EnableUNICODE(1);
+
+    // Repeat key presses - this is what Vanilla Doom does
+    // Not sure about repeat rate - probably dependent on which DOS
+    // driver is used.  This is good enough though.
+
+    SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
+
+    // clear out any events waiting at the start and center the mouse
+  
+    while (SDL_PollEvent(&dummy));
+
+    initialized = true;
+
+    // Call I_ShutdownGraphics on quit
+
+    I_AtExit(I_ShutdownGraphics, true);
+}",TRUE,CWE_469
+70,70,70_vdisc.c,"mpd_output_feed(struct mpd_output *output, const struct mpd_pair *pair)
+{
+	if (strcmp(pair->name, ""outputid"") == 0)
+		return false;
+
+	if (strcmp(pair->name, ""outputname"") == 0) {
+		if (output->name != NULL)
+			free(output->name);
+
+		output->name = strdup(pair->value);
+	} else if (strcmp(pair->name, ""outputenabled"") == 0)
+		output->enabled = atoi(pair->value) != 0;
+
+	return true;
+}",TRUE,CWE_469
+71,71,71_vdisc.c,"parse_upsd_conf_args(int numargs, char **arg)
+{
+	/* everything below here uses up through arg[1] */
+	if (numargs < 2)
+		return 0;
+
+	/* MAXAGE <seconds> */
+	if (!strcmp(arg[0], ""MAXAGE"")) {
+		maxage = atoi(arg[1]);
+		return 1;
+	}
+
+	/* MAXCONN <connections> */
+	if (!strcmp(arg[0], ""MAXCONN"")) {
+		maxconn = atoi(arg[1]);
+		return 1;
+	}
+
+	/* STATEPATH <dir> */
+	if (!strcmp(arg[0], ""STATEPATH"")) {
+		free(statepath);
+		statepath = xstrdup(arg[1]);
+		return 1;
+	}
+
+	/* DATAPATH <dir> */
+	if (!strcmp(arg[0], ""DATAPATH"")) {
+		free(datapath);
+		datapath = xstrdup(arg[1]);
+		return 1;
+	}
+
+#ifdef WITH_OPENSSL
+	/* CERTFILE <dir> */
+	if (!strcmp(arg[0], ""CERTFILE"")) {
+		free(certfile);
+		certfile = xstrdup(arg[1]);
+		return 1;
+	}
+#elif (defined WITH_NSS) /* WITH_OPENSSL */
+	/* CERTPATH <dir> */
+	if (!strcmp(arg[0], ""CERTPATH"")) {
+		free(certfile);
+		certfile = xstrdup(arg[1]);
+		return 1;
+	}
+#ifdef WITH_CLIENT_CERTIFICATE_VALIDATION
+	/* CERTREQUEST (0 | 1 | 2) */
+	if (!strcmp(arg[0], ""CERTREQUEST"")) {
+		certrequest = atoi(arg[1]);
+		return 1;
+	}
+#endif /* WITH_CLIENT_CERTIFICATE_VALIDATION */
+#endif /* WITH_OPENSSL | WITH_NSS */
+	
+	/* ACCEPT <aclname> [<aclname>...] */
+	if (!strcmp(arg[0], ""ACCEPT"")) {
+		upslogx(LOG_WARNING, ""ACCEPT in upsd.conf is no longer supported - switch to LISTEN"");
+		return 1;
+	}
+
+	/* REJECT <aclname> [<aclname>...] */
+	if (!strcmp(arg[0], ""REJECT"")) {
+		upslogx(LOG_WARNING, ""REJECT in upsd.conf is no longer supported - switch to LISTEN"");
+		return 1;
+	}
+
+	/* LISTEN <address> [<port>] */
+	if (!strcmp(arg[0], ""LISTEN"")) {
+		if (numargs < 3)
+			listen_add(arg[1], string_const(PORT));
+		else
+			listen_add(arg[1], arg[2]);
+		return 1;
+	}
+
+	/* everything below here uses up through arg[2] */
+	if (numargs < 3)
+		return 0;
+
+	/* ACL <aclname> <ip block> */
+	if (!strcmp(arg[0], ""ACL"")) {
+		upslogx(LOG_WARNING, ""ACL in upsd.conf is no longer supported - switch to LISTEN"");
+		return 1;
+	}
+	
+#ifdef WITH_NSS
+	/* CERTIDENT <name> <passwd> */
+	if (!strcmp(arg[0], ""CERTIDENT"")) {
+		free(certname);
+		certname = xstrdup(arg[1]);
+		free(certpasswd);
+		certpasswd = xstrdup(arg[2]);
+		return 1;
+	}
+#endif /* WITH_NSS */
+
+	/* not recognized */
+	return 0;
+}",TRUE,CWE_469
+72,72,72_vdisc.c,"main(int argc, char **argv)
+{
+	int c;
+
+	progname = argv[0];
+	output_file = stdout;
+
+	while ((c = getopt(argc, argv, ""o:V"")) != -1)
+		switch (c) {
+		case 'o':
+			if (output_file != stdout)
+				fclose(output_file);
+			if ((output_file = fopen(optarg, ""w"")) == NULL)
+				err(1, ""%s"", optarg);
+			break;
+		case 'V':
+			fprintf(stderr, ""%s\n"", HP48CC_VERSION);
+			exit(0);
+		case '?':
+		default:
+			usage();
+			/* NOTREACHED */
+		}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1)
+		process_file(NULL);
+	else
+		while (*argv)
+			process_file(*argv++);
+
+	return 0;
+}",FALSE,CWE_469
+73,73,73_vdisc.c,"get_db_opt(char *input, char **opt, char **val)
+{
+    char   *pos = strchr(input, '=');
+    if (pos == NULL) {
+        *opt = NULL;
+        *val = strdup(input);
+        if (*val == NULL) {
+            return ENOMEM;
+        }
+    } else {
+        *opt = malloc((pos - input) + 1);
+        *val = strdup(pos + 1);
+        if (!*opt || !*val) {
+            free(*opt);
+            *opt = NULL;
+            free(*val);
+            *val = NULL;
+            return ENOMEM;
+        }
+        memcpy(*opt, input, pos - input);
+        (*opt)[pos - input] = '\0';
+    }
+    return (0);
+
+}",FALSE,CWE_469
+74,74,74_vdisc.c,"meta_render_id3v2_rva2(meta_frame_t * frame, unsigned char ** buf, int * size) {
+
+	unsigned char * data;
+	int length;
+	char * frame_id;
+	int len1;
+	signed int voladj_fixed;
+
+	if (frame->field_val[0] == '\0') {
+		free(frame->field_val);
+		frame->field_val = strdup(""Aqualung"");
+	}
+	len1 = strlen(frame->field_val);
+	length = 15 + len1;
+	data = (unsigned char *)malloc(length);
+	if (data == NULL) {
+		fprintf(stderr, ""meta_render_id3v2_apic: malloc error\n"");
+		return;
+	}
+	meta_get_fieldname_embedded(META_TAG_ID3v2, frame->type, &frame_id);
+	memcpy(data, frame_id, 4);
+
+	memcpy(data+10, frame->field_val, len1);
+	data[10+len1] = '\0';
+	data[11+len1] = 0x01; /* Master volume */
+
+	voladj_fixed = frame->float_val * 512;
+	data[12+len1] = (voladj_fixed & 0xff00) >> 8;
+	data[13+len1] = voladj_fixed & 0xff;
+	data[14+len1] = 0x00; /* no peak volume */
+
+	meta_render_append_frame(data, length, buf, size);
+	free(data);
+}",TRUE,CWE_469
+75,75,75_vdisc.c,"is_edr(xfile *xf) {
+	
+	if (xf->len < 16)
+		return 0;
+
+	/* See if it has the right file ID */
+	if (strncmp(""EDR DATA1"", (char *)xf->buf, 16) == 0)
+		return 1;
+	return 0;
+}",TRUE,CWE_469
+76,76,76_vdisc.c,"arch_prepare_optimized_kprobe(struct optimized_kprobe *op,
+				  struct kprobe *__unused)
+{
+	u8 *buf;
+	int ret;
+	long rel;
+
+	if (!can_optimize((unsigned long)op->kp.addr))
+		return -EILSEQ;
+
+	op->optinsn.insn = get_optinsn_slot();
+	if (!op->optinsn.insn)
+		return -ENOMEM;
+
+	/*
+	 * Verify if the address gap is in 2GB range, because this uses
+	 * a relative jump.
+	 */
+	rel = (long)op->optinsn.insn - (long)op->kp.addr + RELATIVEJUMP_SIZE;
+	if (abs(rel) > 0x7fffffff) {
+		__arch_remove_optimized_kprobe(op, 0);
+		return -ERANGE;
+	}
+
+	buf = (u8 *)op->optinsn.insn;
+
+	/* Copy instructions into the out-of-line buffer */
+	ret = copy_optimized_instructions(buf + TMPL_END_IDX, op->kp.addr);
+	if (ret < 0) {
+		__arch_remove_optimized_kprobe(op, 0);
+		return ret;
+	}
+	op->optinsn.size = ret;
+
+	/* Copy arch-dep-instance from template */
+	memcpy(buf, &optprobe_template_entry, TMPL_END_IDX);
+
+	/* Set probe information */
+	synthesize_set_arg1(buf + TMPL_MOVE_IDX, (unsigned long)op);
+
+	/* Set probe function call */
+	synthesize_relcall(buf + TMPL_CALL_IDX, optimized_callback);
+
+	/* Set returning jmp instruction at the tail of out-of-line buffer */
+	synthesize_reljump(buf + TMPL_END_IDX + op->optinsn.size,
+			   (u8 *)op->kp.addr + op->optinsn.size);
+
+	flush_icache_range((unsigned long) buf,
+			   (unsigned long) buf + TMPL_END_IDX +
+			   op->optinsn.size + RELATIVEJUMP_SIZE);
+	return 0;
+}",TRUE,CWE_469
+77,77,77_vdisc.c,"main_vagenc (void) {
+	  if (app_argc < 4)
+	    MAIN_INV_CMD_SYNTAX;
+
+	  uint32_t i, channels;	// = app_argc-3;
+	  uint32_t len;
+	  void *buf;
+
+	  channels = wav2vag (app_argv[2], &len, &buf, """");
+	  if (channels) {
+	    if (app_argc - 3 > 1) {
+	      if ((int) channels > app_argc - 3) {
+		warning
+		    (""WAV file contains %d channels, which is more than VAG files specified - will only output the first %d channels."",
+		    channels, app_argc - 3);
+		channels = app_argc - 3;
+	      } else if ((int) channels < app_argc - 3) {
+		warning
+		    (""WAV file contains %d channels, which is less than VAG files specified."",
+		    channels);
+	      }
+	    }
+	    // trim .vag extension if autogenerating that
+	    if (app_argc - 3 == 1 && channels > 1) {
+	      uint32_t nl = strlen (app_argv[3]);
+
+	      if (nl > MAX_FILENAME_LEN)
+		app_argv[3][MAX_FILENAME_LEN] = '\0';
+	      else if (!strcasecmp (app_argv[3] + nl - 4, "".vag""))
+		app_argv[3][nl - 4] = '\0';
+	    }
+
+	    uint8_t writeStdout = !strcmp (app_argv[3], ""-"");
+
+	    for (i = 0; i < channels; i++) {
+	      FILE *fp;
+	      char fnStatic[MAX_FILENAME_LEN + 12];
+	      char *fn = fnStatic;
+
+	      if (app_argc - 3 == 1 && !writeStdout) {
+		if (channels == 1)
+		  fn = app_argv[3];
+		else
+		  sprintf (fnStatic, ""%s.ch%d.vag"", app_argv[3], i);
+	      } else {
+		fn = app_argv[3 + i];
+	      }
+
+	      if ((fp = openwrite (fn))) {
+		filewrite (fp, (char *) buf + i * len, len);
+		if (strcmp (fn, ""-""))
+		  fclose (fp);	// don't want to fclose stdout right now
+	      } else
+		warning (""Failed to write file %s"", fn);
+	    }
+
+	    return 0;
+	  } else {
+	    error (""Failed to convert WAV to VAG."");
+	    return RETERR_GENERIC_FAILED;
+	  }
+	}",FALSE,CWE_469
+78,78,78_vdisc.c,"exts_compare(const char *exts, const char *type)
+{
+	char tmp[256];
+	char *stringp = tmp, *ext;
+
+	ast_copy_string(tmp, exts, sizeof(tmp));
+	while ((ext = strsep(&stringp, ""|""))) {
+		if (!strcmp(ext, type))
+			return 1;
+	}
+
+	return 0;
+}",TRUE,CWE_469
+79,79,79_vdisc.c,"test_genprop_refcount(void)
+{
+    hid_t		cid1;		/* Generic Property class ID */
+    hid_t		lid1;		/* Generic Property class ID */
+    char               *name;           /* Name of class */
+    herr_t		ret;		/* Generic return value	*/
+
+    /* Output message about test being performed */
+    MESSAGE(5, (""Testing Generic Property List Reference Count Functionality\n""));
+
+    /* Create a new generic class, derived from the root of the class hierarchy */
+    cid1 = H5Pcreate_class(H5P_ROOT,CLASS1_NAME, NULL, NULL, NULL, NULL, NULL, NULL);
+    CHECK_I(cid1, ""H5Pcreate_class"");
+
+    /* Insert first property into class (with no callbacks) */
+    ret = H5Pregister2(cid1, PROP1_NAME, PROP1_SIZE, PROP1_DEF_VALUE, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    CHECK_I(ret, ""H5Pregister2"");
+
+    /* Create a new generic list, derived from the root of the class hierarchy */
+    lid1 = H5Pcreate(cid1);
+    CHECK_I(lid1, ""H5Pcreate"");
+
+    /* Check class name */
+    name = H5Pget_class_name(cid1);
+    CHECK_PTR(name, ""H5Pget_class_name"");
+    if(HDstrcmp(name,CLASS1_NAME)!=0)
+        TestErrPrintf(""Class names don't match!, name=%s, CLASS1_NAME=%s\n"",name,CLASS1_NAME);
+    HDfree(name);
+
+    /* Close class */
+    ret = H5Pclose_class(cid1);
+    CHECK_I(ret, ""H5Pclose_class"");
+
+    /* Get the list's class */
+    cid1 = H5Pget_class(lid1);
+    CHECK_I(cid1, ""H5Pget_class"");
+
+    /* Check correct ""is a"" class/list relationship */
+    ret = H5Pisa_class(lid1,cid1);
+    VERIFY(ret, 1, ""H5Pisa_class"");
+
+    /* Check class name */
+    name = H5Pget_class_name(cid1);
+    CHECK_PTR(name, ""H5Pget_class_name"");
+    if(HDstrcmp(name,CLASS1_NAME)!=0)
+        TestErrPrintf(""Class names don't match!, name=%s, CLASS1_NAME=%s\n"",name,CLASS1_NAME);
+    HDfree(name);
+
+    /* Close list */
+    ret = H5Pclose(lid1);
+    CHECK_I(ret, ""H5Pclose"");
+
+    /* Check class name */
+    name = H5Pget_class_name(cid1);
+    CHECK_PTR(name, ""H5Pget_class_name"");
+    if(HDstrcmp(name,CLASS1_NAME)!=0)
+        TestErrPrintf(""Class names don't match!, name=%s, CLASS1_NAME=%s\n"",name,CLASS1_NAME);
+    HDfree(name);
+
+    /* Close class */
+    ret = H5Pclose_class(cid1);
+    CHECK_I(ret, ""H5Pclose_class"");
+
+}",FALSE,CWE_469
+80,80,80_vdisc.c,"tdsdump_open(const char *filename)
+{
+	int result;		/* really should be a boolean, not an int */
+
+	TDS_MUTEX_LOCK(&g_dump_mutex);
+
+	/* same append file */
+	if (tds_g_append_mode && filename != NULL && g_dump_filename != NULL && strcmp(filename, g_dump_filename) == 0) {
+		TDS_MUTEX_UNLOCK(&g_dump_mutex);
+		return 1;
+	}
+
+	/* free old one */
+	if (g_dumpfile != NULL && g_dumpfile != stdout && g_dumpfile != stderr)
+		fclose(g_dumpfile);
+	g_dumpfile = NULL;
+	if (g_dump_filename)
+		TDS_ZERO_FREE(g_dump_filename);
+
+	/* required to close just log ?? */
+	if (filename == NULL || filename[0] == '\0') {
+		TDS_MUTEX_UNLOCK(&g_dump_mutex);
+		return 1;
+	}
+
+	result = 1;
+	if (tds_g_append_mode) {
+		g_dump_filename = strdup(filename);
+		/* if mutex are available do not reopen file every time */
+#ifdef TDS_HAVE_MUTEX
+		g_dumpfile = tdsdump_append();
+#endif
+	} else if (!strcmp(filename, ""stdout"")) {
+		g_dumpfile = stdout;
+	} else if (!strcmp(filename, ""stderr"")) {
+		g_dumpfile = stderr;
+	} else if (NULL == (g_dumpfile = fopen(filename, ""w""))) {
+		result = 0;
+	}
+
+	if (result)
+		tds_write_dump = 1;
+	TDS_MUTEX_UNLOCK(&g_dump_mutex);
+
+	if (result) {
+		char today[64];
+		struct tm *tm;
+#ifdef HAVE_LOCALTIME_R
+		struct tm res;
+#endif
+		time_t t;
+
+		time(&t);
+#ifdef HAVE_LOCALTIME_R
+#if HAVE_FUNC_LOCALTIME_R_TM
+		tm = localtime_r(&t, &res);
+#elif HAVE_FUNC_LOCALTIME_R_INT
+		tm = NULL;
+		if (!localtime_r(&t, &res))
+			tm = &res;
+#else
+#error One should be defined
+#endif
+#else
+		tm = localtime(&t);
+#endif
+
+		strftime(today, sizeof(today), ""%Y-%m-%d %H:%M:%S"", tm);
+		tdsdump_log(TDS_DBG_INFO1, ""Starting log file for FreeTDS %s\n""
+			    ""\ton %s with debug flags 0x%x.\n"", VERSION, today, tds_debug_flags);
+	}
+	return result;
+}",TRUE,CWE_469
+81,81,81_vdisc.c,"AddSimpleGidItem(struct GidList **gidlist,int gid,char *gidname)
+
+{ struct GidList *glp,*g;
+  char *copygroup;
+
+if ((glp = (struct GidList *)malloc(sizeof(struct GidList))) == NULL)
+   {
+   FatalError(""cfengine: malloc() failed #1 in AddSimpleGidItem()"");
+   }
+ 
+glp->gid = gid;
+ 
+if (gid == CF_UNKNOWN_GROUP)   /* unknown group */
+   {
+   if ((copygroup = strdup(gidname)) == NULL)
+      {
+      FatalError(""cfengine: malloc() failed #2 in AddSimpleGidItem()"");
+      }
+   
+   glp->gidname = copygroup;
+   }
+else
+   {
+   glp->gidname = NULL;
+   }
+ 
+glp->next = NULL;
+
+if (*gidlist == NULL)
+   {
+   *gidlist = glp;
+   }
+else
+   {
+   for (g = *gidlist; g->next != NULL; g = g->next)
+      {
+      }
+   g->next = glp;
+   }
+}",FALSE,CWE_469
+82,82,82_vdisc.c,"can_eval(char *s)
+{
+	char *op;
+	char *element1, *element2;
+	char work[BUFSIZE];
+
+	/*
+	 *  If we've got a () pair containing any sort of stuff in between,
+	 *  then presume it's eval-able.  It might contain crap, but it 
+	 *  should be sent to eval() regardless.
+	 */
+	if ((FIRSTCHAR(s) == '(') &&
+	    (count_chars(s, '(') == 1) &&
+	    (count_chars(s, ')') == 1) &&
+	    (strlen(s) > 2) &&
+	    (LASTCHAR(s) == ')'))
+		return TRUE;
+
+	/*
+	 *  If the string contains any of the operators except the shifters,
+         *  and has any kind of data on either side, it's also eval-able.
+	 */
+	strcpy(work, s);
+
+        if (!(op = strpbrk(work, ""><+-&|*/%^"")))
+		return FALSE; 
+
+        element1 = &work[0];
+        *op = NULLCHAR;
+	element2 = op+1;
+
+	if (!strlen(element1) || !strlen(element2))
+		return FALSE;
+
+	return TRUE;
+}",TRUE,CWE_469
+83,83,83_vdisc.c,"bld_load_iter(struct h_t *hp)
+{
+ register int32 iti;
+ int32 iti2;
+ struct h_t *ihp, *hp2;
+ vpiHandle ihref;
+ struct pviter_t *iterp;
+
+ __acc_vpi_erroff = TRUE;
+ ihref = vpi_iterate(vpiLoad, (vpiHandle) hp);
+ if (__my_vpi_chk_error())
+  {
+   __acc_err(1983, ""acc_next_load error finding first %s"",
+    to_acc_onam(__wrks1, hp->hrec->htyp));
+   return(NULL);
+  }
+ if (ihref == NULL) return(NULL);
+ ihp = (struct h_t *) ihref;
+ iterp = ihp->hrec->hu.hiterp;
+ /* go through iterator copying only terminals in cells into aith tab */
+ /* also elminate non primitive vpi but not acc_ terminals here */
+ for (iti = iti2 = 0; iti < iterp->numhs; iti++)
+  {
+   hp2 = &(iterp->scanhtab[iti]);
+   if (hp2->hrec->htyp != vpiPrimTerm) continue;
+
+   if (iti2 >= __aithtsiz) __grow_acc_htab(1);
+   /* can copy guts because know these are prim terms with no ptrs */
+   __aithtab[iti2] = *hp2;
+   __aithrectab[iti2] = *(hp2->hrec);
+   /* only need to set cross link in newly added one */
+   __aithtab[iti2].hrec = &(__aithrectab[iti2]); 
+   iti2++;
+  }
+
+ /* to free old iterator and probably build new one unless empty */
+ acc_internal_itfree(ihp);
+ if (iti2 == 0) return(NULL);
+
+ iterp = __alloc_iter(iti2, &ihref);
+ /* copying only bodies works because not expressions */
+ memcpy(iterp->scanhtab, __aithtab, iti2*sizeof(struct h_t));
+ memcpy(iterp->ihrectab, __aithrectab, iti2*sizeof(struct hrec_t));
+
+ for (iti = 0; iti < iti2; iti++)
+  {
+   iterp->scanhtab[iti].hrec = &(iterp->ihrectab[iti]);
+  }
+ return(ihref);
+}",FALSE,CWE_469
+84,84,84_vdisc.c,"open_tmpfile(void)
+{
+	int ret ATTRIBUTE_UNUSED;
+
+        if (pc->tmpfile)
+                error(FATAL, ""recursive temporary file usage\n"");
+
+	if (!pc->tmp_fp) {
+        	if ((pc->tmp_fp = tmpfile()) == NULL) 
+                	error(FATAL, ""cannot open temporary file\n"");
+	}
+
+	fflush(pc->tmpfile);
+	ret = ftruncate(fileno(pc->tmp_fp), 0);
+	rewind(pc->tmp_fp);
+
+	pc->tmpfile = pc->tmp_fp;
+	pc->saved_fp = fp;
+	fp = pc->tmpfile;
+}",TRUE,CWE_469
+85,85,85_vdisc.c,"m_part(struct Client *client_p, struct Client *source_p,
+       int parc, char *parv[])
+{
+  char *p = NULL, *name = NULL;
+  char reason[KICKLEN + 1] = { '\0' };
+
+  if (IsServer(source_p))
+    return;
+
+  if (EmptyString(parv[1]))
+  {
+    sendto_one(source_p, form_str(ERR_NEEDMOREPARAMS),
+               me.name, source_p->name, ""PART"");
+    return;
+  }
+
+  if (parc > 2)
+    strlcpy(reason, parv[2], sizeof(reason));
+
+  /* Finish the flood grace period... */
+  if (MyClient(source_p) && !IsFloodDone(source_p))
+    flood_endgrace(source_p);
+
+  for (name = strtoken(&p, parv[1], "",""); name;
+       name = strtoken(&p,    NULL, "",""))
+    part_one_client(client_p, source_p, name, reason);
+}",FALSE,CWE_469
+86,86,86_vdisc.c,"where_is_shmfs (void)
+{
+  char buf[512];
+  struct statfs f;
+  struct mntent resmem;
+  struct mntent *mp;
+  FILE *fp;
+
+  /* The canonical place is /dev/shm.  This is at least what the
+     documentation tells everybody to do.  */
+  if (__statfs (defaultdir, &f) == 0 && f.f_type == SHMFS_SUPER_MAGIC)
+    {
+      /* It is in the normal place.  */
+      mountpoint.dir = (char *) defaultdir;
+      mountpoint.dirlen = sizeof (defaultdir) - 1;
+
+      return;
+    }
+
+  /* OK, do it the hard way.  Look through the /proc/mounts file and if
+     this does not exist through /etc/fstab to find the mount point.  */
+  fp = __setmntent (""/proc/mounts"", ""r"");
+  if (__builtin_expect (fp == NULL, 0))
+    {
+      fp = __setmntent (_PATH_MNTTAB, ""r"");
+      if (__builtin_expect (fp == NULL, 0))
+	/* There is nothing we can do.  Blind guesses are not helpful.  */
+	return;
+    }
+
+  /* Now read the entries.  */
+  while ((mp = __getmntent_r (fp, &resmem, buf, sizeof buf)) != NULL)
+    /* The original name is ""shm"" but this got changed in early Linux
+       2.4.x to ""tmpfs"".  */
+    if (strcmp (mp->mnt_type, ""tmpfs"") == 0)
+      {
+	/* Found it.  There might be more than one place where the
+           filesystem is mounted but one is enough for us.  */
+	size_t namelen;
+
+	/* First make sure this really is the correct entry.  At least
+	   some versions of the kernel give wrong information because
+	   of the implicit mount of the shmfs for SysV IPC.  */
+	if (__statfs (mp->mnt_dir, &f) != 0 || f.f_type != SHMFS_SUPER_MAGIC)
+	  continue;
+
+	namelen = strlen (mp->mnt_dir);
+
+	if (namelen == 0)
+	  /* Hum, maybe some crippled entry.  Keep on searching.  */
+	  continue;
+
+	mountpoint.dir = (char *) malloc (namelen + 2);
+	if (mountpoint.dir != NULL)
+	  {
+	    char *cp = __mempcpy (mountpoint.dir, mp->mnt_dir, namelen);
+	    if (cp[-1] != '/')
+	      *cp++ = '/';
+	    *cp = '\0';
+	    mountpoint.dirlen = cp - mountpoint.dir;
+	  }
+
+	break;
+      }
+
+  /* Close the stream.  */
+  __endmntent (fp);
+}",TRUE,CWE_469
+87,87,87_vdisc.c,"getipaddress(char *ipaddr)
+{
+	
+	struct hostent  *host;
+	IPaddr_t        ip;
+
+	if (((ip = inet_addr(ipaddr)) == INADDR_NONE) &&
+	    (strcmp(ipaddr, ""255.255.255.255"") != 0)) {
+		
+		if ((host = gethostbyname(ipaddr)) != NULL) {
+			memcpy(&ip, host->h_addr, sizeof(ip));
+		}
+		
+		endhostent();
+	}
+	
+#ifdef DEBUG
+	fprintf(stderr, ""IP lookup %s -> 0x%08lx\n"", ipaddr, ip);
+#endif
+	  
+	return (ip);
+}",FALSE,CWE_469
+88,88,88_vdisc.c,"fh_rec(const unfs3_fh_t * fh, int pos, const char *lead,
+		  char *result)
+{
+    backend_dirstream *search;
+    struct dirent *entry;
+    backend_statstruct buf;
+    int res, rec;
+    char obj[NFS_MAXPATHLEN];
+
+    /* There's a slight risk of multiple files with the same st_ino on
+       Windows. Take extra care and make sure that there are no collisions */
+    unsigned short matches = 0;
+
+    /* went in too deep? */
+    if (pos == fh->len)
+	return FALSE;
+
+    search = backend_opendir(lead);
+    if (!search)
+	return FALSE;
+
+    entry = backend_readdir(search);
+
+    while (entry) {
+	if (strlen(lead) + strlen(entry->d_name) + 1 < NFS_MAXPATHLEN) {
+
+	    sprintf(obj, ""%s/%s"", lead, entry->d_name);
+
+	    res = backend_lstat(obj, &buf);
+	    if (res == -1) {
+		buf.st_dev = 0;
+		buf.st_ino = 0;
+	    }
+
+	    if (buf.st_dev == fh->dev && buf.st_ino == fh->ino) {
+		/* found the object */
+		sprintf(result, ""%s/%s"", lead + 1, entry->d_name);
+		/* update stat cache */
+		st_cache_valid = TRUE;
+		st_cache = buf;
+		matches++;
+#ifndef WIN32
+		break;
+#endif
+	    }
+
+	    if (strcmp(entry->d_name, "".."") != 0 &&
+		strcmp(entry->d_name, ""."") != 0 &&
+		FH_HASH(buf.st_ino) == fh->inos[pos]) {
+		/* 
+		 * might be directory we're looking for,
+		 * try descending into it
+		 */
+		rec = fh_rec(fh, pos + 1, obj, result);
+		if (rec) {
+		    /* object was found in dir */
+		    backend_closedir(search);
+		    return TRUE;
+		}
+	    }
+	}
+	entry = backend_readdir(search);
+    }
+
+    backend_closedir(search);
+    switch (matches) {
+	case 0:
+	    return FALSE;
+	case 1:
+	    return TRUE;
+	default:
+#ifdef WIN32
+	    logmsg(LOG_CRIT, ""Hash collision detected for file %s!"", result);
+#endif
+	    return FALSE;
+    }
+}",FALSE,CWE_469
+89,89,89_vdisc.c,"pop_get_command(POP *p, char *mp)
+{
+    state_table     *   s;
+    char                buf[MAXMSGLINELEN];
+
+    /*  Save a copy of the original client line */
+#ifdef DEBUG
+    if(p->debug) strlcpy (buf, mp, sizeof(buf));
+#endif /* DEBUG */
+
+    /*  Parse the message into the parameter array */
+    if ((p->parm_count = pop_parse(p,mp)) < 0) return(NULL);
+
+    /*  Do not log cleartext passwords */
+#ifdef DEBUG
+    if(p->debug){
+        if(strcmp(p->pop_command,""pass"") == 0)
+            pop_log(p,POP_DEBUG,""Received: \""%s xxxxxxxxx\"""",p->pop_command);
+        else {
+            /*  Remove trailing <LF> */
+            buf[strlen(buf)-2] = '\0';
+            pop_log(p,POP_DEBUG,""Received: \""%s\"""",buf);
+        }
+    }
+#endif /* DEBUG */
+
+    /*  Search for the POP command in the command/state table */
+    for (s = states; s->command; s++) {
+
+        /*  Is this a valid command for the current operating state? */
+        if (strcmp(s->command,p->pop_command) == 0
+             && s->ValidCurrentState == p->CurrentState) {
+
+            /*  Were too few parameters passed to the command? */
+            if (p->parm_count < s->min_parms) {
+                pop_msg(p,POP_FAILURE,
+			""Too few arguments for the %s command."",
+			p->pop_command);
+		return NULL;
+	    }
+
+            /*  Were too many parameters passed to the command? */
+            if (p->parm_count > s->max_parms) {
+                pop_msg(p,POP_FAILURE,
+			""Too many arguments for the %s command."",
+			p->pop_command);
+		return NULL;
+	   }
+
+            /*  Return a pointer to the entry for this command in
+                the command/state table */
+            return (s);
+        }
+    }
+    /*  The client command was not located in the command/state table */
+    pop_msg(p,POP_FAILURE,
+	    ""Unknown command: \""%s\""."",p->pop_command);
+    return NULL;
+}",TRUE,CWE_469
+90,90,90_vdisc.c,"glade_gtk_box_set_child_property (GladeWidgetAdaptor *adaptor,
+				  GObject            *container,
+				  GObject            *child,
+				  const gchar        *property_name,
+				  GValue             *value)
+{
+	GladeWidget *gbox, *gchild, *gchild_iter;
+	GList       *children, *list;
+	gboolean     is_position;
+	gint         old_position, iter_position, new_position;
+	static       gboolean recursion = FALSE;
+	
+	g_return_if_fail (GTK_IS_BOX (container));
+	g_return_if_fail (GTK_IS_WIDGET (child));
+	g_return_if_fail (property_name != NULL || value != NULL);
+
+	gbox   = glade_widget_get_from_gobject (container);
+	gchild = glade_widget_get_from_gobject (child);
+
+	g_return_if_fail (GLADE_IS_WIDGET (gbox));
+
+	if (gtk_widget_get_parent (GTK_WIDGET (child)) != GTK_WIDGET (container))
+		return;
+
+	/* Get old position */
+	if ((is_position = (strcmp (property_name, ""position"") == 0)) != FALSE)
+	{
+		gtk_container_child_get (GTK_CONTAINER (container),
+					 GTK_WIDGET (child),
+					 property_name, &old_position, NULL);
+
+		
+		/* Get the real value */
+		new_position = g_value_get_int (value);
+	}
+
+	if (is_position && recursion == FALSE)
+	{
+		children = glade_widget_adaptor_get_children
+			(gbox->adaptor, container);
+
+		children = g_list_sort (children, (GCompareFunc)sort_box_children);
+
+		for (list = children; list; list = list->next)
+		{
+			if ((gchild_iter = 
+			     glade_widget_get_from_gobject (list->data)) == NULL)
+				continue;
+
+			if (gchild_iter == gchild)
+			{
+				gtk_box_reorder_child (GTK_BOX (container),
+						       GTK_WIDGET (child),
+						       new_position);
+				continue;
+			}
+
+			/* Get the old value from glade */
+			glade_widget_pack_property_get
+				(gchild_iter, ""position"", &iter_position);
+
+			/* Search for the child at the old position and update it */
+			if (iter_position == new_position &&
+			    glade_property_superuser () == FALSE)
+			{
+				/* Update glade with the real value */
+				recursion = TRUE;
+				glade_widget_pack_property_set
+					(gchild_iter, ""position"", old_position);
+				recursion = FALSE;
+				continue;
+			}
+			else
+			{
+				gtk_box_reorder_child (GTK_BOX (container),
+						       GTK_WIDGET (list->data),
+						       iter_position);
+			}
+		}
+
+		for (list = children; list; list = list->next)
+		{
+			if ((gchild_iter = 
+			     glade_widget_get_from_gobject (list->data)) == NULL)
+				continue;
+
+			/* Refresh values yet again */
+			glade_widget_pack_property_get
+				(gchild_iter, ""position"", &iter_position);
+
+			gtk_box_reorder_child (GTK_BOX (container),
+					       GTK_WIDGET (list->data),
+					       iter_position);
+
+		}
+
+		if (children)
+			g_list_free (children);
+	}
+
+	/* Chain Up */
+	if (!is_position)
+		GWA_GET_CLASS
+			(GTK_TYPE_CONTAINER)->child_set_property (adaptor, 
+								  container, 
+								  child,
+								  property_name, 
+								  value);
+
+	gtk_container_check_resize (GTK_CONTAINER (container));
+
+}",TRUE,CWE_469
+91,91,91_vdisc.c,"dxf_appid_read
+(
+        DxfFile *fp,
+                /*!< DXF file pointer to an input file (or device). */
+        DxfAppid *dxf_appid
+                /*!< DXF appid entity. */
+)
+{
+#if DEBUG
+        DXF_DEBUG_BEGIN
+#endif
+        char *temp_string = NULL;
+
+        /* Do some basic checks. */
+        if (dxf_appid == NULL)
+        {
+                fprintf (stderr,
+                  (_(""Warning in %s () a NULL pointer was passed.\n"")),
+                  __FUNCTION__);
+                dxf_appid = dxf_appid_new ();
+                dxf_appid_init (dxf_appid);
+        }
+        (fp->line_number)++;
+        fscanf (fp->fp, ""%[^\n]"", temp_string);
+        while (strcmp (temp_string, ""0"") != 0)
+        {
+                if (ferror (fp->fp))
+                {
+                        fprintf (stderr,
+                          (_(""Error in %s () while reading from: %s in line: %d.\n"")),
+                          __FUNCTION__, fp->filename, fp->line_number);
+                        fclose (fp->fp);
+                        return (NULL);
+                }
+                if (strcmp (temp_string, ""5"") == 0)
+                {
+                        /* Now follows a string containing a sequential
+                         * id number. */
+                        (fp->line_number)++;
+                        fscanf (fp->fp, ""%x\n"", &dxf_appid->id_code);
+                }
+                else if (strcmp (temp_string, ""2"") == 0)
+                {
+                        /* Now follows a string containing an application
+                         * name. */
+                        (fp->line_number)++;
+                        fscanf (fp->fp, ""%s\n"", dxf_appid->application_name);
+                }
+                else if (strcmp (temp_string, ""70"") == 0)
+                {
+                        /* Now follows a string containing the
+                         * standard flag value. */
+                        (fp->line_number)++;
+                        fscanf (fp->fp, ""%d\n"", &dxf_appid->flag);
+                }
+                else if (strcmp (temp_string, ""330"") == 0)
+                {
+                        /* Now follows a string containing Soft-pointer
+                         * ID/handle to owner dictionary. */
+                        (fp->line_number)++;
+                        fscanf (fp->fp, ""%s\n"", dxf_appid->dictionary_owner_soft);
+                }
+                else if (strcmp (temp_string, ""360"") == 0)
+                {
+                        /* Now follows a string containing Hard owner
+                         * ID/handle to owner dictionary. */
+                        (fp->line_number)++;
+                        fscanf (fp->fp, ""%s\n"", dxf_appid->dictionary_owner_hard);
+                }
+                else if (strcmp (temp_string, ""999"") == 0)
+                {
+                        /* Now follows a string containing a comment. */
+                        (fp->line_number)++;
+                        fscanf (fp->fp, ""%s\n"", temp_string);
+                        fprintf (stdout, ""DXF comment: %s\n"", temp_string);
+                }
+                else
+                {
+                        fprintf (stderr,
+                          (_(""Warning in %s () unknown string tag found while reading from: %s in line: %d.\n"")),
+                          __FUNCTION__, fp->filename, fp->line_number);
+                }
+        }
+#if DEBUG
+        DXF_DEBUG_END
+#endif
+        return (dxf_appid);
+}",FALSE,CWE_469
+92,92,92_vdisc.c,"proc_getent(const char *ent)
+{
+	FILE *fp;
+	char *proc, *p, *value = NULL;
+	size_t i;
+
+	if (!exists(""/proc/cmdline""))
+		return NULL;
+
+	if (!(fp = fopen(""/proc/cmdline"", ""r""))) {
+		eerror(""failed to open `/proc/cmdline': %s"", strerror(errno));
+		return NULL;
+	}
+
+	proc = NULL;
+	i = 0;
+	if (rc_getline(&proc, &i, fp) == -1 || proc == NULL)
+		eerror(""rc_getline: %s"", strerror(errno));
+	if (*proc && (p = strstr(proc, ent))) {
+		i = p - proc;
+		if (i == '\0' || proc[i - 1] == ' ') {
+			p += strlen(ent);
+			if (*p == '=')
+				p++;
+			value = xstrdup(strsep(&p, "" ""));
+		}
+	} else
+		errno = ENOENT;
+	fclose(fp);
+	free(proc);
+
+	return value;
+}",TRUE,CWE_469
+93,93,93_vdisc.c,"queryDDS (char *id)
+{
+   char buffer[MAX_PAYLOAD_SIZE]={0};
+
+   ISNSCreateHdr (ISNS_DEV_ATTR_QRY_REQ, &cmd, sizeof(cmd), 0);
+   ISNSAppendAttr (&cmd, ISNS_ISCSI_NODE_ID, PAD4 (strlen (CONTROL_NODE)),CONTROL_NODE, 0);
+
+   if (strlen(id))
+   {
+      int ddsid;
+      ddsid = atoi(id);
+      ISNSAppendAttr (&cmd, ISNS_DDS_ID, 4, NULL, ddsid);
+      ISNSAppendAttr (&cmd, 0, 0, NULL, 0);
+      ISNSAppendAttr (&cmd, ISNS_DDS_SYM_NAME, 0, NULL, 0);
+      ISNSAppendAttr (&cmd, ISNS_DD_ID, 0, NULL, 0);
+      ISNSAppendAttr (&cmd, ISNS_DD_SYM_NAME, 0, NULL, 0);
+   }
+   else
+   {
+     ISNSAppendAttr (&cmd, ISNS_DDS_ID, 0, NULL, 0);
+     ISNSAppendAttr (&cmd, 0, 0, NULL, 0);
+     ISNSAppendAttr (&cmd, ISNS_DDS_ID, 0, NULL, 0);
+     ISNSAppendAttr (&cmd, ISNS_DDS_SYM_NAME, 0, NULL, 0);
+     ISNSAppendAttr (&cmd, ISNS_DDS_STATUS, 0, NULL, 0);
+     ISNSAppendAttr (&cmd, ISNS_DD_ID, 0, NULL, 0);
+     ISNSAppendAttr (&cmd, ISNS_DD_SYM_NAME, 0, NULL, 0);
+   }
+
+   if (0 == ISNSSendCmd2 (&cmd, buffer, sizeof (buffer)))
+      ParseDDSQuery (buffer);
+}",TRUE,CWE_469
+94,94,94_vdisc.c,"alloc_state_load(const char *path)
+{
+	struct alloc_state *s = xxmalloc(sizeof(*s));
+	char statename[CHIRP_PATH_MAX];
+
+	debug(D_ALLOC, ""locking %s"", path);
+
+	sprintf(statename, ""%s/.__alloc"", path);
+
+	/* WARNING chirp_alloc assumes we are using the local filesystem */
+	s->file = fopen(statename, ""r+"");
+	if(!s->file) {
+		free(s);
+		return 0;
+	}
+
+	if(lockf(fileno(s->file), F_TLOCK, 0)) {
+		debug(D_ALLOC, ""lock of %s blocked; flushing outstanding locks"", path);
+		chirp_alloc_flush();
+		debug(D_ALLOC, ""locking %s (retry)"", path);
+
+		if(lockf(fileno(s->file), F_LOCK, 0)) {
+			debug(D_ALLOC, ""lock of %s failed: %s"", path, strerror(errno));
+			fclose(s->file);
+			free(s);
+			return 0;
+		}
+	}
+
+	fscanf(s->file, ""%"" SCNd64 "" %"" SCNd64, &s->size, &s->inuse);
+
+	s->dirty = 0;
+
+	if(recovery_in_progress) {
+		s->inuse = 0;
+		s->dirty = 1;
+	}
+
+	s->avail = s->size - s->inuse;
+
+	return s;
+}",FALSE,CWE_469
+95,95,95_vdisc.c,"main(int argc, char *argv[]) {
+  char           *address = NULL;
+  unsigned short port = 1500;
+  int            retval = EXIT_SUCCESS, quiet = 0;
+
+  /*M
+    Process the command line arguments.
+  **/
+  int c;
+  while ((c = getopt(argc, argv, ""hs:p:b:t:q"")) >= 0) {
+    switch (c) {
+    case 's':
+      if (address != NULL)
+        free(address);
+
+      address = strdup(optarg);
+      break;
+
+    case 'p':
+      port = atoi(optarg);
+      break;
+
+    case 'b':
+      buffer_size = (unsigned short)atoi(optarg);
+      break;
+
+    case 'q':
+      quiet = 1;
+      break;
+
+    case 'h':
+    default:
+      usage();
+      retval = EXIT_SUCCESS;
+      goto exit;
+    }
+  }
+
+  /*M
+    Initialize the ring buffer.
+  **/
+  fec_rb_init(buffer_size);
+
+  if (address == NULL) {
+#ifdef WITH_IPV6
+    address = strdup(""ff02::4"");
+#else
+    address = strdup(""0.0.0.0"");
+#endif /* WITH_IPV6 */
+  }
+  
+  /*M
+    Create the receiving socket.
+  **/
+  int sock;
+#ifdef WITH_IPV6
+  sock = net_udp6_recv_socket(address, port);
+#else
+  sock = net_udp4_recv_socket(address, port);  
+#endif /* WITH_IPV6 */
+  if (sock < 0) {
+    fprintf(stderr, ""Could not open socket\n"");
+    retval = EXIT_FAILURE;
+    goto exit;
+  }
+
+  if (!pob_mainloop(sock, quiet))
+    retval = EXIT_FAILURE;
+
+  if (close(sock) < 0)
+    perror(""close"");
+  
+ exit:
+  fec_rb_destroy();
+  
+  if (address != NULL)
+    free(address);
+
+  return retval;
+}",TRUE,CWE_469
+96,96,96_vdisc.c,"MXScanDir(char const *sockname,
+	  char const *qid,
+	  char const *dir)
+{
+    char cmd[SMALLBUF];
+    char ans[SMALLBUF];
+    int len;
+
+    if (!qid || !*qid) {
+	qid = ""NOQUEUE"";
+    }
+
+    if (percent_encode_command(1, cmd, sizeof(cmd), ""scan"", qid, dir, NULL) < 0) {
+	return MD_TEMPFAIL;
+    }
+
+    if (MXCommand(sockname, cmd, ans, SMALLBUF-1) < 0) return MD_TEMPFAIL;
+
+    if (!strcmp(ans, ""ok\n"")) return 0;
+
+    len = strlen(ans);
+    if (len > 0 && ans[len-1] == '\n') ans[len-1] = 0;
+    syslog(LOG_ERR, ""Error from multiplexor: %s"", ans);
+    return MD_TEMPFAIL;
+}",TRUE,CWE_469
+97,97,97_vdisc.c,"flickcurl_build_sizes(flickcurl* fc, xmlXPathContextPtr xpathCtx,
+                      const xmlChar* xpathExpr, int* size_count_p)
+{
+  flickcurl_size** sizes = NULL;
+  int nodes_count;
+  int size_count;
+  int i;
+  xmlXPathObjectPtr xpathObj = NULL;
+  xmlNodeSetPtr nodes;
+  
+  xpathObj = xmlXPathEvalExpression(xpathExpr, xpathCtx);
+  if(!xpathObj) {
+    flickcurl_error(fc, ""Unable to evaluate XPath expression \""%s\"""", 
+                    xpathExpr);
+    fc->failed = 1;
+    goto tidy;
+  }
+  
+  nodes = xpathObj->nodesetval;
+  /* This is a max size - it can include nodes that are CDATA */
+  nodes_count = xmlXPathNodeSetGetLength(nodes);
+  sizes = (flickcurl_size**)calloc(sizeof(flickcurl_size*), nodes_count+1);
+  
+  for(i = 0, size_count = 0; i < nodes_count; i++) {
+    xmlNodePtr node = nodes->nodeTab[i];
+    xmlAttr* attr;
+    flickcurl_size* s;
+    
+    if(node->type != XML_ELEMENT_NODE) {
+      flickcurl_error(fc, ""Got unexpected node type %d"", node->type);
+      fc->failed = 1;
+      break;
+    }
+    
+    s = (flickcurl_size*)calloc(sizeof(flickcurl_size), 1);
+    
+    for(attr = node->properties; attr; attr = attr->next) {
+      size_t attr_len = strlen((const char*)attr->children->content);
+      const char *attr_name = (const char*)attr->name;
+      char *attr_value;
+
+      attr_value = (char*)malloc(attr_len + 1);
+      memcpy(attr_value, attr->children->content, attr_len + 1);
+      
+      if(!strcmp(attr_name, ""label""))
+        s->label = attr_value;
+      else if(!strcmp(attr_name, ""width"")) {
+        s->width = atoi(attr_value);
+        free(attr_value);
+      } else if(!strcmp(attr_name, ""height"")) {
+        s->height = atoi(attr_value);
+        free(attr_value);
+      } else if(!strcmp(attr_name, ""source"")) {
+        s->source = attr_value;
+      } else if(!strcmp(attr_name, ""url"")) {
+        s->url = attr_value;
+      } else if(!strcmp(attr_name, ""media"")) {
+        s->media = attr_value;
+      } else
+        free(attr_value);
+    }
+
+#if FLICKCURL_DEBUG > 1
+    fprintf(stderr, ""size: label %s width %d height %d  source %s url %s\n"",
+            s->label, s->width, s->height, s->source, s->url);
+#endif
+    
+    sizes[size_count++] = s;
+  } /* for nodes */
+
+  if(size_count_p)
+    *size_count_p = size_count;
+  
+ tidy:
+  if(xpathObj)
+    xmlXPathFreeObject(xpathObj);
+
+  return sizes;
+}",FALSE,CWE_469
+98,98,98_vdisc.c,"check_host(krb5_context context, const char *path, char *data)
+{
+    int ret;
+    char hostname[128];
+    const char *p = data;
+    struct addrinfo hints;
+    char service[32];
+    int defport;
+    struct addrinfo *ai;
+
+    hints.ai_flags = 0;
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = 0;
+    hints.ai_protocol = 0;
+
+    hints.ai_addrlen = 0;
+    hints.ai_canonname = NULL;
+    hints.ai_addr = NULL;
+    hints.ai_next = NULL;
+
+    /* XXX data could be a list of hosts that this code can't handle */
+    /* XXX copied from krbhst.c */
+    if(strncmp(p, ""http://"", 7) == 0){
+        p += 7;
+	hints.ai_socktype = SOCK_STREAM;
+	strlcpy(service, ""http"", sizeof(service));
+	defport = 80;
+    } else if(strncmp(p, ""http/"", 5) == 0) {
+        p += 5;
+	hints.ai_socktype = SOCK_STREAM;
+	strlcpy(service, ""http"", sizeof(service));
+	defport = 80;
+    }else if(strncmp(p, ""tcp/"", 4) == 0){
+        p += 4;
+	hints.ai_socktype = SOCK_STREAM;
+	strlcpy(service, ""kerberos"", sizeof(service));
+	defport = 88;
+    } else if(strncmp(p, ""udp/"", 4) == 0) {
+        p += 4;
+	hints.ai_socktype = SOCK_DGRAM;
+	strlcpy(service, ""kerberos"", sizeof(service));
+	defport = 88;
+    } else {
+	hints.ai_socktype = SOCK_DGRAM;
+	strlcpy(service, ""kerberos"", sizeof(service));
+	defport = 88;
+    }
+    if(strsep_copy(&p, "":"", hostname, sizeof(hostname)) < 0) {
+	return 1;
+    }
+    hostname[strcspn(hostname, ""/"")] = '\0';
+    if(p != NULL) {
+	char *end;
+	int tmp = strtol(p, &end, 0);
+	if(end == p) {
+	    krb5_warnx(context, ""%s: failed to parse port number in %s"",
+		       path, data);
+	    return 1;
+	}
+	defport = tmp;
+	snprintf(service, sizeof(service), ""%u"", defport);
+    }
+    ret = getaddrinfo(hostname, service, &hints, &ai);
+    if(ret == EAI_SERVICE && !isdigit((unsigned char)service[0])) {
+	snprintf(service, sizeof(service), ""%u"", defport);
+	ret = getaddrinfo(hostname, service, &hints, &ai);
+    }
+    if(ret != 0) {
+	krb5_warnx(context, ""%s: %s (%s)"", path, gai_strerror(ret), hostname);
+	return 1;
+    }
+    return 0;
+}",TRUE,CWE_469
+99,99,99_vdisc.c,"ape_read_tag (Tuple * tuple, VFSFile * handle)
+{
+    GList * list = ape_read_items (handle), * node;
+
+    for (node = list; node != NULL; node = node->next)
+    {
+        char * key = ((ValuePair *) node->data)->key;
+        char * value = ((ValuePair *) node->data)->value;
+
+        if (! strcmp (key, ""Artist""))
+            tuple_set_str (tuple, FIELD_ARTIST, NULL, value);
+        else if (! strcmp (key, ""Title""))
+            tuple_set_str (tuple, FIELD_TITLE, NULL, value);
+        else if (! strcmp (key, ""Album""))
+            tuple_set_str (tuple, FIELD_ALBUM, NULL, value);
+        else if (! strcmp (key, ""Comment""))
+            tuple_set_str (tuple, FIELD_COMMENT, NULL, value);
+        else if (! strcmp (key, ""Genre""))
+            tuple_set_str (tuple, FIELD_GENRE, NULL, value);
+        else if (! strcmp (key, ""Track""))
+            tuple_set_int (tuple, FIELD_TRACK_NUMBER, NULL, atoi (value));
+        else if (! strcmp (key, ""Year""))
+            tuple_set_int (tuple, FIELD_YEAR, NULL, atoi (value));
+        else if (! g_ascii_strcasecmp (key, ""REPLAYGAIN_TRACK_GAIN""))
+            set_gain_info (tuple, FIELD_GAIN_TRACK_GAIN, FIELD_GAIN_GAIN_UNIT,
+             value);
+        else if (! g_ascii_strcasecmp (key, ""REPLAYGAIN_TRACK_PEAK""))
+            set_gain_info (tuple, FIELD_GAIN_TRACK_PEAK, FIELD_GAIN_PEAK_UNIT,
+             value);
+        else if (! g_ascii_strcasecmp (key, ""REPLAYGAIN_ALBUM_GAIN""))
+            set_gain_info (tuple, FIELD_GAIN_ALBUM_GAIN, FIELD_GAIN_GAIN_UNIT,
+             value);
+        else if (! g_ascii_strcasecmp (key, ""REPLAYGAIN_ALBUM_PEAK""))
+            set_gain_info (tuple, FIELD_GAIN_ALBUM_PEAK, FIELD_GAIN_PEAK_UNIT,
+             value);
+    }
+
+    free_tag_list (list);
+    return TRUE;
+}",TRUE,CWE_469
+100,100,100_vdisc.c,"save_stemming_en()
+{
+	gchar filename[512];
+	xmlDoc *doc;
+	xmlNode *xending;
+	xmlNode *xentry;
+
+
+	gchar *pattern;
+	gchar *normal;
+
+	GtkTreeIter  iter;
+
+	LOG(LOG_DEBUG, ""IN : save_stemming_en()"");
+
+	sprintf(filename, ""%s%s%s"", user_dir, DIR_DELIMITER, FILENAME_STEMMING_EN);
+
+	doc = xml_doc_new();
+	doc->encoding = strdup(""euc-jp"");
+	doc->version = strdup(""1.0"");
+
+	xending = xml_add_child(doc->root, ""endinglist"", NULL);
+
+
+	if(gtk_tree_model_get_iter_first(GTK_TREE_MODEL(stemming_en_store), &iter) == TRUE){
+		do { 
+			gtk_tree_model_get(GTK_TREE_MODEL(stemming_en_store), 
+					   &iter,
+					   STEMMING_PATTERN_COLUMN, &pattern,
+					   STEMMING_NORMAL_COLUMN, &normal,
+					   -1);
+
+			xentry = xml_add_child(xending, ""entry"", NULL);
+			xml_add_child(xentry, ""inflected"", pattern);
+			xml_add_child(xentry, ""normal"", normal);
+
+			g_free (pattern);
+			g_free (normal);
+
+	       } while (gtk_tree_model_iter_next(GTK_TREE_MODEL(stemming_en_store), &iter) == TRUE);
+	}
+
+	xml_save_file(filename, doc);
+
+	xml_destroy_document(doc);
+
+	LOG(LOG_DEBUG, ""OUT : save_stemming_en()"");
+
+	return(TRUE);
+
+}",FALSE,CWE_469

@@ -1,0 +1,4193 @@
+,testCase_ID,filename,code,bug,type
+0,0,0_vdisc.c,"chirp_multi_lookup(const char *volume, const char *path, struct file_info *info, time_t stoptime)
+{
+	int result, fields;
+	char *buffer;
+
+	if(!chirp_multi_lpath(volume, path, info->lpath, stoptime))
+		return 0;
+
+	result = chirp_reli_getfile_buffer(current_volume->host, info->lpath, &buffer, stoptime);
+	if(result <= 0)
+		return 0;
+
+	fields = sscanf(buffer, ""%s %s"", info->rhost, info->rpath);
+
+	free(buffer);
+
+	debug(D_MULTI, ""lookup: /multi/%s%s at /chirp/%s/%s"", volume, path, info->rhost, info->rpath);
+
+	if(fields == 2) {
+		return 1;
+	} else {
+		errno = EIO;
+		return 0;
+	}
+}",TRUE,CWE_OTHERS
+1,1,1_vdisc.c,"update_header_entry(t_abootimg* img, char* cmd)
+{
+  char *p;
+  char *token;
+  char *endtoken;
+  char *value;
+
+  p = strchr(cmd, '\n');
+  if (p)
+    *p  = '\0';
+
+  p = cmd;
+  p += strspn(p, "" \t"");
+  token = p;
+  
+  p += strcspn(p, "" =\t"");
+  endtoken = p;
+  p += strspn(p, "" \t"");
+
+  if (*p++ != '=')
+    goto err;
+
+  p += strspn(p, "" \t"");
+  value = p;
+
+  *endtoken = '\0';
+
+  unsigned valuenum = strtoul(value, NULL, 0);
+  
+  if (!strcmp(token, ""cmdline"")) {
+    unsigned len = strlen(value);
+    if (len >= BOOT_ARGS_SIZE) 
+      abort_printf(""cmdline length (%d) is too long (max %d)"", len, BOOT_ARGS_SIZE-1);
+    memset(img->header.cmdline, 0, BOOT_ARGS_SIZE);
+    strcpy(img->header.cmdline, value);
+  }
+  else if (!strncmp(token, ""name"", 4)) {
+    strncpy(img->header.name, value, BOOT_NAME_SIZE);
+    img->header.name[BOOT_NAME_SIZE-1] = '\0';
+  }
+  else if (!strncmp(token, ""bootsize"", 8)) {
+    if (img->is_blkdev && (img->size != valuenum))
+      abort_printf(""%s: cannot change Boot Image size for a block device\n"", img->fname);
+    img->size = valuenum;
+  }
+  else if (!strncmp(token, ""pagesize"", 8)) {
+    img->header.page_size = valuenum;
+  }
+  else if (!strncmp(token, ""kerneladdr"", 10)) {
+    img->header.kernel_addr = valuenum;
+  }
+  else if (!strncmp(token, ""ramdiskaddr"", 11)) {
+    img->header.ramdisk_addr = valuenum;
+  }
+  else if (!strncmp(token, ""secondaddr"", 10)) {
+    img->header.second_addr = valuenum;
+  }
+  else if (!strncmp(token, ""tagsaddr"", 8)) {
+    img->header.tags_addr = valuenum;
+  }
+  else
+    goto err;
+  return;
+
+err:
+  abort_printf(""%s: bad config entry\n"", token);
+}",TRUE,CWE_OTHERS
+2,2,2_vdisc.c,"_parse(VisuConfigFileEntry *entry, gchar **tokens, guint iLine,
+                       VisuData *dataObj, VisuGlView *view, GError **error)
+{
+  gboolean ret;
+  static guint sig = 0;
+
+  if (!sig)
+    sig = g_signal_lookup(""entryParsed"", VISU_TYPE_OBJECT);
+
+  ret = TRUE;
+  if (tokens)
+    {
+      if (entry->read)
+        ret = entry->read(entry, tokens, entry->nbLines, iLine, dataObj, view, error);
+      g_strfreev(tokens);
+      if (ret)
+        g_signal_emit(VISU_OBJECT_INSTANCE, sig, entry->kquark, entry->key);
+    }
+  return ret;
+}",TRUE,CWE_OTHERS
+3,3,3_vdisc.c,"CDE_create_path_symlink_dirs() {
+  char *p;
+  int m, n;
+  struct stat st;
+  char tmp_buf[MAXPATHLEN];
+
+  for (p = getenv(""PATH""); p && *p; p += m) {
+    if (strchr(p, ':')) {
+      n = strchr(p, ':') - p;
+      m = n + 1;
+    }
+    else {
+      m = n = strlen(p);
+    }
+
+    strncpy(tmp_buf, p, n);
+    tmp_buf[n] = '\0';
+
+    // this will NOT follow the symlink ...
+    if (lstat(tmp_buf, &st) == 0) {
+      char is_symlink = S_ISLNK(st.st_mode);
+      if (is_symlink) {
+        char* tmp = strdup(tmp_buf);
+        copy_file_into_cde_root(tmp, cde_starting_pwd);
+        free(tmp);
+      }
+    }
+  }
+
+  // also, this is hacky, but also check /usr/lib to see
+  // whether it's a symlink.  ld-linux.so.2 will likely try to look
+  // for libraries in those places, but they're not in any convenient
+  // environment variable
+  //
+  // note that the other 2 directories that ld-linux.so.2 usually
+  // tries to look for libs in, /bin and /lib, will be taken care of by
+  // CDE_create_toplevel_symlink_dirs()
+  strcpy(tmp_buf, ""/usr/lib"");
+  // this will NOT follow the symlink ...
+  if (lstat(tmp_buf, &st) == 0) {
+    char is_symlink = S_ISLNK(st.st_mode);
+    if (is_symlink) {
+      char* tmp = strdup(tmp_buf);
+      copy_file_into_cde_root(tmp, cde_starting_pwd);
+      free(tmp);
+    }
+  }
+}",TRUE,CWE_OTHERS
+4,4,4_vdisc.c,"parse_forward(const char *in, struct survey_record *out)
+{
+    char dummy1;
+    int status;
+
+    if (out->haslabel == YES) {
+	status =
+	    sscanf(in, FORMAT_1, out->label, out->n_s, &out->deg, &dummy1,
+		   &out->min, &dummy1, &out->sec, out->e_w, &out->dist);
+    }
+    else {
+	status = sscanf(in, FORMAT_2, out->n_s, &out->deg, &dummy1,
+			&out->min, &dummy1, &out->sec, out->e_w, &out->dist);
+    }
+
+    if ((status != 9 && out->haslabel == YES) ||
+	(status != 8 && out->haslabel == NO))
+	return 0;
+
+    out->dd = DMS2DD(out->deg, out->min, out->sec);
+    if (out->n_s[0] == 'N') {
+	if (out->e_w[0] == 'E') {
+	    out->dd = 90.0 - out->dd;
+	}
+	else if (out->e_w[0] == 'W') {
+	    out->dd = 90.0 + out->dd;
+	}
+	else {
+	    return 0;
+	}
+    }
+    else if (out->n_s[0] == 'S') {
+	if (out->e_w[0] == 'E') {
+	    out->dd = 270 + out->dd;
+	}
+	else if (out->e_w[0] == 'W') {
+	    out->dd = 270 - out->dd;
+	}
+	else {
+	    return 0;
+	}
+    }
+    else {
+	return 0;
+    }
+    out->rads = DEG2RAD(out->dd);
+    out->x += out->dist * cos(out->rads);
+    out->y += out->dist * sin(out->rads);
+
+    return status;
+}",TRUE,CWE_OTHERS
+5,5,5_vdisc.c,"multi_options_update_mission(netgame_info *ng, int campaign_mode)
+{
+	ubyte data[MAX_PACKET_SIZE],code;
+	int packet_size = 0;
+
+	// should be a host on a standalone
+	Assert((Net_player->flags & NETINFO_FLAG_GAME_HOST) && !(Net_player->flags & NETINFO_FLAG_AM_MASTER));
+
+	// build the header
+	BUILD_HEADER(OPTIONS_UPDATE);
+	code = MULTI_OPTION_MISSION;
+	ADD_DATA(code);
+
+	// type (coop or team vs. team)
+	ADD_INT(ng->type_flags);
+
+	// respawns
+	ADD_UINT(ng->respawn);
+
+	// add the mission/campaign filename
+	code = (ubyte)campaign_mode;
+	ADD_DATA(code);
+	if(campaign_mode){
+		ADD_STRING(ng->campaign_name);
+	} else {
+		ADD_STRING(ng->mission_name);
+	}
+
+	// send to the server	
+	multi_io_send_reliable(Net_player, data, packet_size);
+}",FALSE,CWE_OTHERS
+6,6,6_vdisc.c,"xen_hyper_alloc_vcpu_context_space(struct xen_hyper_vcpu_context_array *vcca, int vcpus)
+{
+	if (!vcpus) {
+		if (vcca->context_array != NULL) {
+			free(vcca->context_array);
+			vcca->context_array = NULL;
+		}
+		vcca->context_array_cnt = vcpus;
+	} else if (vcca->context_array == NULL) {
+		if (!(vcca->context_array =
+			malloc(vcpus * sizeof(struct xen_hyper_vcpu_context)))) {
+			error(FATAL, ""cannot malloc context array (%d vcpus)."",
+				vcpus);
+		}
+		vcca->context_array_cnt = vcpus;
+	} else if (vcpus > vcca->context_array_cnt) {
+		if (!(vcca->context_array =
+			realloc(vcca->context_array,
+				vcpus * sizeof(struct xen_hyper_vcpu_context_array)))) {
+			error(FATAL, ""cannot realloc context array (%d vcpus)."",
+				vcpus);
+		}
+		vcca->context_array_cnt = vcpus;
+	}
+	vcca->context_array_valid = vcpus;
+	BZERO(vcca->context_array, vcpus * sizeof(struct xen_hyper_vcpu_context));
+}",FALSE,CWE_OTHERS
+7,7,7_vdisc.c,"ui_getmenuitems(const char *name, int *width1,
+					    int *height1, int *n1,
+					    int horizontal)
+{
+    const menuitem *item;
+    int nseparators = 0;
+    int i;
+    int width = 0;
+    int n;
+    struct ui_menuitems *items;
+    for (n = 0; (item = menu_item(name, n)) != NULL; n++)
+	if (item->type == MENU_SEPARATOR)
+	    nseparators++;
+    n -= nseparators;
+    *n1 = n;
+    *height1 = n * xtextheight(uih->image, uih->font) + nseparators * SEPARATORSIZE;
+    items =
+	(struct ui_menuitems *) malloc(n * sizeof(struct ui_menuitems));
+    nseparators = 0;
+    for (i = 0; i < n; i++) {
+	int w;
+	int sbehind = -1;
+	nseparators--;
+	do {
+	    nseparators++;
+	    sbehind++;
+	    item = menu_item(name, i + nseparators);
+	}
+	while (item->type == MENU_SEPARATOR);
+	items[i].item = item;
+	items[i].separator = sbehind;
+	if (horizontal) {
+	    w = HMENUWIDTH(items[i].item->name);
+	    if (items[i].item->key) {
+		char c[10];
+		sprintf(c, ""(%s)"", items[i].item->key);
+		w += xtextwidth(uih->image, uih->font, c);
+	    }
+	} else {
+	    w = MENUWIDTH(items[i].item->name);
+	    if (items[i].item->key) {
+		char c[10];
+		sprintf(c, "" %s "", items[i].item->key);
+		w += xtextwidth(uih->image, uih->font, c);
+	    }
+	}
+	items[i].width = w;
+	items[i].height = xtextheight(uih->image, uih->font) + 1;
+	if (w > width)
+	    width = w;
+    }
+    *width1 = width;
+    return (items);
+}",FALSE,CWE_OTHERS
+8,8,8_vdisc.c,"main (int argc, char **argv)
+{
+	struct event_base *base = event_base_new();
+	struct evhttp *http = evhttp_new(base);
+	int c;
+
+	unsigned short port = 8080;
+	while ((c = getopt(argc, argv, ""p:l:"")) != -1) {
+		switch (c) {
+		case 'p':
+			port = atoi(optarg);
+			break;
+		case 'l':
+			content_len = atol(optarg);
+			if (content_len == 0) {
+				fprintf(stderr, ""Bad content length\n"");
+				exit(1);
+			}
+			break;
+		default:
+			fprintf(stderr, ""Illegal argument \""%c\""\n"", c);
+			exit(1);
+		}
+	}
+
+#ifndef WIN32
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+		return (1);
+#endif
+
+	content = malloc(content_len);
+	if (content == NULL) {
+		fprintf(stderr, ""Cannot allocate content\n"");
+		exit(1);
+	} else {
+		int i = 0;
+		for (i = 0; i < content_len; ++i)
+			content[i] = (i & 255);
+	}
+
+	evhttp_set_cb(http, ""/ind"", http_basic_cb, NULL);
+	fprintf(stderr, ""/ind - basic content (memory copy)\n"");
+
+#ifdef _EVENT2_EVENT_H_
+	evhttp_set_cb(http, ""/ref"", http_ref_cb, NULL);
+	fprintf(stderr, ""/ref - basic content (reference)\n"");
+#endif
+
+	fprintf(stderr, ""Serving %d bytes on port %d\n"",
+	    (int)content_len, port);
+
+	evhttp_bind_socket(http, ""0.0.0.0"", port);
+
+	event_base_dispatch(base);
+
+	/* NOTREACHED */
+	return (0);
+}",FALSE,CWE_OTHERS
+9,9,9_vdisc.c,"init_repo (const char *filename)
+{
+  char *buf;
+
+  if (! flag_use_repository)
+    return;
+
+  gcc_obstack_init (&temporary_obstack);
+
+  open_repo_file (filename);
+
+  if (repo_file == 0)
+    return;
+
+  while ((buf = afgets (repo_file)))
+    {
+      switch (buf[0])
+	{
+	case 'A':
+	  old_args = ggc_strdup (buf + 2);
+	  break;
+	case 'D':
+	  old_dir = ggc_strdup (buf + 2);
+	  break;
+	case 'M':
+	  old_main = ggc_strdup (buf + 2);
+	  break;
+	case 'C':
+	case 'O':
+	  {
+	    tree id = get_identifier (buf + 2);
+	    tree orig;
+
+	    if (buf[0] == 'C')
+	      {
+		IDENTIFIER_REPO_CHOSEN (id) = 1;
+		orig = integer_one_node;
+	      }
+	    else
+	      orig = NULL_TREE;
+
+	    original_repo = tree_cons (orig, id, original_repo);
+	  }
+	  break;
+	default:
+	  error (""mysterious repository information in %s"", repo_name);
+	}
+      obstack_free (&temporary_obstack, buf);
+    }
+}",TRUE,CWE_OTHERS
+10,10,10_vdisc.c,"get_segment(FILE *fp, xasm_segment *seg)
+{
+    seg->size = get_3(fp);
+    if (seg->size > 0) {
+        seg->bytes = (unsigned char *)malloc(seg->size);
+        if (seg->bytes != NULL) {
+            fread(seg->bytes, 1, seg->size, fp);
+        }
+    } else {
+        seg->bytes = NULL;
+    }
+}",TRUE,CWE_OTHERS
+11,11,11_vdisc.c,"NSS_GetError ( void)
+{
+  error_stack *es = error_get_my_stack();
+
+  if( (error_stack *)NULL == es ) {
+    return NSS_ERROR_NO_MEMORY; /* Good guess! */
+  }
+
+  if( 0 == es->header.count ) {
+    return 0;
+  }
+
+  return es->stack[ es->header.count-1 ];
+}",TRUE,CWE_OTHERS
+12,12,12_vdisc.c,"runner_chio (runner_t *runner, int fd)
+{
+        GF_ASSERT (fd > 0 && fd < 3);
+
+        return runner->chio[fd];
+}",TRUE,CWE_OTHERS
+13,13,13_vdisc.c,"DrealInitializeErrorMessage( Debug )
+
+  char Debug;
+{
+  rdsbegin();
+
+  DrealNormalMode = ! Debug;
+
+  if ( DrealNormalMode )
+  {
+    sprintf( DrealOutFileName, ""/tmp/%s_out_%d"", PACKAGE, getpid() ); 
+  }
+
+  sprintf( DrealErrFileName, ""/tmp/%s_err_%d"", PACKAGE, getpid() );
+  sprintf( DrealAllFileName, ""/tmp/%s_all_%d"", PACKAGE, getpid() );
+
+  DrealStreamErr = freopen( DrealErrFileName, ""w+"", stderr);
+  DrealStreamAll = fopen  ( DrealAllFileName, ""w+""        );
+
+  if ( DrealNormalMode )
+  {
+    DrealStreamOut = freopen( DrealOutFileName, ""w+"", stdout);
+  }
+  else
+  {
+    DrealStreamOut = DrealStreamErr;
+  }
+
+  if ( ( DrealStreamAll == (FILE *)NULL ) ||
+       ( DrealStreamOut == (FILE *)NULL ) ||
+       ( DrealStreamErr == (FILE *)NULL ) )
+  {
+    fprintf( stdout, ""Grm: Unable to open trace window !\n"");
+    exit( 1 );
+  }
+
+  if ( DrealNormalMode )
+  {
+    unlink( DrealOutFileName ); 
+  }
+
+  unlink( DrealErrFileName );
+
+  signal( SIGINT, DrealExitErrorMessage );
+
+  if ( ! Debug )
+  {
+    signal( SIGSEGV, DrealExitFatalError );
+    signal( SIGUSR1, DrealExitFatalError );
+    signal( SIGUSR2, DrealExitFatalError );
+  }
+
+  rdsend();
+}",TRUE,CWE_OTHERS
+14,14,14_vdisc.c,"__ecereMethod___ecereNameSpace__ecere__gui__controls__ListBox_FindString(struct __ecereNameSpace__ecere__com__Instance * this, char * searchedString)
+{
+struct __ecereNameSpace__ecere__gui__controls__ListBox * __ecerePointer___ecereNameSpace__ecere__gui__controls__ListBox = (struct __ecereNameSpace__ecere__gui__controls__ListBox *)(this ? (((char *)this) + __ecereClass___ecereNameSpace__ecere__gui__controls__ListBox->offset) : 0);
+struct __ecereNameSpace__ecere__com__Instance * field;
+unsigned int checkNextField = 0x1;
+int len = searchedString ? strlen(searchedString) : 0;
+
+for(field = __ecerePointer___ecereNameSpace__ecere__gui__controls__ListBox->fields.first; field; field = __ecereProp___ecereNameSpace__ecere__gui__controls__DataField_Get_next(field))
+{
+if(__ecereProp___ecereNameSpace__ecere__gui__controls__DataField_Get_dataType(field)->_vTbl[__ecereVMethodID_class_OnGetString])
+{
+struct __ecereNameSpace__ecere__com__Instance * row;
+
+for(row = __ecerePointer___ecereNameSpace__ecere__gui__controls__ListBox->rows.first; row; row = __ecereMethod___ecereNameSpace__ecere__gui__controls__DataRow_GetNextRow(row))
+{
+if(!((struct __ecereNameSpace__ecere__gui__controls__DataRow *)(((char *)row + __ecereClass___ecereNameSpace__ecere__gui__controls__DataRow->offset)))->noneRow)
+{
+void * data = (void * )__ecereMethod___ecereNameSpace__ecere__gui__controls__DataRow_GetData(row, field);
+char tempString[1024] = """";
+unsigned int needClass = 0x0;
+char * string = ((char * (*)(void *, void *, char *, void *, unsigned int *))(void *)__ecereProp___ecereNameSpace__ecere__gui__controls__DataField_Get_dataType(field)->_vTbl[__ecereVMethodID_class_OnGetString])(__ecereProp___ecereNameSpace__ecere__gui__controls__DataField_Get_dataType(field), data, tempString, (((void *)0)), &needClass);
+
+if(string && string[0])
+checkNextField = 0x0;
+if(string && string[0] && !strcmp(string, searchedString))
+return row;
+}
+}
+}
+if(!checkNextField)
+break;
+}
+return (((void *)0));
+}",TRUE,CWE_OTHERS
+15,15,15_vdisc.c,"vpnc_getline(char **lineptr, size_t *n, FILE *stream)
+{
+	char *buf;
+	size_t buflen, llen = 0;
+	int c, buf_allocated = 0;
+
+	if (lineptr == NULL || n == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	buf = *lineptr;
+	buflen = *n;
+	if (buf == NULL || buflen == 0) {
+		buflen = GETLINE_MAX_BUFLEN;
+		buf = (char *)malloc(buflen);
+		if (buf == NULL)
+			return -1;
+		buf_allocated = 1;
+	}
+
+	/* Read a line from the input */
+	while (llen < buflen - 1) {
+		c = fgetc(stream);
+		if (c == EOF || feof(stream)) {
+			if (llen == 0)
+				goto eof_or_ceot;
+			else
+				break;
+		}
+		if (llen == 0 && c == CEOT)
+			goto eof_or_ceot;
+		if (c == '\n' || c == '\r')
+			break;
+		buf[llen++] = (char) c;
+	}
+
+	buf[llen] = 0;
+	if (buf_allocated) {
+		*lineptr = buf;
+		*n = buflen;
+	}
+	return llen;
+
+eof_or_ceot:
+	if (buf_allocated)
+		free(buf);
+	return -1;
+}",FALSE,CWE_OTHERS
+16,16,16_vdisc.c,"antichess_movegen_line (byte *pos, byte **movp, int player,
+		int x, int y, int incx, int incy)
+{
+	int oldx = x, oldy = y;
+	int capture = 0, val;
+	do
+	{
+		if (capture) return 1;
+		x += incx;
+		y += incy;
+		val = pos [y * board_heit + x];
+		if (ISINBOARD (x, y) && oppcolor (pos, oldx, oldy, x, y))
+			capture = 1;
+	} while (antichess_movegen_square (pos, movp, player, oldx, oldy, x, y));
+	return 0;
+}",FALSE,CWE_OTHERS
+17,17,17_vdisc.c,"countgetchar(void)
+{
+  int c=getchar();
+  if(cgcpushback) {cgcpushback=0; return c;}
+  cgccol++;
+  if(c=='\n') {cgccol=0; cgcrow++;}
+  return c;
+}",FALSE,CWE_OTHERS
+18,18,18_vdisc.c,"touchDir(const char *dir) {
+	pid_t pid;
+	int e, status;
+
+	pid = fork();
+	if (pid == 0) {
+		close(terminationPipe[0]);
+		close(terminationPipe[1]);
+		if (chdir(dir) == -1) {
+			e = errno;
+			fprintf(stderr, ERROR_PREFIX
+				"": cannot change working directory to %s: %s (errno %d)\n"",
+				dir, strerror(e), e);
+			_exit(1);
+		}
+		execlp(""/bin/sh"", ""/bin/sh"", ""-c"",
+			""find \""$1\"" | xargs touch"", ""/bin/sh"", ""."",
+			(const char * const) 0);
+		e = errno;
+		fprintf(stderr, ERROR_PREFIX "": cannot execute /bin/sh: %s (errno %d)\n"",
+			strerror(e), e);
+		_exit(1);
+	} else if (pid == -1) {
+		e = errno;
+		fprintf(stderr, ERROR_PREFIX "": cannot fork: %s (errno %d)\n"",
+			strerror(e), e);
+		exit(1);
+	} else {
+		if (waitpid(pid, &status, 0) == -1) {
+			if (errno != ESRCH && errno != EPERM) {
+				fprintf(stderr, ERROR_PREFIX
+					"": unable to wait for shell command 'find %s | xargs touch'\n"",
+					dir);
+				exit(1);
+			}
+		} else if (WEXITSTATUS(status) != 0) {
+			fprintf(stderr, ERROR_PREFIX
+				"": shell command 'find %s | xargs touch' failed with exit status %d\n"",
+				dir, WEXITSTATUS(status));
+			exit(1);
+		}
+	}
+}",FALSE,CWE_OTHERS
+19,19,19_vdisc.c,"UpdateRNG(void)
+{
+    char           randbuf[RAND_BUF_SIZE];
+    int            fd,  count;
+    int            c;
+    int            rv		= 0;
+#ifdef XP_UNIX
+    cc_t           orig_cc_min;
+    cc_t           orig_cc_time;
+    tcflag_t       orig_lflag;
+    struct termios tio;
+#endif
+    char meter[] = { 
+      ""\r|                                                            |"" };
+
+#define FPS fprintf(stderr, 
+    FPS ""\n"");
+    FPS ""A random seed must be generated that will be used in the\n"");
+    FPS ""creation of your key.  One of the easiest ways to create a\n"");
+    FPS ""random seed is to use the timing of keystrokes on a keyboard.\n"");
+    FPS ""\n"");
+    FPS ""To begin, type keys on the keyboard until this progress meter\n"");
+    FPS ""is full.  DO NOT USE THE AUTOREPEAT FUNCTION ON YOUR KEYBOARD!\n"");
+    FPS ""\n"");
+    FPS ""\n"");
+    FPS ""Continue typing until the progress meter is full:\n\n"");
+    FPS ""%s"", meter);
+    FPS ""\r|"");
+
+    /* turn off echo on stdin & return on 1 char instead of NL */
+    fd = fileno(stdin);
+
+#if defined(XP_UNIX)
+    tcgetattr(fd, &tio);
+    orig_lflag = tio.c_lflag;
+    orig_cc_min = tio.c_cc[VMIN];
+    orig_cc_time = tio.c_cc[VTIME];
+    tio.c_lflag &= ~ECHO;
+    tio.c_lflag &= ~ICANON;
+    tio.c_cc[VMIN] = 1;
+    tio.c_cc[VTIME] = 0;
+    tcsetattr(fd, TCSAFLUSH, &tio);
+#endif
+
+    /* Get random noise from keyboard strokes */
+    count = 0;
+    while (count < sizeof randbuf) {
+#if defined(XP_UNIX)
+	c = getc(stdin);
+#else
+	c = getch();
+#endif
+	if (c == EOF) {
+	    rv = -1;
+	    break;
+	}
+	randbuf[count] = c;
+	if (count == 0 || c != randbuf[count-1]) {
+	    count++;
+	    FPS ""*"");
+	}
+    }
+    PK11_RandomUpdate(randbuf, sizeof randbuf);
+    memset(randbuf, 0, sizeof randbuf);
+
+    FPS ""\n\n"");
+    FPS ""Finished.  Press enter to continue: "");
+    while ((c = getc(stdin)) != '\n' && c != EOF)
+	;
+    if (c == EOF) 
+	rv = -1;
+    FPS ""\n"");
+
+#undef FPS
+
+#if defined(XP_UNIX)
+    /* set back termio the way it was */
+    tio.c_lflag = orig_lflag;
+    tio.c_cc[VMIN] = orig_cc_min;
+    tio.c_cc[VTIME] = orig_cc_time;
+    tcsetattr(fd, TCSAFLUSH, &tio);
+#endif
+    return rv;
+}",TRUE,CWE_OTHERS
+20,20,20_vdisc.c,"mpd_song_feed(struct mpd_song *song, const struct mpd_pair *pair)
+{
+	enum mpd_tag_type tag_type;
+
+	assert(song != NULL);
+	assert(!song->finished);
+	assert(pair != NULL);
+	assert(pair->name != NULL);
+	assert(pair->value != NULL);
+
+	if (strcmp(pair->name, ""file"") == 0) {
+#ifndef NDEBUG
+		song->finished = true;
+#endif
+		return false;
+	}
+
+	if (*pair->value == 0)
+		return true;
+
+	tag_type = mpd_tag_name_parse(pair->name);
+	if (tag_type != MPD_TAG_UNKNOWN) {
+		mpd_song_add_tag(song, tag_type, pair->value);
+		return true;
+	}
+
+	if (strcmp(pair->name, ""Time"") == 0)
+		mpd_song_set_duration(song, atoi(pair->value));
+	else if (strcmp(pair->name, ""Range"") == 0)
+		mpd_song_parse_range(song, pair->value);
+	else if (strcmp(pair->name, ""Last-Modified"") == 0)
+		mpd_song_set_last_modified(song, iso8601_datetime_parse(pair->value));
+	else if (strcmp(pair->name, ""Pos"") == 0)
+		mpd_song_set_pos(song, atoi(pair->value));
+	else if (strcmp(pair->name, ""Id"") == 0)
+		mpd_song_set_id(song, atoi(pair->value));
+
+	return true;
+}",TRUE,CWE_OTHERS
+21,21,21_vdisc.c,"gedit_document_input_stream_read (GInputStream  *stream,
+				  void          *buffer,
+				  gsize          count,
+				  GCancellable  *cancellable,
+				  GError       **error)
+{
+	GeditDocumentInputStream *dstream;
+	GtkTextIter iter;
+	gssize space_left, read, n;
+
+	dstream = GEDIT_DOCUMENT_INPUT_STREAM (stream);
+
+	if (count < 6)
+	{
+		g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NO_SPACE,
+				     ""Not enougth space in destination"");
+		return -1;
+	}
+
+	if (g_cancellable_set_error_if_cancelled (cancellable, error))
+		return -1;
+
+	/* Initialize the mark to the first char in the text buffer */
+	if (!dstream->priv->is_initialized)
+	{
+		gtk_text_buffer_get_start_iter (dstream->priv->buffer, &iter);
+		dstream->priv->pos = gtk_text_buffer_create_mark (dstream->priv->buffer,
+								  NULL,
+								  &iter,
+								  FALSE);
+
+		dstream->priv->is_initialized = TRUE;
+	}
+
+	space_left = count;
+	read = 0;
+
+	do
+	{
+		n = read_line (dstream, (gchar *)buffer + read, space_left);
+		read += n;
+		space_left -= n;
+	} while (space_left > 0 && n != 0 && dstream->priv->bytes_partial == 0);
+
+	/* Make sure that non-empty files are always terminated with \n (see bug #95676).
+	 * Note that we strip the trailing \n when loading the file */
+	gtk_text_buffer_get_iter_at_mark (dstream->priv->buffer,
+					  &iter,
+					  dstream->priv->pos);
+
+	if (gtk_text_iter_is_end (&iter) &&
+	    !gtk_text_iter_is_start (&iter) &&
+	    dstream->priv->ensure_trailing_newline)
+	{
+		gssize newline_size;
+
+		newline_size = get_new_line_size (dstream);
+
+		if (space_left >= newline_size &&
+		    !dstream->priv->newline_added)
+		{
+			const gchar *newline;
+
+			newline = get_new_line (dstream);
+
+			memcpy ((gchar *)buffer + read, newline, newline_size);
+
+			read += newline_size;
+			dstream->priv->newline_added = TRUE;
+		}
+	}
+
+	return read;
+}",TRUE,CWE_OTHERS
+22,22,22_vdisc.c,"plD_polyline_tek(PLStream *pls, short *xa, short *ya, PLINT npts)
+{
+    PLINT i;
+    TekDev *dev = (TekDev *) pls->dev;
+    short x = xa[0], y = ya[0];
+
+    tek_graph(pls);
+
+/* If not continuation of previous line, begin a new one */
+
+    if ( x != dev->xold || y != dev->yold ) {
+	pls->bytecnt += fprintf(pls->OutFile, VECTOR_MODE);
+	tek_vector(pls, x, y);
+    }
+
+/* Now send following points to complete polyline draw */
+
+    for (i = 1; i < npts; i++) 
+	tek_vector(pls, xa[i], ya[i]);
+
+    dev->xold = xa[npts-1];
+    dev->yold = ya[npts-1];
+}",TRUE,CWE_OTHERS
+23,23,23_vdisc.c,"command_do(struct kmod_module *mod, const char *type,
+							const char *cmd)
+{
+	const char *modname = kmod_module_get_name(mod);
+	int err;
+
+	DBG(mod->ctx, ""%s %s\n"", type, cmd);
+
+	setenv(""MODPROBE_MODULE"", modname, 1);
+	err = system(cmd);
+	unsetenv(""MODPROBE_MODULE"");
+
+	if (err == -1 || WEXITSTATUS(err)) {
+		ERR(mod->ctx, ""Error running %s command for %s\n"",
+								type, modname);
+		if (err != -1)
+			err = -WEXITSTATUS(err);
+	}
+
+	return err;
+}",TRUE,CWE_OTHERS
+24,24,24_vdisc.c,"elm_store_free(Elm_Store *st)
+{
+   void (*item_free)(Elm_Store_Item *);
+   if (!EINA_MAGIC_CHECK(st, ELM_STORE_MAGIC)) return;
+   if (st->list_th)
+     {
+        ecore_thread_cancel(st->list_th);
+        st->list_th = NULL;
+     }
+   st->realized = eina_list_free(st->realized);
+   item_free = st->item.free;
+   while (st->items)
+     {
+        Elm_Store_Item *sti = (Elm_Store_Item *)st->items;
+        if (sti->eval_job)
+          {
+             ecore_job_del(sti->eval_job);
+             sti->eval_job = NULL;
+          }
+        if (sti->fetch_th)
+          {
+             ecore_thread_cancel(sti->fetch_th);
+             sti->fetch_th = NULL;
+          }
+        if (item_free) item_free(sti);
+        eina_lock_take(&sti->lock);
+        if (sti->data)
+          {
+             if (st->cb.unfetch.func)
+               st->cb.unfetch.func(st->cb.unfetch.data, sti);
+             sti->data = NULL;
+          }
+        eina_lock_release(&sti->lock);
+        eina_lock_free(&sti->lock);
+        free(sti);
+     }
+   if (st->genlist)
+     {
+        evas_object_event_callback_del_full(st->genlist, EVAS_CALLBACK_DEL, _store_genlist_del, st);
+        evas_object_smart_callback_del(st->genlist, ""realized"", _store_genlist_item_realized);
+        evas_object_smart_callback_del(st->genlist, ""unrealized"", _store_genlist_item_unrealized);
+        elm_genlist_clear(st->genlist);
+        st->genlist = NULL;
+     }
+   if (st->free) st->free(st);
+   free(st);
+}",TRUE,CWE_OTHERS
+25,25,25_vdisc.c,"esclen(const char *start, const char *p) {
+	size_t esc = 0;
+
+	while (p > start && *--p == (char)CTLESC) {
+		esc++;
+	}
+	return esc;
+}",TRUE,CWE_OTHERS
+26,26,26_vdisc.c,"readline(char usrbuf[])
+{
+  event_t event;
+  glk_request_line_event(glkMainWin, usrbuf, 255, 0);
+  /* FIXME: buffer size should be infallible: all existing calls use 256 or
+     80 character buffers, except parse which uses LISTLEN (currently 100)
+   */
+  do
+  {
+    glk_select(&event);
+    if (evtype_Arrange == event.type)
+      statusline();
+  } while (event.type != evtype_LineInput);
+  usrbuf[event.val1] = 0;
+  return TRUE;
+}",TRUE,CWE_OTHERS
+27,27,27_vdisc.c,"isl_reordering_dup(__isl_keep isl_reordering *r)
+{
+	int i;
+	isl_reordering *dup;
+
+	if (!r)
+		return NULL;
+
+	dup = isl_reordering_alloc(r->dim->ctx, r->len);
+	if (!dup)
+		return NULL;
+
+	dup->dim = isl_space_copy(r->dim);
+	if (!dup->dim)
+		return isl_reordering_free(dup);
+	for (i = 0; i < dup->len; ++i)
+		dup->pos[i] = r->pos[i];
+
+	return dup;
+}",FALSE,CWE_OTHERS
+28,28,28_vdisc.c,"_flGetFontInfoList(GLubyte *fontList /* ""fn1,fn2,fn3, ..."" */)
+{
+  FLfontStruct **list;
+  GLubyte *p, *p2;
+  int numFonts, i, c;
+
+  /* Count the number of fonts specified */
+  numFonts = 0;
+  for (p2 = p = fontList; (c = *p); p++)
+    if (c == ',') {
+      p2 = p;
+      numFonts++;
+    }
+
+  if (p != p2)
+    numFonts++;
+
+  /* Create a list of pointers to font info struct */
+  list = (FLfontStruct **) malloc((numFonts + 1) * sizeof(FLfontStruct *));
+  if (list) {
+    for (i = 0, p = fontList; *p; p++, i++) {
+      for (p2 = p++; (c = *p) && c != ','; p++)
+	;
+      *p = '\0';
+      list[i] = flGetFontInfo((FLfontNumber)atoi(p2));
+      *p = c;
+    }
+    list[i] = NULL;
+  }
+
+  return list;
+}",FALSE,CWE_OTHERS
+29,29,29_vdisc.c,"Index_visit_seq_words(Index *index, Index_Strand *index_strand,
+                                  gint seq_id, Sequence *seq,
+                                  Index_WordVisit_Func iwvf, gint frame,
+                                  gpointer user_data){
+    register gint i, jump_ctr = 0, pos;
+    register gchar *str = Sequence_get_str(seq);
+    register VFSM_Int state = 0, leaf;
+    for(i = 0; str[i]; i++){
+        if(!index->vfsm->index[(guchar)str[i]]){
+            state = 0;
+            continue;
+            }
+        state = VFSM_change_state_M(index->vfsm, state, (guchar)str[i]);
+        if(jump_ctr--)
+            continue;
+        jump_ctr = index->header->word_jump - 1;
+        if(VFSM_state_is_leaf(index->vfsm, state)){
+            leaf = VFSM_state2leaf(index->vfsm, state);
+            pos = i-(index->vfsm->depth-1);
+            if(frame)
+                pos = (pos * 3) + frame - 1;
+            iwvf(index, index_strand, seq_id, pos, leaf, user_data);
+            }
+        }
+    g_free(str);
+    return;
+    }",FALSE,CWE_OTHERS
+30,30,30_vdisc.c,"static_grab_objects (int *box, gamgi_enum class,
+gamgi_window *window)
+{
+GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable (window->area);
+GdkGLContext *glcontext = gtk_widget_get_gl_context (window->area);
+gamgi_object **objects;
+int *levels;
+int width, height;
+gamgi_object *object;
+gamgi_slist *slist_old, *slist_new;
+int number;
+int level;
+
+/*************************************
+ * count number of candidate objects *
+ *************************************/
+
+number = 0;
+gamgi_engine_count_window (window, class, &number);
+if (number == 0) return NULL;
+
+/****************************************************************
+ * 1) allocate array to store candidate objects addresses       *
+ * 2) allocate array to store candidate objects scanning levels *
+ ****************************************************************/
+
+objects = (gamgi_object **) malloc (number * sizeof (object));
+if (objects == NULL) return NULL;
+
+levels = (int *) malloc (number * sizeof (int));
+if (levels == NULL) return NULL;
+for (level = 0; level < number; level++) levels[level] = 0;
+
+/***********************************************
+ * render objects sucessively until no more    *
+ * objects can be found in selection rectangle *
+ ***********************************************/
+
+width = box[2] - box[0] + 1;
+height = box[3] - box[1] + 1;
+slist_new = NULL;
+level = 0;
+
+do
+  {
+  level++;
+  slist_old = slist_new;
+
+  /***********************************************************
+   * 3D code: draw candidate objects in back buffer, each    *
+   * one with a different color, store their addresses in    *
+   * objects and the scans when they were selected in levels *
+   *                                                         *
+   * when an object is selected, it stops being rendered, so *
+   * objects hidden below can be selected in the next scans  *
+   ***********************************************************/
+         
+  if (gdk_gl_drawable_gl_begin (gldrawable, glcontext) == TRUE)
+    {      
+    static_start ();
+    gamgi_mesa_grab_window (window, class, level, -1, objects, levels);
+    gdk_gl_drawable_gl_end (gldrawable);
+    }
+
+  /***********************************************************
+   * 2D code: read the selection rectangle and analyse each  *
+   * pixel to find all the rendered objects inside. Build    *
+   * a list with all the objects found in the various scans. *
+   ***********************************************************/
+
+  slist_new = static_grab_pixels (box[0], box[1],
+  width, height, objects, levels, level, slist_old);
+  } while (slist_new != slist_old);
+
+/******************
+ * free resources *
+ ******************/
+
+free (objects);
+free (levels);
+
+return slist_new;
+}",FALSE,CWE_OTHERS
+31,31,31_vdisc.c,"v5PutSin(const struct sockaddr_in *sin, int sinLen, v5HeadType *reply)
+{
+    reply->atyp=ATYP_V4;		/* in case of errors */
+    switch (sin->sin_family) {
+	default:
+	    reply->cmd=SOCKS5_GENFAIL;
+	    /* fall through */
+	case AF_INET:
+	    memcpy(reply->destAddr,&sin->sin_addr,4);
+	    memcpy(reply->destAddr+4,&sin->sin_port,sizeof(sin->sin_port));
+	    return 4+sizeof(sin->sin_port);
+#ifdef AF_INET6
+	case AF_INET6:
+	    reply->atyp=ATYP_V6;
+	    memcpy(reply->destAddr,&sin->sin_addr,16);
+	    memcpy(reply->destAddr+16,&sin->sin_port,sizeof(sin->sin_port));
+	    return 16+sizeof(sin->sin_port);
+#endif
+    }
+}",TRUE,CWE_OTHERS
+32,32,32_vdisc.c,"push(p_name, p_type, p_line)
+unsigned char *p_name;
+int p_type;
+int p_line;
+{
+    if ( gstackp == gstack_size ) {	/* extend stack */
+	gstack_size *= 2;
+	gstack = (tex_group *)realloc(gstack, gstack_size * sizeof(tex_group));
+	if ( gstack == NULL ) {
+		fprintf(stderr, ""%s: stack out of memory"", PROGNAME);
+	exit(3);
+    }
+    }
+    
+    if ( (gstack[gstackp].s_name =
+		(unsigned char *)malloc(strlen((char *)p_name) + 1)) == NULL ||
+         (gstack[gstackp].s_file =
+		(char *)malloc(strlen(file_name) + 1)) == NULL ) {
+	fprintf(stderr, ""%s: out of memory\n"", PROGNAME);
+	exit(3);
+    }
+
+    strcpy((char *)gstack[gstackp].s_name,(char *)p_name);
+    gstack[gstackp].s_type = p_type;
+    gstack[gstackp].s_line = p_line;	
+    gstack[gstackp].italic = (  (p_type == 4 || p_type == 5)
+			      ? 1
+			      : (  gstackp
+				 ? gstack[gstackp - 1].italic
+				 : 0));
+    strcpy(gstack[gstackp].s_file,file_name);
+    ++gstackp;	
+
+}",TRUE,CWE_OTHERS
+33,33,33_vdisc.c,"parse_proxy_addr(CONSTRPTR proxy, EXPSTR *host, unsigned short *port) {
+   BOOL done;
+   CONSTRPTR p;
+
+   if((NULL == proxy) || (0 != strncmp(proxy,""http://"",7)))
+      return FALSE;
+   *port = 3128;   /* Squid default */
+   for(p = proxy+7, done=FALSE; !done; ++p) {
+      switch(*p) {
+         case '\0' :
+         case '/' :
+            done = TRUE;
+            break;
+         case ':' :
+            *port = atoi(++p);
+            while(isdigit(*p)) ++p;
+            break;
+         default :
+            app_estrch(host,*p);
+            break;
+      }
+   }
+   return TRUE;
+}",TRUE,CWE_OTHERS
+34,34,34_vdisc.c,"fold_builtin (exp)
+     tree exp;
+{
+  tree fndecl = TREE_OPERAND (TREE_OPERAND (exp, 0), 0);
+  tree arglist = TREE_OPERAND (exp, 1);
+  enum built_in_function fcode = DECL_FUNCTION_CODE (fndecl);
+
+  if (DECL_BUILT_IN_CLASS (fndecl) == BUILT_IN_MD)
+    return 0;
+
+  switch (fcode)
+    {
+    case BUILT_IN_CONSTANT_P:
+      return fold_builtin_constant_p (arglist);
+
+    case BUILT_IN_CLASSIFY_TYPE:
+      return fold_builtin_classify_type (arglist);
+
+    case BUILT_IN_STRLEN:
+      if (validate_arglist (arglist, POINTER_TYPE, VOID_TYPE))
+	{
+	  tree len = c_strlen (TREE_VALUE (arglist));
+	  if (len)
+	    {
+	      /* Convert from the internal ""sizetype"" type to ""size_t"".  */
+	      if (size_type_node)
+		len = convert (size_type_node, len);
+	      return len;
+	    }
+	}
+      break;
+
+    case BUILT_IN_INF:
+    case BUILT_IN_INFF:
+    case BUILT_IN_INFL:
+      return fold_builtin_inf (TREE_TYPE (TREE_TYPE (fndecl)), true);
+
+    case BUILT_IN_HUGE_VAL:
+    case BUILT_IN_HUGE_VALF:
+    case BUILT_IN_HUGE_VALL:
+      return fold_builtin_inf (TREE_TYPE (TREE_TYPE (fndecl)), false);
+
+    case BUILT_IN_NAN:
+    case BUILT_IN_NANF:
+    case BUILT_IN_NANL:
+      return fold_builtin_nan (arglist, TREE_TYPE (TREE_TYPE (fndecl)), true);
+
+    case BUILT_IN_NANS:
+    case BUILT_IN_NANSF:
+    case BUILT_IN_NANSL:
+      return fold_builtin_nan (arglist, TREE_TYPE (TREE_TYPE (fndecl)), false);
+
+    default:
+      break;
+    }
+
+  return 0;
+}",TRUE,CWE_OTHERS
+35,35,35_vdisc.c,"initCacheWrite(G3D_Map * map, int nCached)
+{
+    map->cacheFileName = G_tempfile();
+    map->cacheFD = open(map->cacheFileName, O_RDWR | O_CREAT | O_TRUNC, 0666);
+
+    if (map->cacheFD < 0) {
+	G3d_error(""initCacheWrite: could not open file"");
+	return 0;
+    }
+
+    map->cachePosLast = -1;
+
+    map->cache = G3d_cache_new(nCached,
+			       map->tileSize * map->numLengthIntern,
+			       map->nTiles,
+			       cacheWrite_writeFun, map,
+			       cacheWrite_readFun, map);
+
+    if (map->cache == NULL) {
+	disposeCacheWrite(map);
+	G3d_error(""initCacheWrite: error in G3d_cache_new"");
+	return 0;
+    }
+
+    return 1;
+}",TRUE,CWE_OTHERS
+36,36,36_vdisc.c,"xmlSecTransformXPathNodeRead(xmlSecTransformPtr transform, xmlNodePtr node, xmlSecTransformCtxPtr transformCtx) {
+    xmlSecPtrListPtr dataList;
+    xmlSecXPathDataPtr data;
+    xmlNodePtr cur;
+    xmlChar* tmp;
+    int ret;
+
+    xmlSecAssert2(xmlSecTransformCheckId(transform, xmlSecTransformXPathId), -1);
+    xmlSecAssert2(node != NULL, -1);
+    xmlSecAssert2(transformCtx != NULL, -1);
+
+    dataList = xmlSecXPathTransformGetDataList(transform);
+    xmlSecAssert2(xmlSecPtrListCheckId(dataList, xmlSecXPathDataListId), -1);
+    xmlSecAssert2(xmlSecPtrListGetSize(dataList) == 0, -1);
+
+    /* there is only one required node */
+    cur = xmlSecGetNextElementNode(node->children);  
+    if((cur == NULL) || (!xmlSecCheckNodeName(cur, xmlSecNodeXPath, xmlSecDSigNs))) {
+	xmlSecError(XMLSEC_ERRORS_HERE,
+		    xmlSecErrorsSafeString(xmlSecTransformGetName(transform)),
+		    xmlSecErrorsSafeString(xmlSecNodeGetName(cur)),
+		    XMLSEC_ERRORS_R_INVALID_NODE,
+		    ""expected=%s"",
+		    xmlSecErrorsSafeString(xmlSecNodeXPath));
+	return(-1);
+    }
+    
+    /* read information from the node */
+    data = xmlSecXPathDataCreate(xmlSecXPathDataTypeXPath);
+    if(data == NULL) {
+	xmlSecError(XMLSEC_ERRORS_HERE,
+		    xmlSecErrorsSafeString(xmlSecTransformGetName(transform)),
+		    ""xmlSecXPathDataCreate"",
+		    XMLSEC_ERRORS_R_XMLSEC_FAILED,
+		    XMLSEC_ERRORS_NO_MESSAGE);
+	return(-1);
+    }
+    
+    ret = xmlSecXPathDataNodeRead(data, cur);
+    if(ret < 0) {
+	xmlSecError(XMLSEC_ERRORS_HERE,
+		    xmlSecErrorsSafeString(xmlSecTransformGetName(transform)),
+		    ""xmlSecXPathDataNodeRead"",
+		    XMLSEC_ERRORS_R_XMLSEC_FAILED,
+		    XMLSEC_ERRORS_NO_MESSAGE);
+	xmlSecXPathDataDestroy(data);
+	return(-1);
+    }
+        
+    /* append it to the list */
+    ret = xmlSecPtrListAdd(dataList, data);
+    if(ret < 0) {
+	xmlSecError(XMLSEC_ERRORS_HERE,
+		    xmlSecErrorsSafeString(xmlSecTransformGetName(transform)),
+		    ""xmlSecPtrListAdd"",
+		    XMLSEC_ERRORS_R_XMLSEC_FAILED,
+		    XMLSEC_ERRORS_NO_MESSAGE);
+	xmlSecXPathDataDestroy(data);
+	return(-1);
+    }
+    
+    /* create full XPath expression */
+    xmlSecAssert2(data->expr != NULL, -1);
+    tmp = (xmlChar*) xmlMalloc(sizeof(xmlChar) * (xmlStrlen(data->expr) + 
+						  strlen(xpathPattern) + 1));
+    if(tmp == NULL) {
+	xmlSecError(XMLSEC_ERRORS_HERE,
+		    xmlSecErrorsSafeString(xmlSecTransformGetName(transform)),
+		    NULL,
+		    XMLSEC_ERRORS_R_MALLOC_FAILED,
+		    ""size=%d"",
+		    xmlStrlen(data->expr) + strlen(xpathPattern) + 1);
+    	return(-1);
+    }
+    sprintf((char*)tmp, xpathPattern, (char*)data->expr);	
+    xmlFree(data->expr);
+    data->expr = tmp;
+
+    /* set correct node set type and operation */
+    data->nodeSetOp 	= xmlSecNodeSetIntersection;
+    data->nodeSetType 	= xmlSecNodeSetNormal;
+    
+    /* check that we have nothing else */
+    cur = xmlSecGetNextElementNode(cur->next);        
+    if(cur != NULL) {
+	xmlSecError(XMLSEC_ERRORS_HERE,
+		    xmlSecErrorsSafeString(xmlSecTransformGetName(transform)),
+		    xmlSecErrorsSafeString(xmlSecNodeGetName(cur)),
+		    XMLSEC_ERRORS_R_UNEXPECTED_NODE,
+		    XMLSEC_ERRORS_NO_MESSAGE);
+	return(-1);
+    }
+    return(0);
+}",TRUE,CWE_OTHERS
+37,37,37_vdisc.c,"decodeDynBitString (OOCTXT* pctxt, ASN1DynBitStr* pBitStr)
+{
+   ASN1UINT nocts;
+   ASN1OCTET* ptmp;
+   int nbits, stat = ASN_OK;
+
+   /* If ""fast copy"" option is not set (ASN1FATSCOPY) or if constructed,
+    * copy the bit string value into a dynamic memory buffer;
+    * otherwise, store the pointer to the value in the decode 
+    * buffer in the data pointer argument. */
+   
+   if (pctxt->flags & ASN1FASTCOPY) {
+      /* check is it possible to do optimized decoding */
+
+      ASN1OCTET bit = 0;
+      ASN1UINT byteIndex = pctxt->buffer.byteIndex;  /* save byte index */
+      ASN1USINT bitOffset = pctxt->buffer.bitOffset; /* save bit offset */
+
+      stat = decodeByteAlign (pctxt);
+      if (stat != ASN_OK) return LOG_ASN1ERR (pctxt, stat);
+
+      stat = DECODEBIT (pctxt, &bit); /* read first bit of length determinant */
+      if (bit == 1 && stat == ASN_OK) 
+         stat = DECODEBIT (pctxt, &bit); /* read second bit */
+
+      pctxt->buffer.byteIndex = byteIndex;  /* restore byte index */
+      pctxt->buffer.bitOffset = bitOffset;  /* restore bit offset */
+
+      /* if either first or second bit != 0 - not fragmented */
+
+      if (bit == 0 && stat == ASN_OK) { 
+         ASN1UINT bitcnt;
+         
+         stat = decodeLength (pctxt, &bitcnt);
+         if (stat != 0) return LOG_ASN1ERR (pctxt, stat);
+
+         pBitStr->numbits = bitcnt;
+         if (bitcnt > 0) {
+            pBitStr->data = ASN1BUFPTR (pctxt);
+
+            stat = moveBitCursor (pctxt, bitcnt);
+            if (stat != ASN_OK) return LOG_ASN1ERR (pctxt, stat);
+         }
+         else 
+            pBitStr->data = 0;
+   
+         return stat;
+      }
+   }
+
+   nbits = getComponentLength (pctxt, 1);
+
+   if (nbits < 0) return LOG_ASN1ERR (pctxt, nbits);
+   else if (nbits == 0) {
+      pBitStr->numbits = 0;
+      ptmp = 0;
+   }
+
+   nocts = (nbits + 7) / 8;
+      
+   /* Allocate memory for the target string */
+
+   if (nocts > 0) {
+      ptmp = (ASN1OCTET*) ASN1MALLOC (pctxt, nocts);
+      if (0 == ptmp) return LOG_ASN1ERR (pctxt, ASN_E_NOMEM);
+      
+      /* Call static bit string decode function */
+
+      stat = decodeBitString (pctxt, &pBitStr->numbits, ptmp, nocts);
+   }
+   pBitStr->data = ptmp;
+
+   return stat;
+}",TRUE,CWE_OTHERS
+38,38,38_vdisc.c,"isp_video_open(struct file *file)
+{
+	struct fimc_isp *isp = video_drvdata(file);
+	struct exynos_video_entity *ve = &isp->video_capture.ve;
+	struct media_entity *me = &ve->vdev.entity;
+	int ret;
+
+	if (mutex_lock_interruptible(&isp->video_lock))
+		return -ERESTARTSYS;
+
+	ret = v4l2_fh_open(file);
+	if (ret < 0)
+		goto unlock;
+
+	ret = pm_runtime_get_sync(&isp->pdev->dev);
+	if (ret < 0)
+		goto rel_fh;
+
+	if (v4l2_fh_is_singular_file(file)) {
+		mutex_lock(&me->parent->graph_mutex);
+
+		ret = fimc_pipeline_call(ve, open, me, true);
+
+		/* Mark the video pipeline as in use. */
+		if (ret == 0)
+			me->use_count++;
+
+		mutex_unlock(&me->parent->graph_mutex);
+	}
+	if (!ret)
+		goto unlock;
+rel_fh:
+	v4l2_fh_release(file);
+unlock:
+	mutex_unlock(&isp->video_lock);
+	return ret;
+}",TRUE,CWE_OTHERS
+39,39,39_vdisc.c,"tar_extract_dir(TAR *t, char *realname)
+{
+  mode_t mode;
+  char *filename;
+  char buf[T_BLOCKSIZE];
+  char *pathname = 0;
+  size_t len = 0;
+
+  if (!TH_ISDIR(t))
+  {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (realname)
+    {
+    filename = realname;
+    }
+  else
+    {
+    pathname = th_get_pathname(t);
+    filename = pathname;
+    }
+  mode = th_get_mode(t);
+
+  /* Make a copy of the string because dirname and mkdirhier may modify the
+   * string */
+  strncpy(buf, filename, sizeof(buf)-1);
+  buf[sizeof(buf)-1] = 0;
+
+  if (mkdirhier(dirname(buf)) == -1)
+    {
+    if (pathname)
+      {
+      free(pathname);
+      }
+    return -1;
+    }
+
+    /* Strip trailing '/'...it confuses some Unixes (and BeOS)... */
+    strncpy(buf, filename, sizeof(buf)-1);
+    buf[sizeof(buf)-1] = 0;
+    len = strlen(buf);
+    if ((len > 0) && (buf[len-1] == '/'))
+      {
+      buf[len-1] = '\0';
+      }
+
+#ifdef DEBUG
+  printf(""  ==> extracting: %s (mode %04o, directory)\n"", filename,
+         mode);
+#endif
+#ifdef WIN32
+  if (mkdir(buf) == -1)
+#else
+  if (mkdir(buf, mode & 07777) == -1)
+#endif
+  {
+#ifdef __BORLANDC__
+  /* There is a bug in the Borland Run time library which makes MKDIR
+     return EACCES when it should return EEXIST
+     if it is some other error besides directory exists
+     then return false */
+    if ( errno == EACCES) 
+    {
+      errno = EEXIST;
+    }
+#endif      
+    if (errno == EEXIST)
+    {
+      if (chmod(filename, mode & 07777) == -1)
+      {
+#ifdef DEBUG
+        perror(""chmod()"");
+#endif
+        if (pathname)
+          {
+          free(pathname);
+          }
+        return -1;
+      }
+      else
+      {
+#ifdef DEBUG
+        puts(""  *** using existing directory"");
+#endif
+        if (pathname)
+          {
+          free(pathname);
+          }
+        return 1;
+      }
+    }
+    else
+    {
+#ifdef DEBUG
+      perror(""mkdir()"");
+#endif
+      if (pathname)
+        {
+        free(pathname);
+        }
+      return -1;
+    }
+  }
+
+  if (pathname)
+    {
+    free(pathname);
+    }
+  return 0;
+}",FALSE,CWE_OTHERS
+40,40,40_vdisc.c,"ReadImage (gGraphImagePtr img, xgdIOCtx * fd,
+	   unsigned char (*cmap)[256], int interlace, int *ZeroDataBlockP)
+{
+    unsigned char c;
+    int v;
+    int xpos = 0, ypos = 0, pass = 0;
+    int i;
+    int red[256];
+    int green[256];
+    int blue[256];
+    unsigned char *p_out;
+    int len = img->width;
+    int height = img->height;
+    LZW_STATIC_DATA sd;
+    if (!ReadOK (fd, &c, 1))
+      {
+	  return;
+      }
+    if (c > MAX_LWZ_BITS)
+      {
+	  return;
+      }
+    for (i = 0; (i < 256); i++)
+      {
+	  red[i] = cmap[CM_RED][i];
+	  green[i] = cmap[CM_GREEN][i];
+	  blue[i] = cmap[CM_BLUE][i];
+      }
+    if (LWZReadByte (fd, &sd, TRUE, c, ZeroDataBlockP) < 0)
+      {
+	  return;
+      }
+    while ((v = LWZReadByte (fd, &sd, FALSE, c, ZeroDataBlockP)) >= 0)
+      {
+	  if (v >= 256)
+	    {
+		v = 0;
+	    }
+	  p_out =
+	      img->pixels + (ypos * img->scanline_width) +
+	      (xpos * img->pixel_size);
+	  if (img->pixel_format == GG_PIXEL_PALETTE)
+	    {
+		/* the output image is expected to be PALETTE-based */
+		*p_out++ = v;
+		if ((v + 1) > img->max_palette)
+		    img->max_palette = v + 1;
+		img->palette_red[v] = red[v];
+		img->palette_green[v] = green[v];
+		img->palette_blue[v] = blue[v];
+	    }
+	  ++xpos;
+	  if (xpos == len)
+	    {
+		xpos = 0;
+		if (interlace)
+		  {
+		      switch (pass)
+			{
+			case 0:
+			case 1:
+			    ypos += 8;
+			    break;
+			case 2:
+			    ypos += 4;
+			    break;
+			case 3:
+			    ypos += 2;
+			    break;
+			}
+		      if (ypos >= height)
+			{
+			    ++pass;
+			    switch (pass)
+			      {
+			      case 1:
+				  ypos = 4;
+				  break;
+			      case 2:
+				  ypos = 2;
+				  break;
+			      case 3:
+				  ypos = 1;
+				  break;
+			      default:
+				  goto fini;
+			      }
+			}
+		  }
+		else
+		  {
+		      ++ypos;
+		  }
+	    }
+	  if (ypos >= height)
+	      break;
+      }
+  fini:
+    if (LWZReadByte (fd, &sd, FALSE, c, ZeroDataBlockP) >= 0)
+      {
+	  /* Ignore extra */
+      }
+}",FALSE,CWE_OTHERS
+41,41,41_vdisc.c,"get_string(char *dest, char *src, size_t len)
+{
+  size_t n = *src++;
+
+  if(n < len) {
+    n = min(n, len - 1);
+    strncpy(dest, src, n);
+    dest[n] = '\0';
+    return SUCCESS;
+  }
+  return ERR_BAD_FILE;
+}",FALSE,CWE_OTHERS
+42,42,42_vdisc.c,"logPacketUDP(int newSockSignal, ofstream * out)
+{
+	
+	int port;
+
+	
+	struct sockaddr_in sockAddress;
+
+	
+
+	
+	int logSock, hold;
+
+	
+	struct info *infos = (struct info *) malloc(logbuffer_size * sizeof(info));
+
+	
+
+	
+	fd_set  activeSet;
+
+#ifdef DEBUG
+	
+    int numRecvdPkt=0;
+
+	
+    int numTrip=0;
+#endif
+
+	
+
+	
+	sockAddress.sin_family = AF_INET;
+	
+	sockAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	
+
+	createDataChannel(sockAddress,newSockSignal,logSock,port,""UDP"");
+
+	
+
+	while (1) {
+		
+		FD_ZERO(&activeSet);
+		
+		FD_SET((unsigned int)newSockSignal, &activeSet);
+		
+		FD_SET((unsigned int)logSock, &activeSet);
+
+
+		
+		if (select(FD_SETSIZE, &activeSet, NULL, NULL, 0) < 0)
+			reportErrorAndExit(""logPacketUDP"",""select"",
+			""Invalid file descriptor or operation interrupted by a signal - Close first Receiver"");
+		
+		if (FD_ISSET(newSockSignal, &activeSet)) {
+			
+			break;
+		
+		} else if (FD_ISSET(logSock, &activeSet)) {
+			
+			hold = recv(logSock, (char *) infos, logbuffer_size * sizeof(struct info), 0);
+			
+			int dim_infos = hold / sizeof(struct info);
+			infosntoh(infos, dim_infos); 
+			
+#ifdef DEBUG
+			numRecvdPkt = numRecvdPkt + hold / sizeof(struct info);
+			numTrip++;
+#endif
+			
+			if (hold < 0)
+				printf(""** WARNING ** Data lost - Close First Receiver!\n"");
+			
+			if (!(*out).write((char *) infos, hold))
+				printf(""** WARNING ** Can't write data!\n"");
+		}
+	}
+
+#ifdef DEBUG
+	
+	char hostName[50];
+	
+	char hostIP[20];
+	int rit1 = getnameinfo((sockaddr*)&senderLog,sizeof(senderLog),hostName, INET_ADDRSTRLEN, NULL, 0,
+			NI_NOFQDN);
+	int rit2 = getnameinfo((sockaddr*)&senderLog,sizeof(senderLog),hostIP, INET_ADDRSTRLEN, NULL, 0,
+			NI_NUMERICHOST);
+	if ((rit1 == 0) & (rit2 == 0))
+		printf(""Data transmission ended on UDP channel from %s(%s)\n"",hostName,hostIP);
+	else if ((rit1 != 0) & (rit2 == 0))
+			printf(""Data transmission ended on UDP channel from %s\n"",hostIP);
+	else
+#endif
+	printf(""Data transmission ended on UDP channel\n"");
+	fflush(stdout);
+
+	
+	free(infos);
+	if (closeSock(logSock) < 0)
+		reportErrorAndExit(""logPacketUDP"",""closeSock"",""Cannot close logSock"");
+	PRINTD(1,""logPacketUDP: Number of received packets : %d \n"",numRecvdPkt);
+	PRINTD(1,""logPacketUDP: Number of received infos : %d \n"",numTrip);
+}",FALSE,CWE_OTHERS
+43,43,43_vdisc.c,"arg_parse_tagged(int argc, char **argv, struct arg_hdr **table, struct arg_end *endtable)
+    {
+    struct longoptions *longoptions;
+    char *shortoptions;
+    int copt;
+
+    /*printf(""arg_parse_tagged(%d,%p,%p,%p)\n"",argc,argv,table,endtable);*/
+
+    /* allocate short and long option arrays for the given opttable[].   */
+    /* if the allocs fail then put an error msg in the last table entry. */
+    longoptions  = alloc_longoptions(table);
+    shortoptions = alloc_shortoptions(table);
+    if (!longoptions || !shortoptions)
+        {
+        /* one or both memory allocs failed */
+        arg_register_error(endtable,endtable,ARG_EMALLOC,NULL);
+        /* free anything that was allocated (this is null safe) */
+        free(shortoptions);
+        free(longoptions);
+        return;
+        }
+
+    /*dump_longoptions(longoptions);*/
+
+    /* reset getopts internal option-index to zero, and disable error reporting */
+    optind = 0;
+    opterr = 0;
+
+    /* fetch and process args using getopt_long */
+    while( (copt=getopt_long(argc,argv,shortoptions,longoptions->options,NULL)) != -1)
+        {
+        /*
+        printf(""optarg='%s'\n"",optarg);
+        printf(""optind=%d\n"",optind);
+        printf(""copt=%c\n"",(char)copt);
+        printf(""optopt=%c (%d)\n"",optopt, (int)(optopt));
+        */
+        switch(copt)
+            {
+            case 0:
+                {
+                int tabindex = longoptions->getoptval;
+                void *parent  = table[tabindex]->parent;
+                /*printf(""long option detected from argtable[%d]\n"", tabindex);*/
+                if (optarg && optarg[0]==0 && (table[tabindex]->flag & ARG_HASVALUE))
+                    {
+                    /* printf("": long option %s requires an argument\n"",argv[optind-1]); */
+                    arg_register_error(endtable,endtable,ARG_EMISSARG,argv[optind-1]);
+                    /* continue to scan the (empty) argument value to enforce argument count checking */
+                    }
+                if (table[tabindex]->scanfn)
+                    {
+                    int errorcode = table[tabindex]->scanfn(parent,optarg);
+                    if (errorcode!=0)
+                        arg_register_error(endtable,parent,errorcode,optarg);
+                    }
+                }
+                break;
+
+            case '?':
+                /*
+                * getopt_long() found an unrecognised short option.
+                * if it was a short option its value is in optopt
+                * if it was a long option then optopt=0
+                */
+                switch (optopt)
+                    {
+                    case 0:
+                        /*printf(""?0 unrecognised long option %s\n"",argv[optind-1]);*/
+                        arg_register_error(endtable,endtable,ARG_ELONGOPT,argv[optind-1]);
+                        break;
+                    default:
+                        /*printf(""?* unrecognised short option '%c'\n"",optopt);*/
+                        arg_register_error(endtable,endtable,optopt,NULL);
+                        break;
+                    }
+                break;
+
+            case':':
+                /*
+                * getopt_long() found an option with its argument missing.
+                */
+                /*printf("": option %s requires an argument\n"",argv[optind-1]); */
+                arg_register_error(endtable,endtable,ARG_EMISSARG,argv[optind-1]); 
+                break;
+
+            default:
+                {
+                /* getopt_long() found a valid short option */
+                int tabindex = find_shortoption(table,(char)copt);
+                /*printf(""short option detected from argtable[%d]\n"", tabindex);*/
+                if (tabindex==-1)
+                    {
+                    /* should never get here - but handle it just in case */
+                    /*printf(""unrecognised short option %d\n"",copt);*/
+                    arg_register_error(endtable,endtable,copt,NULL);
+                    }
+                else
+                    {
+                    if (table[tabindex]->scanfn)
+                        {
+                        void *parent  = table[tabindex]->parent;
+                        int errorcode = table[tabindex]->scanfn(parent,optarg);
+                        if (errorcode!=0)
+                            arg_register_error(endtable,parent,errorcode,optarg);
+                        }
+                    }
+                break;
+                }
+            }
+        }
+
+    free(shortoptions);
+    free(longoptions);
+    }",TRUE,CWE_OTHERS
+44,44,44_vdisc.c,"chat()
+{
+	short *shortPtr = (short *)data_buf;
+
+	int toNationRecno   = shortPtr[0];
+   int fromNationRecno = shortPtr[1];
+
+#ifdef DEBUG_LONG_LOG
+	long_log->printf(""nation %d send chat message to %d\n"", 
+		shortPtr[1],	shortPtr[0]);
+#endif
+
+	if( toNationRecno == nation_array.player_recno ||
+		(toNationRecno == 0 && fromNationRecno != nation_array.player_recno) ||
+		(toNationRecno == -1 && !nation_array.is_deleted(fromNationRecno) &&
+			nation_array[fromNationRecno]->is_allied_with_player) )
+	{
+		news_array.chat_msg( fromNationRecno, (char*)(shortPtr+2) );
+	}
+}",TRUE,CWE_OTHERS
+45,45,45_vdisc.c,"rad_continuation2vp(const RADIUS_PACKET *packet,
+				       const RADIUS_PACKET *original,
+				       const char *secret, int attribute,
+				       int length, /* CANNOT be zero */
+				       uint8_t *data, size_t packet_length,
+				       int flag, DICT_ATTR *da)
+{
+	size_t tlv_length, left;
+	uint8_t *ptr;
+	uint8_t *tlv_data;
+	VALUE_PAIR *vp, *head, **tail;
+
+	/*
+	 *	Ensure we have data that hasn't been split across
+	 *	multiple attributes.
+	 */
+	if (flag) {
+		tlv_data = rad_coalesce(attribute, length,
+					data, packet_length, &tlv_length);
+		if (!tlv_data) return NULL;
+	} else {
+		tlv_data = data;
+		tlv_length = length;
+	}
+
+	/*
+	 *	Non-TLV types cannot be continued across multiple
+	 *	attributes.  This is true even of keys that are
+	 *	encrypted with the tunnel-password method.  The spec
+	 *	says that they can be continued... but also that the
+	 *	keys are 160 bits, which means that they CANNOT be
+	 *	continued.  <sigh>
+	 *
+	 *	Note that we don't check ""flag"" here.  The calling
+	 *	code ensures that 
+	 */
+	if (!da || (da->type != PW_TYPE_TLV)) {
+	not_well_formed:
+		if (tlv_data == data) {	/* true if we had 'goto' */
+			tlv_data = malloc(tlv_length);
+			if (!tlv_data) return NULL;
+			memcpy(tlv_data, data, tlv_length);
+		}
+		
+		vp = paircreate(attribute, PW_TYPE_OCTETS);
+		if (!vp) return NULL;
+			
+		vp->type = PW_TYPE_TLV;
+		vp->flags.encrypt = FLAG_ENCRYPT_NONE;
+		vp->flags.has_tag = 0;
+		vp->flags.is_tlv = 0;
+		vp->vp_tlv = tlv_data;
+		vp->length = tlv_length;
+		return vp;
+	} /* else it WAS a TLV, go decode the sub-tlv's */
+
+	/*
+	 *	Now (sigh) we walk over the TLV, seeing if it is
+	 *	well-formed.
+	 */
+	left = tlv_length;
+	for (ptr = tlv_data;
+	     ptr != (tlv_data + tlv_length);
+	     ptr += ptr[1]) {
+		if ((left < 2) ||
+		    (ptr[1] < 2) ||
+		    (ptr[1] > left)) {
+			goto not_well_formed;
+		}
+		left -= ptr[1];
+	}
+
+	/*
+	 *	Now we walk over the TLV *again*, creating sub-tlv's.
+	 */
+	head = NULL;
+	tail = &head;
+
+	for (ptr = tlv_data;
+	     ptr != (tlv_data + tlv_length);
+	     ptr += ptr[1]) {
+		vp = paircreate(attribute | (ptr[0] << 8), PW_TYPE_OCTETS);
+		if (!vp) {
+			pairfree(&head);
+			goto not_well_formed;
+		}
+
+		if (!data2vp(packet, original, secret,
+			     ptr[0], ptr[1] - 2, ptr + 2, vp)) {
+			pairfree(&head);
+			goto not_well_formed;
+		}
+
+		*tail = vp;
+		tail = &(vp->next);
+	}
+
+	/*
+	 *	TLV's MAY be continued, but sometimes they're not.
+	 */
+	if (tlv_data != data) free(tlv_data);
+
+	if (head->next) rad_sortvp(&head);
+
+	return head;
+}",TRUE,CWE_OTHERS
+46,46,46_vdisc.c,"glade_widget_insert_children (GladeWidget *gwidget, GList *children)
+{
+	GladeChildExtract *extract;
+	GladeWidget       *gchild;
+	GObject           *internal_object;
+	GList             *list, *l;
+	
+	for (list = children; list; list = list->next)
+	{
+		extract = list->data;
+		
+		if (extract->internal_name)
+		{
+			GladeGetInternalFunc   get_internal;
+			GladeWidget           *internal_parent;
+
+
+			/* Recurse and add deep widget hierarchies to internal
+			 * widgets.
+			 */
+			get_internal = glade_widget_get_internal_func
+				(NULL, gwidget, &internal_parent);
+
+			internal_object = get_internal (internal_parent->adaptor,
+							internal_parent->object,
+							extract->internal_name);
+
+			gchild = glade_widget_get_from_gobject (internal_object);
+			
+			/* This will free the list... */
+			glade_widget_insert_children (gchild, extract->internal_list);
+
+			/* Set the properties after inserting the children */
+			for (l = extract->properties; l; l = l->next)
+			{
+				GValue         value = { 0, };
+				GladeProperty *saved_prop = l->data;
+				GladeProperty *widget_prop = 
+					glade_widget_get_property (gchild,
+								   saved_prop->klass->id);
+				
+				glade_property_get_value (saved_prop, &value);
+				glade_property_set_value (widget_prop, &value);
+				g_value_unset (&value);
+
+				/* Free them as we go ... */
+				g_object_unref (saved_prop);
+			}
+
+			if (extract->properties)
+				g_list_free (extract->properties);
+
+			g_free (extract->internal_name);
+		}
+		else if (extract->widget)
+		{
+			glade_widget_add_child (gwidget, extract->widget, FALSE);
+			g_object_unref (extract->widget);
+			
+			for (l = extract->properties; l; l = l->next)
+			{
+				GValue         value = { 0, };
+				GladeProperty *saved_prop = l->data;
+				GladeProperty *widget_prop = 
+					glade_widget_get_pack_property (extract->widget,
+									saved_prop->klass->id);
+				
+				glade_property_get_value (saved_prop, &value);
+				glade_property_set_value (widget_prop, &value);
+				g_value_unset (&value);
+
+				/* Free them as we go ... */
+				g_object_unref (saved_prop);
+			}
+			if (extract->properties)
+				g_list_free (extract->properties);
+		}
+		else
+		{
+			glade_widget_adaptor_add (gwidget->adaptor,
+						  gwidget->object,
+						  G_OBJECT (extract->placeholder));
+			g_object_unref (extract->placeholder);
+		}
+		g_free (extract);
+	}
+	
+	if (children)
+		g_list_free (children);
+}",TRUE,CWE_OTHERS
+47,47,47_vdisc.c,"lam_ssi_boot_slurm_get_nodeid(OPT *aod)
+{
+  char *e;
+
+  /* Get a node ID for both the normal case and the NT_WASTE case.  If
+     it's the NT_WASTE case, then just use SLURM_NNODES (because it'll
+     be one more than all other values of SLURM_NODEID). */
+
+  if ((e = getenv(""SLURM_NODEID"")) == NULL) {
+    e = getenv(""SLURM_NNODES"");
+    if (e == NULL) {
+      show_help_file(""lam-ssi-boot-slurm-helpfile"", ""env-var"",
+                     ""not-found"", ""SLURM_NODEID"", NULL);
+      return -1;
+    }
+  }
+  
+  /* Otherwise, we found something */
+
+  return atoi(e);
+}",TRUE,CWE_OTHERS
+48,48,48_vdisc.c,"add_player(struct game * g, int fd, char* nick)
+{
+        char joined_msg[1000];
+        int i;
+        if (g->players_number < MAX_PLAYERS_PER_GAME) {
+                /* inform other players */
+                snprintf(joined_msg, sizeof(joined_msg), ok_player_joined, nick);
+                for (i = 0; i < g->players_number; i++)
+                        send_line_log_push(g->players_conn[i], joined_msg);
+
+                g->players_conn[g->players_number] = fd;
+                g->players_nick[g->players_number] = nick;
+                g->players_number++;
+                open_players = g_list_remove(open_players, GINT_TO_POINTER(fd));
+                calculate_list_games();
+                return 1;
+        } else {
+                free(nick);
+                return 0;
+        }
+}",TRUE,CWE_OTHERS
+49,49,49_vdisc.c,"git_buf_puts_escaped(
+	git_buf *buf, const char *string, const char *esc_chars, const char *esc_with)
+{
+	const char *scan;
+	size_t total = 0, esc_len = strlen(esc_with), count;
+
+	if (!string)
+		return 0;
+
+	for (scan = string; *scan; ) {
+		/* count run of non-escaped characters */
+		count = strcspn(scan, esc_chars);
+		total += count;
+		scan += count;
+		/* count run of escaped characters */
+		count = strspn(scan, esc_chars);
+		total += count * (esc_len + 1);
+		scan += count;
+	}
+
+	ENSURE_SIZE(buf, buf->size + total + 1);
+
+	for (scan = string; *scan; ) {
+		count = strcspn(scan, esc_chars);
+
+		memmove(buf->ptr + buf->size, scan, count);
+		scan += count;
+		buf->size += count;
+
+		for (count = strspn(scan, esc_chars); count > 0; --count) {
+			/* copy escape sequence */
+			memmove(buf->ptr + buf->size, esc_with, esc_len);
+			buf->size += esc_len;
+			/* copy character to be escaped */
+			buf->ptr[buf->size] = *scan;
+			buf->size++;
+			scan++;
+		}
+	}
+
+	buf->ptr[buf->size] = '\0';
+
+	return 0;
+}",TRUE,CWE_OTHERS
+50,50,50_vdisc.c,"diskdump_get_prstatus_percpu(int cpu)
+{
+	if ((cpu < 0) || (cpu >= dd->num_prstatus_notes))
+		return NULL;
+
+	return dd->nt_prstatus_percpu[cpu];
+}",TRUE,CWE_OTHERS
+51,51,51_vdisc.c,"main(int argc, char *argv[]) {
+  off_t sz = 0;
+  char *key = NULL, *key2 = NULL;
+  char *infile = NULL, *outfile = NULL;
+  struct stat statbuf;
+  BCoptions options;
+  FILE *infd, *outfd;
+
+  argv += parseArgs(&argc, argv, &options);
+
+  for (; argc > 0; argc--, argv++) {
+
+    if (assignFiles(argv[0], &infile, &outfile, &statbuf, &options, key))
+      continue;
+
+    if (!key) {
+      key = getkey(options.type);
+	  if (!key) {
+        if (infile != NULL)
+          free(infile);
+        if (outfile != NULL)
+          free(outfile);
+        exit(1);
+	  }
+      mutateKey(&key, &key2);
+    }
+
+    infd = fopen(infile, ""rb"");
+    if (infd == NULL) {
+      perror(""open(infile)"");
+      continue;
+    }
+
+    if (options.standardout) {
+      outfd = stdout;
+#ifdef WIN32
+      if (_setmode(_fileno(outfd), _O_BINARY) == -1) {
+        perror(""setmode(outfd)"");
+        exit(EIO);
+      }
+#endif
+    } else {
+      outfd = fopen(outfile, ""wb"");
+    }
+    if (outfd == NULL) {
+      perror(""open(outfile)"");
+      continue;
+    }
+
+    if (options.type == ENCRYPT) {
+      options.origsize = statbuf.st_size;
+
+      sz = BFEncrypt(infd, outfd, key, &options);
+    } else {
+      if ((sz = BFDecrypt(infd, outfd, key, key2, &options)) == 0) {
+        fprintf(stderr, ""Invalid encryption key for file: %s\n"", infile);
+        exit(1);
+      }
+    }
+
+    fclose(infd);
+    if (!options.compression)
+      fclose(outfd);
+
+    if (options.remove == 1)
+      deletefile(infile, options, key, statbuf);
+  }
+
+  memset(key, 0, strlen(key));
+  memset(key2, 0, strlen(key));
+  if (key != NULL)
+    free(key);
+  if (key2 != NULL)
+    free(key2);
+  if (infile != NULL)
+    free(infile);
+  if (outfile != NULL)
+    free(outfile);
+
+  if(!sz)
+    fprintf(stderr, ""No valid files found\n"");
+
+  return(0);
+}",FALSE,CWE_OTHERS
+52,52,52_vdisc.c,"ensSliceFetchAllSequenceedits(EnsPSlice slice,
+                                     AjPList ses)
+{
+    register ajuint i = 0U;
+
+    AjPList attributes = NULL;
+
+    AjPStr code = NULL;
+
+    EnsPAttribute at = NULL;
+
+    EnsPSequenceedit se = NULL;
+
+    if (!slice)
+        return ajFalse;
+
+    if (!ses)
+        return ajFalse;
+
+    code = ajStrNew();
+
+    attributes = ajListNew();
+
+    for (i = 0U; sliceKSequenceeditCode[i]; i++)
+    {
+        ajStrAssignC(&code, sliceKSequenceeditCode[i]);
+
+        ensSliceFetchAllAttributes(slice, code, attributes);
+    }
+
+    while (ajListPop(attributes, (void **) &at))
+    {
+        se = ensSequenceeditNewAttribute(at);
+
+        ajListPushAppend(ses, (void *) se);
+
+        ensAttributeDel(&at);
+    }
+
+    ajListFree(&attributes);
+
+    ajStrDel(&code);
+
+    return ajTrue;
+}",FALSE,CWE_OTHERS
+53,53,53_vdisc.c,"get_break_number(char* file, int line)
+{
+	gchar *record, *bstart;
+
+	exec_sync_command(""-break-list"", TRUE, &record);
+	bstart = record;
+
+	while ( (bstart = strstr(bstart, ""bkpt="")) )
+	{
+		gchar *fname, *file_quoted;
+		int num, bline;
+		gboolean break_found;
+
+		bstart += strlen(""bkpt={number=\"""");
+		*strchr(bstart, '\""') = '\0';
+		num = atoi(bstart);
+		
+		bstart += strlen(bstart) + 1;
+		bstart = strstr(bstart, ""original-location=\"""") + strlen(""original-location=\"""");
+		*strchr(bstart, ':') = '\0';
+		fname = bstart;
+		
+		bstart += strlen(bstart) + 1;
+		*strchr(bstart, '\""') = '\0';
+		bline = atoi(bstart);
+		
+		file_quoted = g_strdup_printf(""\\\""%s\\\"""", file);
+		break_found = !strcmp(fname, file_quoted) && bline == line;
+		g_free(file_quoted);
+
+		if (break_found)
+		{
+			return num;
+		}
+		
+		bstart += strlen(bstart) + 1;
+	} 
+	
+	free(record);
+	
+	return -1;
+}",FALSE,CWE_OTHERS
+54,54,54_vdisc.c,"backend_attribute(
+	Operation *op,
+	Entry	*target,
+	struct berval	*edn,
+	AttributeDescription *entry_at,
+	BerVarray *vals,
+	slap_access_t access )
+{
+	int			rc;
+	BackendDB *be_orig;
+	OpExtraDB	oex;
+
+	oex.oe_db = op->o_bd;
+	oex.oe.oe_key = (void *)backend_attribute;
+	LDAP_SLIST_INSERT_HEAD(&op->o_extra, &oex.oe, oe_next);
+
+	be_orig = op->o_bd;
+	op->o_bd = frontendDB;
+	rc = frontendDB->be_attribute( op, target, edn,
+		entry_at, vals, access );
+	op->o_bd = be_orig;
+	LDAP_SLIST_REMOVE(&op->o_extra, &oex.oe, OpExtra, oe_next);
+
+	return rc;
+}",FALSE,CWE_OTHERS
+55,55,55_vdisc.c,"mdiobus_read(struct mii_bus *bus, int addr, u32 regnum)
+{
+	int retval;
+
+	BUG_ON(in_interrupt());
+
+	mutex_lock(&bus->mdio_lock);
+	retval = bus->read(bus, addr, regnum);
+	mutex_unlock(&bus->mdio_lock);
+
+	return retval;
+}",TRUE,CWE_OTHERS
+56,56,56_vdisc.c,"__set_from_xml_node (MidgardDBObject *object, xmlNode *node)
+{
+	g_assert (object != NULL);
+	g_assert (node != NULL);
+
+	MidgardUser *self = MIDGARD_USER (object);
+	xmlNode *lnode = NULL;
+	gchar *content;
+
+	/* guid */
+	lnode = __lookup_node (node, ""guid"");
+	g_free ((gchar*) MIDGARD_DBOBJECT (self)->dbpriv->guid);
+	//self->dbpriv->guid = ;
+
+	/* login */
+	lnode = __lookup_node (node, ""login"");
+	content = (gchar *)xmlNodeGetContent (lnode);
+	if (content != NULL) {
+		g_free (self->priv->login);
+		self->priv->login = g_strdup (content);
+		g_free (content);
+	}
+
+	/* password */
+	lnode = __lookup_node (node, ""password"");
+	content = (gchar *)xmlNodeGetContent (lnode);
+	if (content != NULL) {
+		g_free (self->priv->password);
+		self->priv->password = g_strdup (content);
+		g_free (content);
+	}
+
+	/* active */
+	lnode = __lookup_node (node, ""active"");
+	content = (gchar *)xmlNodeGetContent (lnode);
+	if (content != NULL) {
+		self->priv->active = (gboolean)atoi (content);
+		g_free (content);
+	}
+
+	/* authtype */
+	lnode = __lookup_node (node, ""authtype"");
+	content = (gchar *)xmlNodeGetContent (lnode);
+	if (content != NULL) {
+		g_free (self->priv->auth_type);
+		self->priv->auth_type = g_strdup (content);
+		g_free (content);
+	}
+
+	/* authtypeid */
+	lnode = __lookup_node (node, ""authtypeid"");
+	content = (gchar *)xmlNodeGetContent (lnode);
+	if (content != NULL) {
+		self->priv->auth_type_id = atoi (content);
+		g_free (content);
+	}
+
+	/* usertype */
+	lnode = __lookup_node (node, ""usertype"");
+	content = (gchar *)xmlNodeGetContent (lnode);
+	if (content != NULL) {
+		self->priv->user_type = atoi (content);
+		g_free (content);
+	}
+
+	/* person */
+	lnode = __lookup_node (node, ""person"");
+	content = (gchar *)xmlNodeGetContent (lnode);
+	if (content != NULL) {
+		g_free (self->priv->person_guid);
+		self->priv->person_guid = g_strdup (content);
+		g_free (content);
+	}
+}",TRUE,CWE_OTHERS
+57,57,57_vdisc.c,"ppc32_lha(cpu_ppc_t *cpu,m_uint32_t vaddr,u_int reg)
+{
+   m_uint64_t data;
+   void *haddr;
+
+   haddr = PPC32_MEM_DACCESS(cpu,vaddr,PPC_MEMOP_LHZ,2,MTS_READ,&data);
+   if (likely(haddr != NULL)) data = vmtoh16(*(m_uint16_t *)haddr);
+   cpu->gpr[reg] = sign_extend_32(data,16);
+}",TRUE,CWE_OTHERS
+58,58,58_vdisc.c,"cmm_cm4000_release(struct pcmcia_device * link)
+{
+	struct cm4000_dev *dev = link->priv;
+
+	/* dont terminate the monitor, rather rely on
+	 * close doing that for us.
+	 */
+	DEBUGP(3, dev, ""-> cmm_cm4000_release\n"");
+	while (link->open) {
+		printk(KERN_INFO MODULE_NAME "": delaying release until ""
+		       ""process has terminated\n"");
+		/* note: don't interrupt us:
+		 * close the applications which own
+		 * the devices _first_ !
+		 */
+		wait_event(dev->devq, (link->open == 0));
+	}
+	/* dev->devq=NULL;	this cannot be zeroed earlier */
+	DEBUGP(3, dev, ""<- cmm_cm4000_release\n"");
+	return;
+}",TRUE,CWE_OTHERS
+59,59,59_vdisc.c,"DebugPrint(char * buf, int * plen, bool output) {
+    int len = *plen;
+    if (len > 0) {
+      time_t tim = time(NULL);
+      struct tm * now = localtime(&tim);
+      char *time_string = asctime(now);
+      if (time_string) {
+        size_t time_len = strlen(time_string);
+        if (time_len > 0) {
+          time_string[time_len-1] = 0;    // trim off terminating \n
+        }
+      }
+      LOG(INFO) << (output ? ""SEND >>>>>>>>>>>>>>>>"" : ""RECV <<<<<<<<<<<<<<<<"")
+                << "" : "" << time_string;
+
+      bool indent;
+      int start = 0, nest = 3;
+      for (int i = 0; i < len; i += 1) {
+        if (buf[i] == '>') {
+          if ((i > 0) && (buf[i-1] == '/')) {
+            indent = false;
+          } else if ((start + 1 < len) && (buf[start + 1] == '/')) {
+            indent = false;
+            nest -= 2;
+          } else {
+            indent = true;
+          }
+
+          // Output a tag
+          LOG(INFO) << std::setw(nest) << "" ""
+                    << std::string(buf + start, i + 1 - start);
+
+          if (indent)
+            nest += 2;
+
+          // Note if it's a PLAIN auth tag
+          if (IsAuthTag(buf + start, i + 1 - start)) {
+            censor_password_ = true;
+          }
+
+          // incr
+          start = i + 1;
+        }
+
+        if (buf[i] == '<' && start < i) {
+          if (censor_password_) {
+            LOG(INFO) << std::setw(nest) << "" "" << ""## TEXT REMOVED ##"";
+            censor_password_ = false;
+          } else {
+            LOG(INFO) << std::setw(nest) << "" ""
+                      << std::string(buf + start, i - start);
+          }
+          start = i;
+        }
+      }
+      len = len - start;
+      memcpy(buf, buf + start, len);
+      *plen = len;
+    }
+  }
+}",TRUE,CWE_OTHERS
+60,60,60_vdisc.c,"custom_log(const struct ast_event *event, void *userdata)
+{
+	struct ast_channel *dummy;
+	struct ast_str *str;
+	struct cel_config *config;
+
+	/* Batching saves memory management here.  Otherwise, it's the same as doing an allocation and free each time. */
+	if (!(str = ast_str_thread_get(&custom_buf, 16))) {
+		return;
+	}
+
+	dummy = ast_cel_fabricate_channel_from_event(event);
+	if (!dummy) {
+		ast_log(LOG_ERROR, ""Unable to fabricate channel from CEL event.\n"");
+		return;
+	}
+
+	AST_RWLIST_RDLOCK(&sinks);
+
+	AST_LIST_TRAVERSE(&sinks, config, list) {
+		FILE *out;
+
+		ast_str_substitute_variables(&str, 0, dummy, config->format);
+
+		/* Even though we have a lock on the list, we could be being chased by
+		   another thread and this lock ensures that we won't step on anyone's
+		   toes.  Once each CEL backend gets it's own thread, this lock can be
+		   removed. */
+		ast_mutex_lock(&config->lock);
+
+		/* Because of the absolutely unconditional need for the
+		   highest reliability possible in writing billing records,
+		   we open write and close the log file each time */
+		if ((out = fopen(config->filename, ""a""))) {
+			fputs(ast_str_buffer(str), out);
+			fflush(out); /* be particularly anal here */
+			fclose(out);
+		} else {
+			ast_log(LOG_ERROR, ""Unable to re-open master file %s : %s\n"", config->filename, strerror(errno));
+		}
+
+		ast_mutex_unlock(&config->lock);
+	}
+
+	AST_RWLIST_UNLOCK(&sinks);
+
+	ast_channel_unref(dummy);
+}",TRUE,CWE_OTHERS
+61,61,61_vdisc.c,"get_action_timeout(stonith_device_t * device, const char *action, int default_timeout)
+{
+    char buffer[512] = { 0, };
+    char *value = NULL;
+
+    CRM_CHECK(action != NULL, return default_timeout);
+
+    if (!device->params) {
+        return default_timeout;
+    }
+
+    snprintf(buffer, sizeof(buffer) - 1, ""pcmk_%s_timeout"", action);
+    value = g_hash_table_lookup(device->params, buffer);
+
+    if (!value) {
+        return default_timeout;
+    }
+
+    return atoi(value);
+}",TRUE,CWE_OTHERS
+62,62,62_vdisc.c,"processSolUserInput(
+					struct ipmi_intf * intf,
+					uint8_t    * input,
+					uint16_t   buffer_length)
+{
+	static int escape_pending = 0;
+	static int last_was_cr    = 1;
+	struct ipmi_v2_payload v2_payload;
+	int  length               = 0;
+	int  retval               = 0;
+	char ch;
+	int  i;
+
+	memset(&v2_payload, 0, sizeof(v2_payload));
+
+	/*
+	 * Our first order of business is to check the input for escape
+	 * sequences to act on.
+	 */
+	for (i = 0; i < buffer_length; ++i)
+	{
+		ch = input[i];
+
+		if (escape_pending){
+			escape_pending = 0;
+
+			/*
+			 * Process a possible escape sequence.
+			 */
+			switch (ch) {
+			case '.':
+				printf(""%c. [terminated ipmitool]\n"",
+				       intf->session->sol_escape_char);
+				retval = 1;
+				break;
+
+			case 'Z' - 64:
+				printf(""%c^Z [suspend ipmitool]\n"",
+				       intf->session->sol_escape_char);
+				suspendSelf(1); /* Restore tty back to raw */
+				continue;
+
+			case 'X' - 64:
+				printf(""%c^Z [suspend ipmitool]\n"",
+				       intf->session->sol_escape_char);
+				suspendSelf(0); /* Don't restore to raw mode */
+				continue;
+
+			case 'B':
+				printf(""%cB [send break]\n"",
+				       intf->session->sol_escape_char);
+				sendBreak(intf);
+				continue;
+
+			case '?':
+				printSolEscapeSequences(intf);
+				continue;
+
+			default:
+				if (ch != intf->session->sol_escape_char)
+					v2_payload.payload.sol_packet.data[length++] =
+						intf->session->sol_escape_char;
+				v2_payload.payload.sol_packet.data[length++] = ch;
+			}
+		}
+
+		else
+		{
+			if (last_was_cr && (ch == intf->session->sol_escape_char)) {
+				escape_pending = 1;
+				continue;
+			}
+
+			v2_payload.payload.sol_packet.data[length++] =	ch;
+		}
+
+
+		/*
+		 * Normal character.  Record whether it was a newline.
+		 */
+		last_was_cr = (ch == '\r' || ch == '\n');
+	}
+
+
+	/*
+	 * If there is anything left to process we dispatch it to the BMC,
+	 * send intf->session->sol_data.max_outbound_payload_size bytes
+	 * at a time.
+	 */
+	if (length)
+	{
+		struct ipmi_rs * rsp = NULL;
+		int try = 0;
+
+		while (try < intf->session->retry) {
+
+			v2_payload.payload.sol_packet.character_count = length;
+
+			rsp = intf->send_sol(intf, &v2_payload);
+
+			if (rsp)
+			{
+				break;
+			}
+
+			usleep(5000);
+			try++;
+		}
+
+		if (! rsp)
+		{
+			lprintf(LOG_ERR, ""Error sending SOL data: FAIL"");
+			retval = -1;
+		}
+
+		/* If the sequence number is set we know we have new data */
+		if (retval == 0)
+			if ((rsp->session.authtype == IPMI_SESSION_AUTHTYPE_RMCP_PLUS) &&
+			    (rsp->session.payloadtype == IPMI_PAYLOAD_TYPE_SOL)        &&
+			    (rsp->payload.sol_packet.packet_sequence_number))
+				output(rsp);
+	}
+
+	return retval;
+}",TRUE,CWE_OTHERS
+63,63,63_vdisc.c,"main(int argc, char* argv[])
+{
+  int i;
+  const char *prefix = "".."";
+  const char *prev_arg = """";
+
+  struct header_entry entries[] = {
+    {""word_dic"", ""/mkworddic/anthy.wdic""},
+    {""dep_dic"", ""/depgraph/anthy.dep""},
+    {""trans_info"", ""/calctrans/anthy.trans_info""},
+    {""cand_info"", ""/calctrans/anthy.cand_info""},
+    {""weak_words"", ""/calctrans/anthy.weak_words""},
+    {""corpus_bucket"", ""/calctrans/anthy.corpus_bucket""},
+    {""corpus_array"", ""/calctrans/anthy.corpus_array""},
+  };
+
+  for (i = 1; i < argc; i++) {
+    if (!strcmp(""-p"", prev_arg)) {
+      prefix = argv[i];
+    }
+    /**/
+    prev_arg = argv[i];
+  }
+  printf(""file name prefix=[%s] you can change this by -p option.\n"", prefix);
+
+  create_file_dic(DIC_NAME, prefix,
+		  sizeof(entries)/sizeof(struct header_entry),
+		  entries);
+
+  printf(""%s done.\n"", argv[0]);
+  return 0;
+}",FALSE,CWE_OTHERS
+64,64,64_vdisc.c,"_TTF_BoundedPrintLeft( 
+		_TTF_font_t	font ,
+		const char *	text ,
+		unsigned int	cmode ,
+		FNT_window_t	box ,
+		const float *	color
+	)
+{
+	const char *	ptr		= text;
+	unsigned int	cHeight		= 0;
+	unsigned int	maxWidth	= 0;
+
+	qglTranslatef( box->x , box->y , 0 );
+	while ( *ptr && ( box->height == 0 || cHeight + font->height < box->height ) ) {
+		const float *	curColor	= color;
+		unsigned int	lineWidth	= box->width;
+		int		read;
+
+		// Print current line
+		qglPushMatrix( );
+		qglTranslatef( 0 , (float) cHeight , 0 );
+		_TTF_PrintUntilEOL( font , ptr , cmode , color , &lineWidth , &read , &curColor );
+		qglPopMatrix( );
+
+		// Update height and maximal width
+		cHeight += font->height;
+		if ( lineWidth > maxWidth ) {
+			maxWidth = lineWidth;
+		}
+
+		// Find end of line
+		ptr += read - 1;
+		while ( *ptr ) {
+			char c = *ptr;
+			ptr ++;
+			if ( c == '\n' ) {
+				break;
+			}
+		}
+	}
+
+	box->width = maxWidth;
+	box->height = cHeight;
+}",FALSE,CWE_OTHERS
+65,65,65_vdisc.c,"dev_of_fd(int fd)
+{
+    struct stat st;
+    int ret, orig_errno;
+
+    orig_errno = errno;
+    ret = fstat(fd, &st);
+    errno = orig_errno;
+    if (ret < 0)
+	return 0;
+    if (S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode))
+	return st.st_rdev;
+    return 0;
+}",FALSE,CWE_OTHERS
+66,66,66_vdisc.c,"update_state(const char *argv0, const char *iface, const char *state)
+{
+    FILE *tmp_fp;
+
+    FILE *lock_fp;
+    FILE *state_fp;
+    char buf[80];
+    char *p;
+
+    lock_fp = lock_state(argv0);
+
+    state_fp = fopen(statefile, no_act ? ""r"" : ""a+"");
+    if (state_fp == NULL) {
+        if (!no_act) {
+            fprintf(stderr, ""%s: failed to open statefile %s: %s\n"", argv0, statefile, strerror(errno));
+            exit(1);
+        } else {
+            goto noact;
+        }
+    }
+
+    if (!no_act) {
+        int flags;
+
+        if ((flags = fcntl(fileno(state_fp), F_GETFD)) < 0 || fcntl(fileno(state_fp), F_SETFD, flags | FD_CLOEXEC) < 0) {
+            fprintf(stderr, ""%s: failed to set FD_CLOEXEC on statefile %s: %s\n"", argv0, statefile, strerror(errno));
+            exit(1);
+        }
+
+        if (lock_fd(fileno(state_fp)) < 0) {
+            fprintf(stderr, ""%s: failed to lock statefile %s: %s\n"", argv0, statefile, strerror(errno));
+            exit(1);
+        }
+    }
+
+    if (no_act)
+        goto noact;
+
+    tmp_fp = fopen(tmpstatefile, ""w"");
+    if (tmp_fp == NULL) {
+        fprintf(stderr, ""%s: failed to open temporary statefile %s: %s\n"", argv0, tmpstatefile, strerror(errno));
+        exit(1);
+    }
+
+    while ((p = fgets(buf, sizeof buf, state_fp)) != NULL) {
+        char *pch;
+
+        pch = buf + strlen(buf) - 1;
+        while (pch > buf && isspace(*pch))
+            pch--;
+        *(pch + 1) = '\0';
+
+        pch = buf;
+        while (isspace(*pch))
+            pch++;
+
+        if (strncmp(iface, pch, strlen(iface)) == 0) {
+            if (pch[strlen(iface)] == '=') {
+                if (state != NULL) {
+                    fprintf(tmp_fp, ""%s=%s\n"", iface, state);
+                    state = NULL;
+                }
+
+                continue;
+            }
+        }
+
+        fprintf(tmp_fp, ""%s\n"", pch);
+    }
+
+    if (state != NULL)
+        fprintf(tmp_fp, ""%s=%s\n"", iface, state);
+
+    fclose(tmp_fp);
+    if (rename(tmpstatefile, statefile)) {
+        fprintf(stderr, ""%s: failed to overwrite statefile %s: %s\n"", argv0, statefile, strerror(errno));
+        exit(1);
+    }
+
+  noact:
+    if (state_fp != NULL) {
+        fclose(state_fp);
+        state_fp = NULL;
+    }
+
+    if (lock_fp != NULL) {
+        fclose(lock_fp);
+        lock_fp = NULL;
+    }
+}",FALSE,CWE_OTHERS
+67,67,67_vdisc.c,"checknologin(void)
+{
+    FILE *f;
+    char buf[1024];
+
+    f = fopen(_PATH_NOLOGIN, ""r"");
+    if(f == NULL)
+	return;
+    while(fgets(buf, sizeof(buf), f))
+	fputs(buf, stdout);
+    fclose(f);
+    exit(0);
+}",TRUE,CWE_OTHERS
+68,68,68_vdisc.c,"try_file_to_buffer(char *buffer, size_t bufsiz, const char *format, ...)
+{
+	char path[4096];
+	int fd;
+	size_t len = 0;
+	ssize_t nread = 0;
+	va_list pa;
+
+	if (G_UNLIKELY(bufsiz <= sizeof(char*)))
+	  g_warning(""Huhu, bufsiz of %lu looks bad"", (gulong)bufsiz);
+
+	va_start(pa, format);
+
+	/* C99 also provides vsnprintf */
+	g_vsnprintf(path, sizeof path, format, pa);
+
+	va_end(pa);
+
+	bufsiz--; /* reserve 1 for trailing NUL */
+	buffer [0] = '\0';
+
+	if((fd = open (path, O_RDONLY)) < 0)
+		return TRY_FILE_TO_BUFFER_OPEN;
+
+	while (len < bufsiz) {
+		nread = read (fd, buffer + len, bufsiz - len);
+
+		if (G_UNLIKELY(nread < 0)) {
+			if (errno == EINTR)
+				continue;
+			else
+				break;
+		}
+
+		len += nread;
+
+		if (nread == 0)
+			break;
+	}
+
+	close (fd);
+
+	if (nread < 0)
+		return TRY_FILE_TO_BUFFER_READ;
+
+	buffer [len] = '\0';
+
+	return TRY_FILE_TO_BUFFER_OK;
+}",TRUE,CWE_OTHERS
+69,69,69_vdisc.c,"lo_import_internal(PGconn *conn, const char *filename, Oid oid)
+{
+	int			fd;
+	int			nbytes,
+				tmp;
+	char		buf[LO_BUFSIZE];
+	Oid			lobjOid;
+	int			lobj;
+	char		sebuf[256];
+
+	/*
+	 * open the file to be read in
+	 */
+	fd = open(filename, O_RDONLY | PG_BINARY, 0666);
+	if (fd < 0)
+	{							/* error */
+		printfPQExpBuffer(&conn->errorMessage,
+						  libpq_gettext(""could not open file \""%s\"": %s\n""),
+						  filename, pqStrerror(errno, sebuf, sizeof(sebuf)));
+		return InvalidOid;
+	}
+
+	/*
+	 * create an inversion object
+	 */
+	if (oid == InvalidOid)
+		lobjOid = lo_creat(conn, INV_READ | INV_WRITE);
+	else
+		lobjOid = lo_create(conn, oid);
+
+	if (lobjOid == InvalidOid)
+	{
+		/* we assume lo_create() already set a suitable error message */
+		(void) close(fd);
+		return InvalidOid;
+	}
+
+	lobj = lo_open(conn, lobjOid, INV_WRITE);
+	if (lobj == -1)
+	{
+		/* we assume lo_open() already set a suitable error message */
+		(void) close(fd);
+		return InvalidOid;
+	}
+
+	/*
+	 * read in from the file and write to the large object
+	 */
+	while ((nbytes = read(fd, buf, LO_BUFSIZE)) > 0)
+	{
+		tmp = lo_write(conn, lobj, buf, nbytes);
+		if (tmp != nbytes)
+		{
+			/*
+			 * If lo_write() failed, we are now in an aborted transaction so
+			 * there's no need for lo_close(); furthermore, if we tried it
+			 * we'd overwrite the useful error result with a useless one. So
+			 * just nail the doors shut and get out of town.
+			 */
+			(void) close(fd);
+			return InvalidOid;
+		}
+	}
+
+	if (nbytes < 0)
+	{
+		/* We must do lo_close before setting the errorMessage */
+		int			save_errno = errno;
+
+		(void) lo_close(conn, lobj);
+		(void) close(fd);
+		printfPQExpBuffer(&conn->errorMessage,
+					  libpq_gettext(""could not read from file \""%s\"": %s\n""),
+						  filename,
+						  pqStrerror(save_errno, sebuf, sizeof(sebuf)));
+		return InvalidOid;
+	}
+
+	(void) close(fd);
+
+	if (lo_close(conn, lobj) != 0)
+	{
+		/* we assume lo_close() already set a suitable error message */
+		return InvalidOid;
+	}
+
+	return lobjOid;
+}",TRUE,CWE_OTHERS
+70,70,70_vdisc.c,"vibrato(unsigned char chan, unsigned char info)
+{
+  unsigned char i,speed,depth;
+
+  speed = info >> 4;
+  depth = (info & 0x0f) / 2;
+
+  for(i=0;i<speed;i++) {
+    channel[chan].trigger++;
+    while(channel[chan].trigger >= 64)
+      channel[chan].trigger -= 64;
+    if(channel[chan].trigger >= 16 && channel[chan].trigger < 48)
+      slide_down(chan,(unsigned char) (vibratotab[channel[chan].trigger - 16] / (16-depth)));
+    if(channel[chan].trigger < 16)
+      slide_up(chan,(unsigned char) (vibratotab[channel[chan].trigger + 16] / (16-depth)));
+    if(channel[chan].trigger >= 48)
+      slide_up(chan,(unsigned char) (vibratotab[channel[chan].trigger - 48] / (16-depth)));
+  }
+  setfreq(chan);
+}",TRUE,CWE_OTHERS
+71,71,71_vdisc.c,"ppack (int fdes, enum ck_msg_type type, CheckMsg *msg)
+{
+  char *buf;
+  int n;
+  ssize_t r;
+
+  n = pack (type, &buf, msg);
+  /* Keep it on the safe side to not send too much data. */
+  if (n > (CK_MAX_MSG_SIZE / 2))
+    eprintf(""Message string too long"", __FILE__, __LINE__ - 2);
+
+  pthread_cleanup_push( ppack_cleanup, &ck_mutex_lock );
+  pthread_mutex_lock(&ck_mutex_lock);
+  r = write (fdes, buf, n);
+  pthread_mutex_unlock(&ck_mutex_lock);
+  pthread_cleanup_pop(0);
+  if (r == -1)
+    eprintf (""Error in call to write:"", __FILE__, __LINE__ - 2);
+
+  free (buf);
+}",TRUE,CWE_OTHERS
+72,72,72_vdisc.c,"expandTilde(AtomPtr filename)
+{
+    char *buf;
+    char *home;
+    int len;
+    AtomPtr ret;
+
+    if(filename == NULL || filename->length < 1 ||
+       filename->string[0] != '~' || filename->string[1] != '/')
+        return filename;
+    
+    home = getenv(""HOME"");
+    if(home == NULL) {
+        return NULL;
+    }
+    len = strlen(home);
+    buf = malloc(len + 1 + 1 + filename->length - 2);
+    if(buf == NULL) {
+        do_log(L_ERROR, ""Could not allocate buffer.\n"");
+        return NULL;
+    }
+
+    memcpy(buf, home, len);
+    if(buf[len - 1] != '/')
+        buf[len++] = '/';
+    memcpy(buf + len, filename->string + 2, filename->length - 2);
+    len += filename->length - 2;
+    ret = internAtomN(buf, len);
+    free(buf);
+    if(ret != NULL)
+        releaseAtom(filename);
+    return ret;
+}",TRUE,CWE_OTHERS
+73,73,73_vdisc.c,"nsldapagt_shutdown()
+{
+   if (!nsldapagt_is_running()) {
+        rpt_success(""NOT_RUNNING"");
+        exit(0);
+
+   } else {
+	   int status = -1;
+
+#if defined(_WIN32)
+	   /* NT version -- just try to stop the SNMP service */
+	   /* Bug 612322: redirecting the output to null device */
+	   status = system(""net stop SNMP > nul"");
+
+#else
+	  /* UNIX version */
+      pid_t pid;
+      if (get_nsldapagt_pid(&pid) == 0) 
+	  {
+	      if (kill(pid, SIGTERM) == 0) 
+		  {
+	          sleep(2);
+	          if (!nsldapagt_is_running()) 
+			  {
+	              status = 0;
+			  }
+		  }
+      }
+#endif
+	  return(status);
+   }
+   return(0);
+}",FALSE,CWE_OTHERS
+74,74,74_vdisc.c,"__expand_table(HTAB *hashp)
+{
+	uint32 old_bucket, new_bucket;
+	int new_segnum, spare_ndx;
+	size_t dirsize;
+
+#ifdef HASH_STATISTICS
+	hash_expansions++;
+#endif
+	new_bucket = ++hashp->MAX_BUCKET;
+	old_bucket = (hashp->MAX_BUCKET & hashp->LOW_MASK);
+
+	new_segnum = new_bucket >> hashp->SSHIFT;
+
+	/* Check if we need a new segment */
+	if (new_segnum >= hashp->nsegs) {
+		/* Check if we need to expand directory */
+		if (new_segnum >= hashp->DSIZE) {
+			/* Reallocate directory */
+			dirsize = hashp->DSIZE * sizeof(SEGMENT *);
+			if (!hash_realloc(&hashp->dir, dirsize, dirsize << 1))
+				return (-1);
+			hashp->DSIZE = dirsize << 1;
+		}
+		if ((hashp->dir[new_segnum] =
+		    (SEGMENT)calloc((size_t)hashp->SGSIZE, sizeof(SEGMENT))) == NULL)
+			return (-1);
+		hashp->exsegs++;
+		hashp->nsegs++;
+	}
+	/*
+	 * If the split point is increasing (MAX_BUCKET's log base 2
+	 * * increases), we need to copy the current contents of the spare
+	 * split bucket to the next bucket.
+	 */
+	spare_ndx = __log2((uint32)(hashp->MAX_BUCKET + 1));
+	if (spare_ndx > hashp->OVFL_POINT) {
+		hashp->SPARES[spare_ndx] = hashp->SPARES[hashp->OVFL_POINT];
+		hashp->OVFL_POINT = spare_ndx;
+	}
+
+	if (new_bucket > (uint32)hashp->HIGH_MASK) {
+		/* Starting a new doubling */
+		hashp->LOW_MASK = hashp->HIGH_MASK;
+		hashp->HIGH_MASK = new_bucket | hashp->LOW_MASK;
+	}
+	/* Relocate records to the new bucket */
+	return (__split_page(hashp, old_bucket, new_bucket));
+}",FALSE,CWE_OTHERS
+75,75,75_vdisc.c,"is_shell_script(char *s)
+{
+        int fd;
+        char interp[2];
+        struct stat sbuf;
+
+        if ((fd = open(s, O_RDONLY)) < 0) 
+                return FALSE;
+        
+        if (isatty(fd)) 
+                return FALSE;
+        
+        if (read(fd, interp, 2) != 2) {
+                close(fd);
+                return FALSE;
+        }
+
+        if (!STRNEQ(interp, ""#!"")) {
+                close(fd);
+                return FALSE;
+        }
+
+        close(fd);
+
+        if (stat(s, &sbuf) == -1) 
+		return FALSE;
+
+        if (!(sbuf.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH))) 
+		return FALSE;
+        
+        return TRUE;
+}",FALSE,CWE_OTHERS
+76,76,76_vdisc.c,"isl_multi_pw_aff_coalesce(
+	__isl_take isl_multi_pw_aff *mpa)
+{
+	int i;
+
+	if (!mpa)
+		return NULL;
+
+	for (i = 0; i < mpa->n; ++i) {
+		isl_pw_aff *pa = isl_pw_aff_copy(mpa->p[i]);
+		pa = isl_pw_aff_coalesce(pa);
+		if (!pa)
+			return isl_multi_pw_aff_free(mpa);
+		isl_pw_aff_free(mpa->p[i]);
+		mpa->p[i] = pa;
+	}
+
+	return mpa;
+}",FALSE,CWE_OTHERS
+77,77,77_vdisc.c,"wordtris_animate (Pos *pos, byte **movp)
+{
+	static byte move[1024];
+	int i, j;
+	byte *mp = move;
+	byte *board = pos->board;
+	for (i=0; i<board_wid; i++)
+	for (j=board_heit-1; j>=1; j--)
+	{
+		int val;
+		if ((val = pos->board [j * board_wid + i]) != WORDTRIS_EMPTY)
+		{
+			*mp++ = i;
+			*mp++ = j;
+			*mp++ = WORDTRIS_EMPTY;
+			if (j > 2)
+			{
+				*mp++ = i;
+				*mp++ = j-1;
+				*mp++ = val;
+			}
+		}
+	}
+	while (1)
+	{
+		i = random() % WORDTRIS_LEN;
+		if (pos->board [(board_heit - 1) * board_wid + i])
+			continue;
+		*mp++ = i;
+		*mp++ = board_heit - 1;
+		*mp++ = wordtris_get_rand_char();
+		break;
+	}
+	*mp = -1;
+	*movp = move;
+	return 1;
+}",TRUE,CWE_OTHERS
+78,78,78_vdisc.c,"close_all_fds(void)
+{
+	int i, max;
+
+#if defined(HAVE_SYSCONF) && defined(_SC_OPEN_MAX)
+	max = sysconf(_SC_OPEN_MAX);
+#elif defined(HAVE_GETDTABLESIZE)
+	max = getdtablesize();
+#elif defined(HAVE_GETRLIMIT) && defined(RLIMIT_NOFILE)
+	struct rlimit rl;
+
+	getrlimit(RLIMIT_NOFILE, &rl);
+	max = rl.rlim_cur;
+#else
+	max = OPEN_MAX;
+#endif
+
+	for (i=0; i < max; i++) {
+		close(i);
+		if (i <= 2)
+			open(""/dev/null"", O_RDWR);
+	}
+}",TRUE,CWE_OTHERS
+79,79,79_vdisc.c,"SetDocRoot(char *name)
+
+{ char file[CF_BUFSIZE];
+  FILE *fout,*fin;
+  struct stat sb;
+
+if (LOOKUP)
+   {
+   CfOut(cf_verbose, """",""Ignoring document root in lookup mode"");
+   return;
+   }
+
+snprintf(file,CF_BUFSIZE-1,""%s/document_root.dat"",CFWORKDIR);
+MapName(file);
+
+if (cfstat(file,&sb) == -1 && strlen(name) > 0)
+   {
+   if ((fout = fopen(file,""w"")) == NULL)
+      {
+      CfOut(cf_error,""fopen"",""Unable to write document root file! (%s)"",file);
+      return;
+      }
+
+   fprintf(fout,""%s"",name);
+   fclose(fout);
+   CfOut(cf_verbose,"""","" -> Setting document root for a knowledge base to %s"",name);
+   strcpy(DOCROOT,name);
+   NewScalar(""sys"",""doc_root"",DOCROOT,cf_str);
+   }
+else
+   {
+   if ((fin = fopen(file,""r"")) == NULL)
+      {
+      }
+   else
+      {      
+      file[0] = 0;
+      fscanf(fin,""%255s"",file);
+      fclose(fin);
+      CfOut(cf_verbose,"""","" -> Assuming document root for a knowledge base in %s"",file);
+      strcpy(DOCROOT,name);
+      NewScalar(""sys"",""doc_root"",DOCROOT,cf_str);
+      }
+   }
+}",TRUE,CWE_OTHERS
+80,80,80_vdisc.c,"cmd_load(void)
+{
+  char data[MAXSTR]="""";
+  LoadEPD (token[1]);
+  pgnloaded = 0;
+  check_board();
+  if (!ValidateBoard()) {
+    SET (flags, ENDED);
+    printf (_(""Board is wrong!\n""));
+  } else {
+    /* Read EPD file and send contents to engine */
+    FILE *epdfile = fopen( token[1], ""r"" );
+    char epdline[MAXSTR]="""";
+    if ( epdfile == NULL ) {
+      printf(_(""Error reading file '%s'\n""), token[1] );
+    } else {
+      if ( fgets( epdline, MAXSTR, epdfile ) == NULL ) {
+        printf(_(""Error reading file '%s'\n""), token[1] );
+      } else {
+        strcpy( data, ""setboard "" );
+        int i=0;
+        while ( epdline[i] != '\n' ) {
+          data[i+9] = epdline[i];
+          ++i;
+        }
+        data[i+9] = '\0';
+        SetDataToEngine( data );
+        SetAutoGo( true );
+      }
+    }
+  }
+}",TRUE,CWE_OTHERS
+81,81,81_vdisc.c,"compat_socket_selfpipe_discard_data( compat_socket_selfpipe_t *self )
+{
+  char bitbucket;
+  ssize_t bytes_read;
+
+  do {
+    bytes_read = read( self->read_fd, &bitbucket, 1 );
+    if( bytes_read == -1 && errno != EINTR ) {
+      ui_error( UI_ERROR_ERROR,
+                ""%s: %d: unexpected error %d (%s) reading from pipe"", __FILE__,
+                __LINE__, errno, strerror(errno) );
+    }
+  } while( bytes_read < 0 );
+}",TRUE,CWE_OTHERS
+82,82,82_vdisc.c,"net_recv(int sockfd, char *buff, int maxlen)
+{
+   int nbytes;
+   short pktsiz;
+
+   /* get data size -- in short */
+   if ((nbytes = read_nbytes(sockfd, (char *)&pktsiz, sizeof(short))) <= 0) {
+      /* probably pipe broken because client died */
+      return nbytes;               /* assume hard EOF received */
+   }
+   if (nbytes != sizeof(short))
+      return -EINVAL;
+
+   pktsiz = ntohs(pktsiz);         /* decode no. of bytes that follow */
+   if (pktsiz > maxlen)
+      return -EINVAL;
+   if (pktsiz == 0)
+      return 0;                    /* soft EOF */
+
+   /* now read the actual data */
+   if ((nbytes = read_nbytes(sockfd, buff, pktsiz)) <= 0)
+      return nbytes;
+   if (nbytes != pktsiz)
+      return -EINVAL;
+
+   return nbytes;                /* return actual length of message */
+}",TRUE,CWE_OTHERS
+83,83,83_vdisc.c,"cm_p7_oprofile_CreateBlock(int count)
+{
+  int i = 0;
+
+  CM_P7_OM_BLOCK *block = NULL;
+  int status = eslOK;
+
+  ESL_ALLOC(block, sizeof(*block));
+
+  block->count = 0;
+  block->listSize = 0;
+  block->list         = NULL;
+  block->cm_offsetA   = NULL;
+  block->cm_clenA     = NULL;
+  block->cm_WA        = NULL;
+  block->cm_nbpA      = NULL;
+  block->gfmuA        = NULL;
+  block->gflambdaA    = NULL;
+
+  ESL_ALLOC(block->list,       sizeof(P7_OPROFILE *) * count);
+  ESL_ALLOC(block->cm_offsetA, sizeof(off_t)         * count);
+  ESL_ALLOC(block->cm_clenA,   sizeof(int)           * count);
+  ESL_ALLOC(block->cm_WA,      sizeof(int)           * count);
+  ESL_ALLOC(block->cm_nbpA,    sizeof(int)           * count);
+  ESL_ALLOC(block->gfmuA,      sizeof(float)         * count);
+  ESL_ALLOC(block->gflambdaA,  sizeof(float)         * count);
+  block->listSize = count;
+
+  for (i = 0; i < count; ++i)
+    {
+      block->list[i]      = NULL;
+      block->cm_offsetA[i] = 0;
+      block->cm_clenA[i]   = 0;
+      block->cm_WA[i]      = 0;
+      block->cm_nbpA[i]    = 0;
+      block->gfmuA[i]      = 0.;
+      block->gflambdaA[i]  = 0.;
+    }
+
+  return block;
+
+ ERROR:
+  if (block != NULL)
+    {
+      if (block->list       != NULL)  free(block->list);
+      if (block->cm_offsetA != NULL)  free(block->cm_offsetA);
+      if (block->cm_clenA   != NULL)  free(block->cm_clenA);
+      if (block->cm_WA      != NULL)  free(block->cm_WA);
+      if (block->cm_nbpA    != NULL)  free(block->cm_clenA);
+      if (block->gfmuA      != NULL)  free(block->gfmuA);
+      if (block->gflambdaA  != NULL)  free(block->gflambdaA);
+      free(block);
+    }
+  
+  return NULL;
+}",TRUE,CWE_OTHERS
+84,84,84_vdisc.c,"sync_mmio_spte(struct kvm_vcpu *vcpu, u64 *sptep, gfn_t gfn,
+			   unsigned access, int *nr_present)
+{
+	if (unlikely(is_mmio_spte(*sptep))) {
+		if (gfn != get_mmio_spte_gfn(*sptep)) {
+			mmu_spte_clear_no_track(sptep);
+			return true;
+		}
+
+		(*nr_present)++;
+		mark_mmio_spte(vcpu, sptep, gfn, access);
+		return true;
+	}
+
+	return false;
+}",TRUE,CWE_OTHERS
+85,85,85_vdisc.c,"glusterd_get_pid_from_file (char *master, char *slave, pid_t *pid)
+{
+        int ret                = -1;
+        int pfd                = 0;
+        char pidfile[PATH_MAX] = {0,};
+        char buff[1024]        = {0,};
+
+        pfd = gsyncd_getpidfile (master, slave, pidfile);
+        if (pfd == -2) {
+                gf_log ("""", GF_LOG_ERROR, GEOREP"" log-rotate validation ""
+                        "" failed for %s & %s"", master, slave);
+                goto out;
+        }
+        if (gsync_status_byfd (pfd) == -1) {
+                gf_log ("""", GF_LOG_ERROR, ""gsyncd b/w %s & %s is not""
+                        "" running"", master, slave);
+                goto out;
+        }
+
+        if (pfd < 0)
+                goto out;
+
+        ret = read (pfd, buff, 1024);
+        if (ret < 0) {
+                gf_log ("""", GF_LOG_ERROR, GEOREP"" cannot read pid from pid-file"");
+                goto out;
+        }
+
+
+        *pid = strtol (buff, NULL, 10);
+        ret = 0;
+
+out:
+        sys_close(pfd);
+        return ret;
+}",TRUE,CWE_OTHERS
+86,86,86_vdisc.c,"readProfile() {
+	FILE * file = readOutputFilename();
+
+	int width = atoi(needNextToken());
+	WiggleIterator * regions = readIterator();
+	WiggleIterator * wig = readLastIterator();
+	Multiplexer * profiles = ProfileMultiplexer(regions, width, wig);
+	double * profile = calloc(width, sizeof(double));
+
+	for (; !profiles->done; popMultiplexer(profiles))
+		addProfile(profile, profiles->values, width);
+
+	int i;
+	for (i = 0; i < width; i++)
+		fprintf(file, ""%i\t%lf\n"", i, profile[i]);
+
+	free(profile);
+	fclose(file);
+}",TRUE,CWE_OTHERS
+87,87,87_vdisc.c,"matr_write(Matrix *M, char *filename) {
+  FILE *out = fopen(filename, ""w"");
+
+  if (!out) {
+    if (MATR_DEBUG_MODE) {
+      fprintf(stderr, ""Bad file name in matr_write: %s\n"", filename);
+    }
+    return;
+  }
+
+  matr_write_fp(M, out);
+
+  fclose(out);
+}",TRUE,CWE_OTHERS
+88,88,88_vdisc.c,"main (int argc, char *argv[])
+{
+  long nbtests;
+  int verbose;
+  tests_start_mpfr ();
+
+  verbose = 0;
+  nbtests = 10;
+  if (argc > 1)
+    {
+      long a = atol (argv[1]);
+      verbose = 1;
+      if (a != 0)
+        nbtests = a;
+    }
+
+  test_grandom (nbtests, 420, MPFR_RNDN, verbose);
+  test_special (2);
+  test_special (42000);
+
+  tests_end_mpfr ();
+  return 0;
+}",TRUE,CWE_OTHERS
+89,89,89_vdisc.c,"fprintf_sizes(FILE *f, config_t *c, action_t act)
+{
+    int *seq = GETSEQ(c, act, 0);
+    fprintf(f, ""size_%s="", action_names[act].cfgname);
+    for (int i = 0; i < GETSEQSIZE(c, act); i++) {
+	fprintf(f, ""%dx%d "", seq[0], seq[1]);
+	seq += 2;
+    }
+    fprintf(f, ""\n"");
+    return 0;
+}",TRUE,CWE_OTHERS
+90,90,90_vdisc.c,"photoset_created_cb                     (GObject      *object,
+                                         GAsyncResult *res,
+                                         gpointer      user_data)
+{
+  FspSession *session = FSP_SESSION (object);
+  GError *error = NULL;
+  created_photoset_id =
+    fsp_session_create_photoset_finish (session, res, &error);
+
+  if (error != NULL)
+    {
+      g_print (""Error creating photoset: %s\n"", error->message);
+      g_error_free (error);
+    }
+  else
+    {
+      g_print (""[photosets_created_cb]::Success! Photo set Id: %s\n\n"",
+               created_photoset_id);
+
+      getchar ();
+
+      /* Continue adding a picture to the photoset, but first upload a new one */
+      g_print (""Uploading a new picture to be added to the photoset..."");
+      fsp_session_upload (session,
+                          test_photo_path,
+                          ""Yet another title"",
+                          ""Yet another description "",
+                          ""yet some other tags"",
+                          FSP_VISIBILITY_NO,
+                          FSP_VISIBILITY_YES,
+                          FSP_VISIBILITY_NONE,
+                          FSP_SAFETY_LEVEL_NONE,
+                          FSP_CONTENT_TYPE_PHOTO,
+                          FSP_SEARCH_SCOPE_NONE,
+                          NULL, upload_cb,
+                          (gpointer) photoset_created_cb);
+    }
+}",TRUE,CWE_OTHERS
+91,91,91_vdisc.c,"process_args (int argc, char **argv)
+{
+  int opt;
+
+  while ((opt = getopt_long (argc, argv, ""abcfhlno:puv"", options, NULL)) != -1)
+    {
+      switch (opt)
+	{
+	case 'a':
+	  flag_all_blocks = 1;
+	  break;
+	case 'b':
+	  flag_branches = 1;
+	  break;
+	case 'c':
+	  flag_counts = 1;
+	  break;
+	case 'f':
+	  flag_function_summary = 1;
+	  break;
+	case 'h':
+	  print_usage (false);
+	  /* print_usage will exit.  */
+	case 'l':
+	  flag_long_names = 1;
+	  break;
+	case 'n':
+	  flag_gcov_file = 0;
+	  break;
+	case 'o':
+	  object_directory = optarg;
+	  break;
+	case 'p':
+	  flag_preserve_paths = 1;
+	  break;
+	case 'u':
+	  flag_unconditional = 1;
+	  break;
+	case 'v':
+	  print_version ();
+	  /* print_version will exit.  */
+	default:
+	  print_usage (true);
+	  /* print_usage will exit.  */
+	}
+    }
+
+  return optind;
+}",FALSE,CWE_OTHERS
+92,92,92_vdisc.c,"read_base_record(struct record_stat *rst)
+{
+  struct stat st;
+  if (rst->is_anon) {
+    clear_record(rst);
+    return ;
+  }
+  anthy_check_user_dir();
+
+  if (anthy_open_file(rst->base_fn) == -1) {
+    return ;
+  }
+
+  clear_record(rst);
+  read_session(rst);
+  anthy_close_file();
+  if (stat(rst->base_fn, &st) == 0) {
+    rst->base_timestamp = st.st_mtime;
+  }
+  rst->last_update = 0;
+}",FALSE,CWE_OTHERS
+93,93,93_vdisc.c,"Java_org_xmlsoft_LibXml_parseSAXSystemIdImpl
+(JNIEnv *env, jclass cls, jstring jSystemId, jobject inputStream, jobject jhandler, jint recovery) {
+    SContext ctx;
+    LocatorContext lCtx;
+    xmlSAXHandler handler;
+    char chunk[CHUNK_SIZE];
+    
+    prepareSAXImpl(env, &ctx, jhandler, &handler);
+    ctx.locatorContext = &lCtx;
+    
+    xmlResetLastError();
+    const char *systemId = (*env)->GetStringUTFChars(env, jSystemId, NULL);
+    
+    xmlParserCtxt *parser = xmlCreatePushParserCtxt(&handler, 0, NULL, 0, systemId);
+    parser->_private = &ctx;
+   
+    int ret;
+    int readlen;
+    jbyteArray buf = (*env)->NewByteArray(env, CHUNK_SIZE);
+    while(1) {
+        readlen = (*env)->CallIntMethod(env, inputStream, methodInputStreamRead, buf, 0, CHUNK_SIZE);
+        if( readlen==-1 || (*env)->ExceptionOccurred(env))
+            break;
+        (*env)->GetByteArrayRegion(env, buf, 0, readlen, (jbyte*)chunk);
+        ret = xmlParseChunk(parser, chunk, readlen, 0);
+        if(ret!=0) {
+            throwInternalErrorWithLastError(env);
+            break;
+        }
+    }
+    if(!(*env)->ExceptionOccurred(env))
+        xmlParseChunk(parser, chunk, 0, 1);
+    (*env)->DeleteLocalRef(env, buf);
+    (*env)->ReleaseStringUTFChars(env, jSystemId, systemId);
+    
+    // if(!parser->wellFormed) then something went wrong...
+    // parser->myDoc should not be created since we're using SAX
+    
+    xmlFreeParserCtxt(parser);
+}",FALSE,CWE_OTHERS
+94,94,94_vdisc.c,"write_attr(struct ng_attribute *attr, int value)
+{
+    switch (attr->id) {
+    case 1000:
+	parm_k = value;
+	break;
+    case 1001:
+	parm_zoom = value;
+	break;
+    case 1002:
+	parm_cx = value;
+	break;
+    case 1003:
+	parm_cy = value;
+	break;
+    }
+}",FALSE,CWE_OTHERS
+95,95,95_vdisc.c,"element_extend(ElementObject* self, PyObject* args)
+{
+    PyObject* seq;
+    Py_ssize_t i, seqlen = 0;
+
+    PyObject* seq_in;
+    if (!PyArg_ParseTuple(args, ""O:extend"", &seq_in))
+        return NULL;
+
+    seq = PySequence_Fast(seq_in, """");
+    if (!seq) {
+        PyErr_Format(
+            PyExc_TypeError,
+            ""expected sequence, not \""%.200s\"""", Py_TYPE(seq_in)->tp_name
+            );
+        return NULL;
+    }
+
+    seqlen = PySequence_Size(seq);
+    for (i = 0; i < seqlen; i++) {
+        PyObject* element = PySequence_Fast_GET_ITEM(seq, i);
+        if (!PyObject_IsInstance(element, (PyObject *)&Element_Type)) {
+            Py_DECREF(seq);
+            PyErr_Format(
+                PyExc_TypeError,
+                ""expected an Element, not \""%.200s\"""",
+                Py_TYPE(element)->tp_name);
+            return NULL;
+        }
+
+        if (element_add_subelement(self, element) < 0) {
+            Py_DECREF(seq);
+            return NULL;
+        }
+    }
+
+    Py_DECREF(seq);
+
+    Py_RETURN_NONE;
+}",TRUE,CWE_OTHERS
+96,96,96_vdisc.c,"fso_framework_inotifier_onActionFromInotify (FsoFrameworkINotifier* self, GIOChannel* source, GIOCondition condition) {
+	gboolean result = FALSE;
+	GIOCondition _tmp0_ = 0;
+	GIOCondition _tmp2_ = 0;
+	GIOCondition _tmp10_ = 0;
+	g_return_val_if_fail (self != NULL, FALSE);
+	g_return_val_if_fail (source != NULL, FALSE);
+	_tmp0_ = condition;
+	if ((_tmp0_ & G_IO_HUP) == G_IO_HUP) {
+		FsoFrameworkLogger* _tmp1_ = NULL;
+		_tmp1_ = fso_framework_theLogger;
+		fso_framework_logger_error (_tmp1_, ""HUP on inotify, will no longer get any notifications"");
+		result = FALSE;
+		return result;
+	}
+	_tmp2_ = condition;
+	if ((_tmp2_ & G_IO_IN) == G_IO_IN) {
+		gint _tmp3_ = 0;
+		gchar* _tmp4_ = NULL;
+		gint _tmp4__length1 = 0;
+		gint _tmp5_ = 0;
+		gchar* _tmp6_ = NULL;
+		gint _tmp6__length1 = 0;
+		struct inotify_event* pevent = NULL;
+		gchar* _tmp7_ = NULL;
+		gint _tmp7__length1 = 0;
+		struct inotify_event* _tmp8_ = NULL;
+		struct inotify_event _tmp9_ = {0};
+		_tmp3_ = self->priv->fd;
+		_vala_assert (_tmp3_ != (-1), ""fd != -1"");
+		_tmp4_ = self->priv->buffer;
+		_tmp4__length1 = self->priv->buffer_length1;
+		_vala_assert (_tmp4_ != NULL, ""buffer != null"");
+		_tmp5_ = self->priv->fd;
+		_tmp6_ = self->priv->buffer;
+		_tmp6__length1 = self->priv->buffer_length1;
+		read (_tmp5_, _tmp6_, (gsize) FSO_FRAMEWORK_INOTIFIER_BUFFER_LENGTH);
+		_tmp7_ = self->priv->buffer;
+		_tmp7__length1 = self->priv->buffer_length1;
+		pevent = (struct inotify_event*) _tmp7_;
+		_tmp8_ = pevent;
+		_tmp9_ = *_tmp8_;
+		fso_framework_inotifier_handleEvent (self, &_tmp9_);
+		result = TRUE;
+		return result;
+	}
+	_tmp10_ = condition;
+	g_critical (""inotifier.vala:98: Unsupported IOCondition %u"", (guint) ((gint) _tmp10_));
+	result = TRUE;
+	return result;
+}",TRUE,CWE_OTHERS
+97,97,97_vdisc.c,"BWTSeqCRMapOpen(unsigned short mapIntervalLog2,
+                unsigned short bitsPerUlong,
+                unsigned long seqLen,
+                const char *projectName,
+                bool createMapFile,
+                BWTSeqContextRetriever *gt_newBWTSeqCR)
+{
+  FILE *mapFile = NULL;
+  BitString mapMap = NULL;
+  GtStr *mapName = NULL;
+  gt_assert(projectName);
+  do {
+    size_t headerBitElems = bitElemsAllocSize(2 * HEADER_ENTRY_BITS),
+      headerSize = headerBitElems * sizeof (BitElem),
+      mapSize = headerSize + sizeof (BitElem)
+      * bitElemsAllocSize(bitsPerUlong * numMapEntries(
+                            seqLen, mapIntervalLog2));
+    mapName = gt_str_new_cstr(projectName);
+    {
+      char buf[1 + 4 + 3];
+      snprintf(buf, sizeof (buf), "".%ucxm"", (unsigned)mapIntervalLog2);
+      gt_str_append_cstr(mapName, buf);
+      if (createMapFile)
+      {
+        /* write header information, for reference to verify noone
+         * toyed with the file name */
+        BitElem headerBuf[headerBitElems];
+        if (!(mapFile = gt_fa_fopen(gt_str_get(mapName), ""w+b"", NULL)))
+          break;
+        gt_bsStoreUInt16(headerBuf, 0, HEADER_ENTRY_BITS, mapIntervalLog2);
+        gt_bsStoreUInt16(headerBuf, HEADER_ENTRY_BITS, HEADER_ENTRY_BITS,
+                      bitsPerUlong);
+        gt_xfwrite(headerBuf,  sizeof (headerBuf), 1, mapFile);
+        if (fseeko(mapFile, mapSize - 1, SEEK_SET))
+          break;
+        /* write one byte so mmap works for full file */
+        gt_xfwrite(&buf, 1, 1, mapFile);
+        gt_xfflush(mapFile);
+      }
+      else
+      {
+        /* read header information, for reference to verify noone
+         * toyed with the file name */
+        BitElem headerBuf[headerBitElems];
+        if (!(mapFile = gt_fa_fopen(gt_str_get(mapName), ""rb"", NULL)))
+          break;
+        if (fread(headerBuf,  sizeof (headerBuf), 1, mapFile) != 1)
+          break;
+        if (gt_bsGetUInt16(headerBuf, 0, HEADER_ENTRY_BITS) != mapIntervalLog2
+            || (gt_bsGetUInt16(headerBuf, HEADER_ENTRY_BITS, HEADER_ENTRY_BITS)
+                != bitsPerUlong))
+        {
+          fprintf(stderr, ""error: context map file %s contains corrupted ""
+                  ""data.\n"", gt_str_get(mapName));
+          break;
+        }
+      }
+    }
+    mapMap = gt_fa_mmap_generic_fd(fileno(mapFile), gt_str_get(mapName),
+                                   mapSize, 0, createMapFile, false, NULL);
+    gt_newBWTSeqCR->revMap = (gt_newBWTSeqCR->revMapMMap = mapMap) + headerSize;
+  } while (0);
+  if (mapName) gt_str_delete(mapName);
+  if (mapFile) gt_fa_xfclose(mapFile);
+  return mapMap != NULL;
+}",TRUE,CWE_OTHERS
+98,98,98_vdisc.c,"rsxx_read_hw_log(struct rsxx_cardinfo *card)
+{
+	int st;
+
+	st = creg_queue_cmd(card, CREG_OP_READ, CREG_ADD_LOG,
+			    sizeof(card->log.tmp), card->log.tmp,
+			    1, read_hw_log_done, NULL);
+	if (st)
+		dev_err(CARD_TO_DEV(card),
+			""Failed getting log text\n"");
+
+	return st;
+}",TRUE,CWE_OTHERS
+99,99,99_vdisc.c,"__cache_shrink(__cache_t *c)
+{
+	while (c->size && c->size > c->max_size && !list_empty(&c->unused)) {
+		__cache_e_t *cc = (__cache_e_t *)(c->unused.next);
+		c->size --;
+		cache_e_free(c, cc);
+	}
+//	fprintf(stderr,""%d/%d\n"", c->size, c->used);
+}",TRUE,CWE_OTHERS
+100,100,100_vdisc.c,"read_message_area(Processor *cpu)
+{
+#define MAX_STRING_LEN  255 /* Maximum length of a debug message */
+  char DebugType,DebugMessage[MAX_STRING_LEN];
+
+  unsigned short i, j, start_block, end_block;
+  unsigned short laddress;
+
+  // If the .cod file contains a simulation script, then we'll
+  // pass it to the command line interface. Note, we go through
+  // this indirect way of accessing the CLI since we don't wish
+  // for code in the src/ directory to depend directly on code
+  // in the cli/ (or any other) directory.
+  start_block = get_short_int(&main_dir.dir.block[COD_DIR_MESSTAB]);
+
+  if(start_block) {
+
+    end_block = get_short_int(&main_dir.dir.block[COD_DIR_MESSTAB+2]);
+
+    for(i=start_block; i<=end_block; i++) {
+      read_block(temp_block, i);
+
+#if 0
+      {
+        // Debug code to display the contents of the message area.
+        int q,p;
+        printf (""Codefile block 0x%x\n"",i);
+
+        for (q=0,p=0; q < COD_BLOCK_SIZE; q+=16) {
+
+          for (p=0; p<16; p++)
+            printf(""%02X "",(unsigned char)temp_block[q+p]);
+          for (p=0; p<16; p++)
+            printf(""%c"", isascii(temp_block[q+p]) ? temp_block[q+p] : '.');
+          printf(""\n"");
+        }
+#endif
+
+      j = 0;
+
+      // Each message has the form of
+      // AAAAAAAACCstring
+      // AAAAAAAA - 32bit address in PIC program memory
+      // CC - 8-bit command
+      // string - a 0-terminated string of characters.
+
+      while (j < COD_BLOCK_SIZE-8) {
+
+        /* read big endian */
+        laddress = get_be_int(&temp_block[j]);
+
+        j += 4;   // 4 = size of big endian
+
+        DebugType = temp_block[j++];
+
+        if (DebugType == 0) {
+          break;
+        }
+
+        get_string(DebugMessage, &temp_block[j], sizeof DebugMessage);
+
+        j += strlen(DebugMessage)+1;
+
+        if(verbose)
+          printf(""debug message: addr=%#x command=\""%c\"" string=\""%s\""\n"",
+                  laddress,
+                  DebugType,
+                  DebugMessage);
+
+        // The lower case commands are user commands.  The upper case are
+        // compiler or assembler generated.  This code makes no distinction
+        // between them.
+
+        switch(DebugType) {
+        // The 'A' and 'E' options in gpasm specifies a list of gpsim commands
+        // that are to be executed after the .cod file has been loaded.
+        case 'a':
+        case 'A':
+          // assertion
+          {
+            string script(""directive"");
+            char buff[256];
+            snprintf(buff,sizeof(buff),""break e %d, %s\n"",laddress,DebugMessage);
+            string cmd(buff);
+            cpu->add_command(script,cmd);
+          }
+          break;
+        case 'e':
+        case 'E':
+          // gpsim command
+          {
+            string script(""directive"");
+            string cmd(DebugMessage);
+            cmd = cmd + '\n';
+            cpu->add_command(script,cmd);
+          }
+          break;
+
+        case 'c':
+        case 'C':
+          // gpsim command
+          // The 'c'/'C' option in gpasm specifies a single gpsim command that is
+          // to be invoked whenever the address associated with this directive
+          // is being simulated.
+          {
+            bool bPost = DebugType == 'c';
+            CommandAssertion *pCA = new CommandAssertion(cpu,laddress,0,
+                                                        DebugMessage,bPost);
+            get_bp().set_breakpoint(pCA,cpu);
+          }
+        case 'f':
+        case 'F':
+          // printf
+
+          break;
+        case 'l':
+        case 'L':
+          // log
+
+          break;
+        default:
+          cout << ""Warning: unknown debug message \"""" << DebugType << ""\""\n"";
+        }
+      }
+    }
+  }
+
+}",TRUE,CWE_OTHERS

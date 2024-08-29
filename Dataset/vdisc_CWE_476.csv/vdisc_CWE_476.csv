@@ -1,0 +1,4186 @@
+,testCase_ID,filename,code,bug,type
+0,0,0_vdisc.c,"hash_iterate(HASH * table, int index, const char **key, void **data)
+{
+    int i;
+    struct hash_elem *tmp = NULL;
+
+    i = 0;
+    while(index) {
+        tmp = table->table[i];
+        while(tmp && --index)
+            tmp = tmp->next;
+        i++;
+    }
+    *key = tmp->key;
+    *data = tmp->data;
+}",TRUE,CWE_476
+1,1,1_vdisc.c,"init_style()
+{
+  if (!atom->q_flag)
+    error->all(FLERR,""Pair style lj/cut/coul/long requires atom attribute q"");
+
+  // request regular or rRESPA neighbor lists
+
+  int irequest;
+
+  if (update->whichflag == 1 && strstr(update->integrate_style,""respa"")) {
+    int respa = 0;
+    if (((Respa *) update->integrate)->level_inner >= 0) respa = 1;
+    if (((Respa *) update->integrate)->level_middle >= 0) respa = 2;
+
+    if (respa == 0) irequest = neighbor->request(this);
+    else if (respa == 1) {
+      irequest = neighbor->request(this);
+      neighbor->requests[irequest]->id = 1;
+      neighbor->requests[irequest]->half = 0;
+      neighbor->requests[irequest]->respainner = 1;
+      irequest = neighbor->request(this);
+      neighbor->requests[irequest]->id = 3;
+      neighbor->requests[irequest]->half = 0;
+      neighbor->requests[irequest]->respaouter = 1;
+    } else {
+      irequest = neighbor->request(this);
+      neighbor->requests[irequest]->id = 1;
+      neighbor->requests[irequest]->half = 0;
+      neighbor->requests[irequest]->respainner = 1;
+      irequest = neighbor->request(this);
+      neighbor->requests[irequest]->id = 2;
+      neighbor->requests[irequest]->half = 0;
+      neighbor->requests[irequest]->respamiddle = 1;
+      irequest = neighbor->request(this);
+      neighbor->requests[irequest]->id = 3;
+      neighbor->requests[irequest]->half = 0;
+      neighbor->requests[irequest]->respaouter = 1;
+    }
+
+  } else irequest = neighbor->request(this);
+
+  cut_coulsq = cut_coul * cut_coul;
+
+  // set rRESPA cutoffs
+
+  if (strstr(update->integrate_style,""respa"") &&
+      ((Respa *) update->integrate)->level_inner >= 0)
+    cut_respa = ((Respa *) update->integrate)->cutoff;
+  else cut_respa = NULL;
+
+  // insure use of KSpace long-range solver, set g_ewald
+
+  if (force->kspace == NULL)
+    error->all(FLERR,""Pair style requires a KSpace style"");
+  g_ewald = force->kspace->g_ewald;
+
+  // setup force tables
+
+  if (ncoultablebits) init_tables(cut_coul,cut_respa);
+}",TRUE,CWE_476
+2,2,2_vdisc.c,"drawArea(const FXDrawable* source,FXint sx,FXint sy,FXint sw,FXint sh,FXint dx,FXint dy){
+  if(!surface){ fxerror(""FXDCWindow::drawArea: DC not connected to drawable.\n""); }
+  if(!source || !source->id()){ fxerror(""FXDCWindow::drawArea: illegal source specified.\n""); }
+  XCopyArea(DISPLAY(getApp()),source->id(),surface->id(),(GC)ctx,sx,sy,sw,sh,dx,dy);
+  }",TRUE,CWE_476
+3,3,3_vdisc.c,"callAsFunction(ExecState *exec, JSObject *thisObj, const List & /*args*/)
+{
+  KJS_CHECK_THIS( KJS::DOMComment, thisObj );
+  return jsUndefined();
+}",TRUE,CWE_476
+4,4,4_vdisc.c,"__ecereMethod___ecereNameSpace__ecere__gui__controls__ListBox_FindString(struct __ecereNameSpace__ecere__com__Instance * this, char * searchedString)
+{
+struct __ecereNameSpace__ecere__gui__controls__ListBox * __ecerePointer___ecereNameSpace__ecere__gui__controls__ListBox = (struct __ecereNameSpace__ecere__gui__controls__ListBox *)(this ? (((char *)this) + __ecereClass___ecereNameSpace__ecere__gui__controls__ListBox->offset) : 0);
+struct __ecereNameSpace__ecere__com__Instance * field;
+unsigned int checkNextField = 0x1;
+int len = searchedString ? strlen(searchedString) : 0;
+
+for(field = __ecerePointer___ecereNameSpace__ecere__gui__controls__ListBox->fields.first; field; field = __ecereProp___ecereNameSpace__ecere__gui__controls__DataField_Get_next(field))
+{
+if(__ecereProp___ecereNameSpace__ecere__gui__controls__DataField_Get_dataType(field)->_vTbl[__ecereVMethodID_class_OnGetString])
+{
+struct __ecereNameSpace__ecere__com__Instance * row;
+
+for(row = __ecerePointer___ecereNameSpace__ecere__gui__controls__ListBox->rows.first; row; row = __ecereMethod___ecereNameSpace__ecere__gui__controls__DataRow_GetNextRow(row))
+{
+if(!((struct __ecereNameSpace__ecere__gui__controls__DataRow *)(((char *)row + __ecereClass___ecereNameSpace__ecere__gui__controls__DataRow->offset)))->noneRow)
+{
+void * data = (void * )__ecereMethod___ecereNameSpace__ecere__gui__controls__DataRow_GetData(row, field);
+char tempString[1024] = """";
+unsigned int needClass = 0x0;
+char * string = ((char * (*)(void *, void *, char *, void *, unsigned int *))(void *)__ecereProp___ecereNameSpace__ecere__gui__controls__DataField_Get_dataType(field)->_vTbl[__ecereVMethodID_class_OnGetString])(__ecereProp___ecereNameSpace__ecere__gui__controls__DataField_Get_dataType(field), data, tempString, (((void *)0)), &needClass);
+
+if(string && string[0])
+checkNextField = 0x0;
+if(string && string[0] && !strcmp(string, searchedString))
+return row;
+}
+}
+}
+if(!checkNextField)
+break;
+}
+return (((void *)0));
+}",FALSE,CWE_476
+5,5,5_vdisc.c,"snic_dump_desc(const char *fn, char *os_buf, int len)
+{
+	struct snic_host_req *req = (struct snic_host_req *) os_buf;
+	struct snic_fw_req *fwreq = (struct snic_fw_req *) os_buf;
+	struct snic_req_info *rqi = NULL;
+	char line[LINE_BUFSZ] = { '\0' };
+	char *cmd_str = NULL;
+
+	if (req->hdr.type >= SNIC_RSP_REPORT_TGTS_CMPL)
+		rqi = (struct snic_req_info *) fwreq->hdr.init_ctx;
+	else
+		rqi = (struct snic_req_info *) req->hdr.init_ctx;
+
+	SNIC_BUG_ON(rqi == NULL || rqi->req == NULL);
+	switch (req->hdr.type) {
+	case SNIC_REQ_REPORT_TGTS:
+		cmd_str = ""report-tgt : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_REQ_REPORT_TGTS :"");
+		break;
+
+	case SNIC_REQ_ICMND:
+		cmd_str = ""icmnd : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_REQ_ICMND : 0x%x :"",
+			 req->u.icmnd.cdb[0]);
+		break;
+
+	case SNIC_REQ_ITMF:
+		cmd_str = ""itmf : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_REQ_ITMF :"");
+		break;
+
+	case SNIC_REQ_HBA_RESET:
+		cmd_str = ""hba reset :"";
+		snprintf(line, LINE_BUFSZ, ""SNIC_REQ_HBA_RESET :"");
+		break;
+
+	case SNIC_REQ_EXCH_VER:
+		cmd_str = ""exch ver : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_REQ_EXCH_VER :"");
+		break;
+
+	case SNIC_REQ_TGT_INFO:
+		cmd_str = ""tgt info : "";
+		break;
+
+	case SNIC_RSP_REPORT_TGTS_CMPL:
+		cmd_str = ""report tgt cmpl : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_RSP_REPORT_TGTS_CMPL :"");
+		break;
+
+	case SNIC_RSP_ICMND_CMPL:
+		cmd_str = ""icmnd_cmpl : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_RSP_ICMND_CMPL : 0x%x :"",
+			 rqi->req->u.icmnd.cdb[0]);
+		break;
+
+	case SNIC_RSP_ITMF_CMPL:
+		cmd_str = ""itmf_cmpl : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_RSP_ITMF_CMPL :"");
+		break;
+
+	case SNIC_RSP_HBA_RESET_CMPL:
+		cmd_str = ""hba_reset_cmpl : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_RSP_HBA_RESET_CMPL :"");
+		break;
+
+	case SNIC_RSP_EXCH_VER_CMPL:
+		cmd_str = ""exch_ver_cmpl : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_RSP_EXCH_VER_CMPL :"");
+		break;
+
+	case SNIC_MSG_ACK:
+		cmd_str = ""msg ack : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_MSG_ACK :"");
+		break;
+
+	case SNIC_MSG_ASYNC_EVNOTIFY:
+		cmd_str = ""async notify : "";
+		snprintf(line, LINE_BUFSZ, ""SNIC_MSG_ASYNC_EVNOTIFY :"");
+		break;
+
+	default:
+		cmd_str = ""unknown : "";
+		SNIC_BUG_ON(1);
+		break;
+	}
+
+	SNIC_INFO(""%s:%s >>cmndid=%x:sg_cnt = %x:status = %x:ctx = %lx.\n"",
+		  fn, line, req->hdr.cmnd_id, req->hdr.sg_cnt, req->hdr.status,
+		  req->hdr.init_ctx);
+
+	/* Enable it, to dump byte stream */
+	if (snic_log_level & 0x20)
+		snic_hex_dump(cmd_str, os_buf, len);
+}",FALSE,CWE_476
+6,6,6_vdisc.c,"__ecereProp___ecereNameSpace__ecere__gui__controls__PopupMenu_Set_menu(struct __ecereNameSpace__ecere__com__Instance * this, struct __ecereNameSpace__ecere__com__Instance * value)
+{
+struct __ecereNameSpace__ecere__gui__controls__PopupMenu * __ecerePointer___ecereNameSpace__ecere__gui__controls__PopupMenu = (struct __ecereNameSpace__ecere__gui__controls__PopupMenu *)(this ? (((char *)this) + __ecereClass___ecereNameSpace__ecere__gui__controls__PopupMenu->offset) : 0);
+
+(__ecereNameSpace__ecere__com__eInstance_DecRef(__ecerePointer___ecereNameSpace__ecere__gui__controls__PopupMenu->menu), __ecerePointer___ecereNameSpace__ecere__gui__controls__PopupMenu->menu = 0);
+__ecerePointer___ecereNameSpace__ecere__gui__controls__PopupMenu->menu = value;
+if(__ecerePointer___ecereNameSpace__ecere__gui__controls__PopupMenu->menu)
+__ecerePointer___ecereNameSpace__ecere__gui__controls__PopupMenu->menu->_refCount++;
+if(__ecereProp___ecereNameSpace__ecere__gui__Window_Get_created(this))
+{
+struct __ecereNameSpace__ecere__sys__Size __simpleStruct3;
+struct __ecereNameSpace__ecere__sys__Size __simpleStruct2;
+struct __ecereNameSpace__ecere__sys__Point __simpleStruct1;
+struct __ecereNameSpace__ecere__sys__Point __simpleStruct0;
+
+__ecerePointer___ecereNameSpace__ecere__gui__controls__PopupMenu->selected = (((void *)0));
+if(__ecereProp___ecereNameSpace__ecere__gui__Window_Get_firstSlave(this))
+__ecereMethod___ecereNameSpace__ecere__gui__Window_Destroy(__ecereProp___ecereNameSpace__ecere__gui__Window_Get_firstSlave(this), 0);
+((unsigned int (*)(struct __ecereNameSpace__ecere__com__Instance *))__extension__ ({
+struct __ecereNameSpace__ecere__com__Instance * __internal_ClassInst = this;
+
+__internal_ClassInst ? __internal_ClassInst->_vTbl : __ecereClass___ecereNameSpace__ecere__gui__controls__PopupMenu->_vTbl;
+})[__ecereVMethodID___ecereNameSpace__ecere__gui__Window_OnLoadGraphics])(this);
+__ecereMethod___ecereNameSpace__ecere__gui__Window_Move(this, (__ecereProp___ecereNameSpace__ecere__gui__Window_Get_position(this, &__simpleStruct0), __simpleStruct0).x, (__ecereProp___ecereNameSpace__ecere__gui__Window_Get_position(this, &__simpleStruct1), __simpleStruct1).y, (int)(__ecereProp___ecereNameSpace__ecere__gui__Window_Get_size(this, &__simpleStruct2), __simpleStruct2).w, (int)(__ecereProp___ecereNameSpace__ecere__gui__Window_Get_size(this, &__simpleStruct3), __simpleStruct3).h);
+if(!__ecereProp___ecereNameSpace__ecere__gui__Window_Get_text(this))
+{
+if(__ecereProp___ecereNameSpace__ecere__gui__Window_Get_interim(this) || __ecerePointer___ecereNameSpace__ecere__gui__controls__PopupMenu->isMenuBar)
+__ecereProp___ecereNameSpace__ecere__gui__Window_Set_text(this, __ecereProp___ecereNameSpace__ecere__gui__Window_Get_text(__ecereProp___ecereNameSpace__ecere__gui__Window_Get_master(this)));
+else
+__ecereProp___ecereNameSpace__ecere__gui__Window_Set_text(this, ((struct __ecereNameSpace__ecere__gui__controls__Menu *)(((char *)__ecerePointer___ecereNameSpace__ecere__gui__controls__PopupMenu->menu + __ecereClass___ecereNameSpace__ecere__gui__controls__Menu->offset)))->text);
+}
+}
+__ecereNameSpace__ecere__com__eInstance_FireSelfWatchers(this, __ecereProp___ecereNameSpace__ecere__gui__controls__PopupMenu_menu), __ecereNameSpace__ecere__com__eInstance_FireSelfWatchers(this, __ecerePropM___ecereNameSpace__ecere__gui__controls__PopupMenu_menu);
+}",FALSE,CWE_476
+7,7,7_vdisc.c,"initSubdiv(QuadEdge* initEdges[3])
+{
+	std::auto_ptr<QuadEdge> tmp_auto_ptr;
+	// build initial subdivision from frame
+	tmp_auto_ptr = QuadEdge::makeEdge(frameVertex[0], frameVertex[1]);
+	initEdges[0] = tmp_auto_ptr.get();
+	tmp_auto_ptr.release();
+
+
+	tmp_auto_ptr = QuadEdge::makeEdge(frameVertex[1], frameVertex[2]);
+	initEdges[1] = tmp_auto_ptr.get();
+	tmp_auto_ptr.release();
+
+	QuadEdge::splice(initEdges[0]->sym(), *initEdges[1]);
+
+	tmp_auto_ptr = QuadEdge::makeEdge(frameVertex[2], frameVertex[0]);
+	initEdges[2] = tmp_auto_ptr.get();
+	tmp_auto_ptr.release();
+
+	QuadEdge::splice(initEdges[1]->sym(), *initEdges[2]);
+	QuadEdge::splice(initEdges[2]->sym(), *initEdges[0]);
+}",FALSE,CWE_476
+8,8,8_vdisc.c,"write_node (struct decision *p, int depth,
+	    enum routine_type subroutine_type)
+{
+  struct decision_test *test, *last_test;
+  int uncond;
+
+  /* Scan the tests and simplify comparisons against small
+     constants.  */
+  for (test = p->tests; test; test = test->next)
+    {
+      if (test->type == DT_code
+	  && test->u.code == CONST_INT
+	  && test->next
+	  && test->next->type == DT_elt_zero_wide_safe
+	  && -MAX_SAVED_CONST_INT <= test->next->u.intval
+	  && test->next->u.intval <= MAX_SAVED_CONST_INT)
+	{
+	  test->type = DT_const_int;
+	  test->u.intval = test->next->u.intval;
+	  test->next = test->next->next;
+	}
+    }
+
+  last_test = test = p->tests;
+  uncond = is_unconditional (test, subroutine_type);
+  if (uncond == 0)
+    {
+      printf (""  if ("");
+      write_cond (test, depth, subroutine_type);
+
+      while ((test = test->next) != NULL)
+	{
+	  last_test = test;
+	  if (is_unconditional (test, subroutine_type))
+	    break;
+
+	  printf (""\n      && "");
+	  write_cond (test, depth, subroutine_type);
+	}
+
+      printf ("")\n"");
+    }
+
+  write_action (p, last_test, depth, uncond, p->success.first, subroutine_type);
+
+  return uncond > 0;
+}",TRUE,CWE_476
+9,9,9_vdisc.c,"httpSecureEndpointByName(cchar *name, struct MprSsl *ssl)
+{
+    HttpEndpoint    *endpoint;
+    Http            *http;
+    char            *ip;
+    int             port, next, count;
+
+    http = MPR->httpService;
+    mprParseSocketAddress(name, &ip, &port, -1);
+    if (ip == 0) {
+        ip = """";
+    }
+    for (count = 0, next = 0; (endpoint = mprGetNextItem(http->endpoints, &next)) != 0; ) {
+        if (endpoint->port <= 0 || port <= 0 || endpoint->port == port) {
+            mprAssert(endpoint->ip);
+            if (*endpoint->ip == '\0' || *ip == '\0' || scmp(endpoint->ip, ip) == 0) {
+                httpSecureEndpoint(endpoint, ssl);
+                count++;
+            }
+        }
+    }
+    return (count == 0) ? MPR_ERR_CANT_FIND : 0;
+}",TRUE,CWE_476
+10,10,10_vdisc.c,"vm_mltadd(const VEC *v1, const VEC *v2, const MAT *A,
+		   double alpha, VEC *out)
+#endif
+{
+	int	/* i, */ j, m, n;
+	Real	tmp, /* *A_e, */ *out_ve;
+
+	if ( ! v1 || ! v2 || ! A )
+		error(E_NULL,""vm_mltadd"");
+	if ( v2 == out )
+		error(E_INSITU,""vm_mltadd"");
+	if ( v1->dim != A->n || A->m != v2->dim )
+		error(E_SIZES,""vm_mltadd"");
+
+	tracecatch(out = v_copy(v1,out),""vm_mltadd"");
+
+	out_ve = out->ve;	m = A->m;	n = A->n;
+	for ( j = 0; j < m; j++ )
+	{
+		tmp = v2->ve[j]*alpha;
+		if ( tmp != 0.0 )
+		    __mltadd__(out_ve,A->me[j],tmp,(int)n);
+		/**************************************************
+		A_e = A->me[j];
+		for ( i = 0; i < n; i++ )
+		    out_ve[i] += A_e[i]*tmp;
+		**************************************************/
+	}
+
+	return out;
+}",TRUE,CWE_476
+11,11,11_vdisc.c,"unorm_iterate(UCharIterator *src, UBool forward,
+              UChar *dest, int32_t destCapacity,
+              UNormalizationMode mode, int32_t options,
+              UBool doNormalize, UBool *pNeededToNormalize,
+              UErrorCode *pErrorCode) {
+    const Normalizer2 *n2=Normalizer2Factory::getInstance(mode, *pErrorCode);
+    const UnicodeSet *uni32;
+    if(options&UNORM_UNICODE_3_2) {
+        uni32=uniset_getUnicode32Instance(*pErrorCode);
+    } else {
+        uni32=NULL;  // unused
+    }
+
+    if(U_FAILURE(*pErrorCode)) {
+        return 0;
+    }
+
+    FilteredNormalizer2 fn2(*n2, *uni32);
+    if(options&UNORM_UNICODE_3_2) {
+        n2=&fn2;
+    }
+    
+    if( destCapacity<0 || (dest==NULL && destCapacity>0) ||
+        src==NULL
+    ) {
+        *pErrorCode=U_ILLEGAL_ARGUMENT_ERROR;
+        return 0;
+    }
+
+    if(pNeededToNormalize!=NULL) {
+        *pNeededToNormalize=FALSE;
+    }
+    if(!(forward ? src->hasNext(src) : src->hasPrevious(src))) {
+        return u_terminateUChars(dest, destCapacity, 0, pErrorCode);
+    }
+
+    UnicodeString buffer;
+    UChar32 c;
+    if(forward) {
+        /* get one character and ignore its properties */
+        buffer.append(uiter_next32(src));
+        /* get all following characters until we see a boundary */
+        while((c=uiter_next32(src))>=0) {
+            if(n2->hasBoundaryBefore(c)) {
+                /* back out the latest movement to stop at the boundary */
+                src->move(src, -U16_LENGTH(c), UITER_CURRENT);
+                break;
+            } else {
+                buffer.append(c);
+            }
+        }
+    } else {
+        while((c=uiter_previous32(src))>=0) {
+            /* always write this character to the front of the buffer */
+            buffer.insert(0, c);
+            /* stop if this just-copied character is a boundary */
+            if(n2->hasBoundaryBefore(c)) {
+                break;
+            }
+        }
+    }
+
+    UnicodeString destString(dest, 0, destCapacity);
+    if(buffer.length()>0 && doNormalize) {
+        n2->normalize(buffer, destString, *pErrorCode).extract(dest, destCapacity, *pErrorCode);
+        if(pNeededToNormalize!=NULL && U_SUCCESS(*pErrorCode)) {
+            *pNeededToNormalize= destString!=buffer;
+        }
+        return destString.length();
+    } else {
+        /* just copy the source characters */
+        return buffer.extract(dest, destCapacity, *pErrorCode);
+    }
+}",TRUE,CWE_476
+12,12,12_vdisc.c,"unparse_include
+#ifdef KC_USE_PROTOTYPES
+(include kc_p, void (*kc_printer)(char*, uview), uview kc_current_view)
+#else
+(kc_p, kc_printer, kc_current_view) include kc_p; void (*kc_printer)KC__P((char*, uview)); uview kc_current_view;
+#endif
+{
+	/*SUPPRESS 622*/
+	assert_include(kc_p, ""kc_p"");
+	switch((int)kc_current_view) {
+	case (int)view_do_gen_includes: {
+		if (( kc_p->prod_sel == sel_Include)) {
+#line 5193 ""../gen.k""
+		casestring c =  kc_p->u.Include.casestring_1;
+		unparse_casestring(c, kc_printer, kc_current_view);
+		} else
+		if (( kc_p->prod_sel == sel_IncludeNl)) {
+#line 5194 ""../gen.k""
+		int i =  kc_p->u.IncludeNl.int_1;
+#line 5195 ""../gen.k""
+ char *nl_string = f_mknls( i ); 
+#line 13955 ""unpk.c""
+		unparse_charptr(nl_string, kc_printer, kc_current_view);
+		} else
+		goto kc_unparsing_default;
+		break;
+	}
+	default:
+	kc_unparsing_default:
+	case (int)base_uview: {
+		switch((int)kc_p->prod_sel) {
+		case (int)sel_Include:
+			unparse_casestring( kc_p->u.Include.casestring_1, kc_printer, kc_current_view );
+			break;
+		case (int)sel_IncludeNl:
+			unparse_int( kc_p->u.IncludeNl.int_1, kc_printer, kc_current_view );
+			break;
+		default:;}
+		break;
+	}
+	}
+}",TRUE,CWE_476
+13,13,13_vdisc.c,"group_by_prio (struct multipath * mp)
+{
+	int i;
+	unsigned int prio;
+	struct path * pp;
+	struct pathgroup * pgp;
+
+	if (!mp->pg)
+		mp->pg = vector_alloc();
+
+	if (!mp->pg)
+		return 1;
+
+	while (VECTOR_SIZE(mp->paths) > 0) {
+		pp = VECTOR_SLOT(mp->paths, 0);
+		prio = pp->priority;
+
+		/*
+		 * Find the position to insert the new path group. All groups
+		 * are ordered by the priority value (higher value first).
+		 */
+		vector_foreach_slot(mp->pg, pgp, i) {
+			pp  = VECTOR_SLOT(pgp->paths, 0);
+
+			if (prio > pp->priority)
+				break;
+		}
+
+		/*
+		 * Initialize the new path group.
+		 */
+		pgp = alloc_pathgroup();
+
+		if (!pgp)
+			goto out;
+
+		if (store_path(pgp->paths, VECTOR_SLOT(mp->paths, 0)))
+				goto out;
+
+		vector_del_slot(mp->paths, 0);
+
+		/*
+		 * Store the new path group into the vector.
+		 */
+		if (i < VECTOR_SIZE(mp->pg)) {
+			if (!vector_insert_slot(mp->pg, i, pgp))
+				goto out;
+		} else {
+			if (store_pathgroup(mp->pg, pgp))
+				goto out;
+		}
+
+		/*
+		 * add the other paths with the same prio
+		 */
+		vector_foreach_slot(mp->paths, pp, i) {
+			if (pp->priority == prio) {
+				if (store_path(pgp->paths, pp))
+					goto out;
+
+				vector_del_slot(mp->paths, i);
+				i--;
+			}
+		}
+	}
+	free_pathvec(mp->paths, KEEP_PATHS);
+	mp->paths = NULL;
+	return 0;
+out:
+	free_pgvec(mp->pg, KEEP_PATHS);
+	mp->pg = NULL;
+	return 1;
+
+}",TRUE,CWE_476
+14,14,14_vdisc.c,"linkstree(trp, type)
+syntaxtree *trp;
+int type;
+{
+	syntaxtree *new, *tmptr;
+	int cont;
+
+	cont = ((trp -> cont) & CN_INHR);
+#ifndef	MINIMUMSHELL
+	trp -> lineno = shlineno;
+#endif
+	if (trp && isstatement(trp -> comm)
+	&& (trp -> comm) -> id == SM_STATEMENT
+	&& (tmptr = statementbody(trp))
+	&& getstatid(tmptr) == SM_LPAREN - 1)
+		trp = getparent(trp);
+	tmptr = (trp -> flags & ST_NEXT) ? getparent(trp) : NULL;
+	trp = insertstree(trp, tmptr, type);
+
+	trp = skipfuncbody(trp);
+	new = trp -> next = newstree(trp);
+	new -> cont = cont;
+	new -> flags = ST_NEXT;
+	trp -> type = type;
+
+	return(new);
+}",TRUE,CWE_476
+15,15,15_vdisc.c,"OnIncomingTunnel(const buzz::Jid &jid,
+                                                 Session *session) {
+  std::string content_name;
+  const SecureTunnelContentDescription* content = NULL;
+  if (!FindSecureTunnelContent(session->remote_description(),
+                               &content_name, &content)) {
+    ASSERT(false);
+  }
+
+  // Validate the certificate
+  talk_base::scoped_ptr<talk_base::SSLCertificate> peer_cert(
+      ParseCertificate(content->client_pem_certificate));
+  if (peer_cert.get() == NULL) {
+    LOG(LS_ERROR)
+        << ""Rejecting incoming secure tunnel with invalid cetificate"";
+    DeclineTunnel(session);
+    return;
+  }
+  // If there were a convenient place we could have cached the
+  // peer_cert so as not to have to parse it a second time when
+  // configuring the tunnel.
+  SignalIncomingTunnel(this, jid, content->description, session);
+}",TRUE,CWE_476
+16,16,16_vdisc.c,"test_diff_rename__rejected_match_can_match_others(void)
+{
+	git_reference *head, *selfsimilar;
+	git_index *index;
+	git_tree *tree;
+	git_checkout_options opts = GIT_CHECKOUT_OPTIONS_INIT;
+	git_diff *diff;
+	git_diff_options diffopts = GIT_DIFF_OPTIONS_INIT;
+	git_diff_find_options findopts = GIT_DIFF_FIND_OPTIONS_INIT;
+	git_buf one = GIT_BUF_INIT, two = GIT_BUF_INIT;
+	unsigned int status[] = { GIT_DELTA_RENAMED, GIT_DELTA_RENAMED };
+	const char *sources[] = { ""Class1.cs"", ""Class2.cs"" };
+	const char *targets[] = { ""ClassA.cs"", ""ClassB.cs"" };
+	struct rename_expected expect = { 2, status, sources, targets };
+	char *ptr;
+
+	opts.checkout_strategy = GIT_CHECKOUT_FORCE;
+	findopts.flags = GIT_DIFF_FIND_RENAMES;
+
+	cl_git_pass(git_reference_lookup(&head, g_repo, ""HEAD""));
+	cl_git_pass(git_reference_symbolic_set_target(
+		&selfsimilar, head, ""refs/heads/renames_similar"", NULL, NULL));
+	cl_git_pass(git_checkout_head(g_repo, &opts));
+	cl_git_pass(git_repository_index(&index, g_repo));
+
+	cl_git_pass(git_futils_readbuffer(&one, ""renames/Class1.cs""));
+	cl_git_pass(git_futils_readbuffer(&two, ""renames/Class2.cs""));
+
+	cl_git_pass(p_unlink(""renames/Class1.cs""));
+	cl_git_pass(p_unlink(""renames/Class2.cs""));
+
+	cl_git_pass(git_index_remove_bypath(index, ""Class1.cs""));
+	cl_git_pass(git_index_remove_bypath(index, ""Class2.cs""));
+
+	cl_assert(ptr = strstr(one.ptr, ""Class1""));
+	ptr[5] = 'A';
+
+	cl_assert(ptr = strstr(two.ptr, ""Class2""));
+	ptr[5] = 'B';
+
+	cl_git_pass(
+		git_futils_writebuffer(&one, ""renames/ClassA.cs"", O_RDWR|O_CREAT, 0777));
+	cl_git_pass(
+		git_futils_writebuffer(&two, ""renames/ClassB.cs"", O_RDWR|O_CREAT, 0777));
+
+	cl_git_pass(git_index_add_bypath(index, ""ClassA.cs""));
+	cl_git_pass(git_index_add_bypath(index, ""ClassB.cs""));
+
+	cl_git_pass(git_index_write(index));
+
+	cl_git_pass(
+		git_revparse_single((git_object **)&tree, g_repo, ""HEAD^{tree}""));
+
+	cl_git_pass(
+		git_diff_tree_to_index(&diff, g_repo, tree, index, &diffopts));
+
+	cl_git_pass(git_diff_find_similar(diff, &findopts));
+
+	cl_git_pass(
+		git_diff_foreach(diff, test_names_expected, NULL, NULL, &expect));
+
+	git_diff_free(diff);
+	git_tree_free(tree);
+	git_index_free(index);
+	git_reference_free(head);
+	git_reference_free(selfsimilar);
+	git_buf_free(&one);
+	git_buf_free(&two);
+}",TRUE,CWE_476
+17,17,17_vdisc.c,"_dxfComputeCheckSame (PTreeNode *pt, ObjStruct *os, OperBinding *binding)
+{
+    PTreeNode *subTree;
+    int listElement;
+    int items = pt->metaType.items;
+    int count;
+
+    /* Count number of arguments (ensure match) */
+    if (binding->numArgs != -1) {
+	for (count = 0, subTree = pt->args; 
+	     subTree != NULL; 
+	     ++count, subTree = subTree->next)
+	;
+	if (count != binding->numArgs) {
+	    DXSetError(ERROR_BAD_TYPE, ""#11945"", binding->numArgs);
+	    return (ERROR);
+	}
+    }
+    else if (pt->args == NULL) {
+	return (ERROR);
+    }
+
+    /* Ensure that all elements of a vector are the same type.
+     * Result is same type with rank and shape adjusted.
+     * Number of elements is same as largest (if any != 0).
+     */
+
+    pt->metaType = pt->args->metaType;
+    pt->metaType.items = items;
+
+    listElement = 0;
+    subTree = pt->args;
+    /* Resolve types of subtree */
+    while (subTree != NULL) {
+	if (_dxfComputeCompareType (&pt->metaType, &subTree->metaType) == 
+		ERROR) {
+	    return (ERROR);
+	}
+	subTree = subTree->next;
+	++listElement;
+    }
+
+    if (listElement != binding->numArgs) {
+	DXSetError(ERROR_BAD_TYPE, ""#11945"", binding->numArgs);
+	return (ERROR);
+    }
+    else {
+	pt->impl = binding->impl;
+	return (OK);
+    }
+}",TRUE,CWE_476
+18,18,18_vdisc.c,"rad_continuation2vp(const RADIUS_PACKET *packet,
+				       const RADIUS_PACKET *original,
+				       const char *secret, int attribute,
+				       int length, /* CANNOT be zero */
+				       uint8_t *data, size_t packet_length,
+				       int flag, DICT_ATTR *da)
+{
+	size_t tlv_length, left;
+	uint8_t *ptr;
+	uint8_t *tlv_data;
+	VALUE_PAIR *vp, *head, **tail;
+
+	/*
+	 *	Ensure we have data that hasn't been split across
+	 *	multiple attributes.
+	 */
+	if (flag) {
+		tlv_data = rad_coalesce(attribute, length,
+					data, packet_length, &tlv_length);
+		if (!tlv_data) return NULL;
+	} else {
+		tlv_data = data;
+		tlv_length = length;
+	}
+
+	/*
+	 *	Non-TLV types cannot be continued across multiple
+	 *	attributes.  This is true even of keys that are
+	 *	encrypted with the tunnel-password method.  The spec
+	 *	says that they can be continued... but also that the
+	 *	keys are 160 bits, which means that they CANNOT be
+	 *	continued.  <sigh>
+	 *
+	 *	Note that we don't check ""flag"" here.  The calling
+	 *	code ensures that 
+	 */
+	if (!da || (da->type != PW_TYPE_TLV)) {
+	not_well_formed:
+		if (tlv_data == data) {	/* true if we had 'goto' */
+			tlv_data = malloc(tlv_length);
+			if (!tlv_data) return NULL;
+			memcpy(tlv_data, data, tlv_length);
+		}
+		
+		vp = paircreate(attribute, PW_TYPE_OCTETS);
+		if (!vp) return NULL;
+			
+		vp->type = PW_TYPE_TLV;
+		vp->flags.encrypt = FLAG_ENCRYPT_NONE;
+		vp->flags.has_tag = 0;
+		vp->flags.is_tlv = 0;
+		vp->vp_tlv = tlv_data;
+		vp->length = tlv_length;
+		return vp;
+	} /* else it WAS a TLV, go decode the sub-tlv's */
+
+	/*
+	 *	Now (sigh) we walk over the TLV, seeing if it is
+	 *	well-formed.
+	 */
+	left = tlv_length;
+	for (ptr = tlv_data;
+	     ptr != (tlv_data + tlv_length);
+	     ptr += ptr[1]) {
+		if ((left < 2) ||
+		    (ptr[1] < 2) ||
+		    (ptr[1] > left)) {
+			goto not_well_formed;
+		}
+		left -= ptr[1];
+	}
+
+	/*
+	 *	Now we walk over the TLV *again*, creating sub-tlv's.
+	 */
+	head = NULL;
+	tail = &head;
+
+	for (ptr = tlv_data;
+	     ptr != (tlv_data + tlv_length);
+	     ptr += ptr[1]) {
+		vp = paircreate(attribute | (ptr[0] << 8), PW_TYPE_OCTETS);
+		if (!vp) {
+			pairfree(&head);
+			goto not_well_formed;
+		}
+
+		if (!data2vp(packet, original, secret,
+			     ptr[0], ptr[1] - 2, ptr + 2, vp)) {
+			pairfree(&head);
+			goto not_well_formed;
+		}
+
+		*tail = vp;
+		tail = &(vp->next);
+	}
+
+	/*
+	 *	TLV's MAY be continued, but sometimes they're not.
+	 */
+	if (tlv_data != data) free(tlv_data);
+
+	if (head->next) rad_sortvp(&head);
+
+	return head;
+}",TRUE,CWE_476
+19,19,19_vdisc.c,"mycommit(struct db *db __attribute__((unused)),
+		    struct txn *tid, int txnflags)
+{
+    int r;
+    DB_TXN *t = (DB_TXN *) tid;
+
+    assert(dbinit && tid);
+
+    if (CONFIG_DB_VERBOSE)
+	syslog(LOG_DEBUG, ""mycommit: committing txn %lu"",
+	       (unsigned long) txn_id(t));
+    r = txn_commit(t, txnflags);
+    switch (r) {
+    case 0:
+	break;
+    case EINVAL:
+	syslog(LOG_WARNING, ""mycommit: tried to commit an already aborted transaction"");
+	r = CYRUSDB_IOERROR;
+	break;
+    default:
+	syslog(LOG_ERR, ""DBERROR: mycommit  failed on commit: %s"",
+	       db_strerror(r));
+	r = CYRUSDB_IOERROR;
+	break;
+    }
+
+    return r;
+}",TRUE,CWE_476
+20,20,20_vdisc.c,"group_init(void)
+{
+	gfarm_error_t e;
+	struct group *admin;
+	struct gfarm_group_info gi;
+	static const char diag[] = ""group_init"";
+
+	group_hashtab =
+	    gfarm_hash_table_alloc(GROUP_HASHTAB_SIZE,
+		gfarm_hash_strptr, gfarm_hash_key_equal_strptr);
+	if (group_hashtab == NULL)
+		gflog_fatal(GFARM_MSG_1000247, ""no memory for group hashtab"");
+
+	e = db_group_load(NULL, group_add_one);
+	if (e != GFARM_ERR_NO_ERROR)
+		gflog_error(GFARM_MSG_1000248,
+		    ""loading groups: %s"", gfarm_error_string(e));
+
+	if ((admin = group_lookup(ADMIN_GROUP_NAME)) == NULL) {
+		gflog_info(GFARM_MSG_1000249,
+		    ""group %s not found, creating it"",
+		    ADMIN_GROUP_NAME);
+
+		gi.groupname = strdup_ck(ADMIN_GROUP_NAME, diag);
+		gi.nusers = gfarm_metadb_admin_user == NULL ? 1 : 2;
+		GFARM_MALLOC_ARRAY(gi.usernames, gi.nusers);
+		if (gi.usernames == NULL)
+			gflog_fatal(GFARM_MSG_1002316,
+			    ""creating group %s: no memory"", gi.groupname);
+		gi.usernames[0] = strdup_ck(ADMIN_USER_NAME, diag);
+		if (gfarm_metadb_admin_user != NULL)
+			gi.usernames[1] =
+			    strdup_ck(gfarm_metadb_admin_user, diag);
+
+		/*
+		 * We have to call this before group_add_one(),
+		 * because group_add_one() frees the memory of gi
+		 */
+		e = db_group_add(&gi);
+		if (e != GFARM_ERR_NO_ERROR)
+			gflog_error(GFARM_MSG_1000250,
+			    ""failed to store group '%s' to storage: %s"",
+			    gi.groupname, gfarm_error_string(e));
+
+		group_add_one(NULL, &gi); /* this should always success */
+	} else {
+		group_add_user_and_record(admin, ADMIN_USER_NAME);
+		if (gfarm_metadb_admin_user != NULL)
+			group_add_user_and_record(admin,
+			    gfarm_metadb_admin_user);
+	}
+
+	if ((admin = group_lookup(ROOT_GROUP_NAME)) == NULL) {
+		gflog_info(GFARM_MSG_1000251,
+		    ""group %s not found, creating it"",
+		    ROOT_GROUP_NAME);
+
+		gi.groupname = strdup_ck(ROOT_GROUP_NAME, diag);
+		gi.nusers = 0;
+		gi.usernames = NULL;
+
+		/*
+		 * We have to call this before group_add_one(),
+		 * because group_add_one() frees the memory of gi
+		 */
+		e = db_group_add(&gi);
+		if (e != GFARM_ERR_NO_ERROR)
+			gflog_error(GFARM_MSG_1000252,
+			    ""failed to store group '%s' to storage: %s"",
+			    gi.groupname, gfarm_error_string(e));
+
+		group_add_one(NULL, &gi); /* this should always success */
+	}
+}",TRUE,CWE_476
+21,21,21_vdisc.c,"unmarshalString(cdrStream&          stream,
+			   omniCodeSet::TCS_C* tcs,
+			   CORBA::ULong        bound,
+			   char*&              s)
+{
+  if (!tcs) OMNIORB_THROW(BAD_INV_ORDER, 
+			  BAD_INV_ORDER_CodeSetNotKnownYet,
+			  (CORBA::CompletionStatus)stream.completion());
+
+  CORBA::ULong             len;
+  if (tcs->fastUnmarshalString(stream, this, bound, len, s)) return len;
+
+  omniCodeSet::UniChar*    us;
+  len = tcs->unmarshalString(stream, bound, us);
+
+  omniCodeSetUtil::BufferC b;
+  unsigned short           g = 0;
+  unsigned short *         ptr = 0;
+  omniCodeSet::UniChar     uc;
+
+  for (CORBA::ULong i=0; i<=len; ++i,++us)
+  {
+    uc = *us;
+    if (uc < 0x80)
+    {
+      b.insert(uc);
+    }
+    else if( (ptr=U2G_MAP[uc>>8]) && (g=ptr[uc&0xFF]) )
+    {
+        b.insert(g >> 8);
+        b.insert(g & 0xFF);
+    }
+    else
+    {
+        OMNIORB_THROW(DATA_CONVERSION,
+		    DATA_CONVERSION_CannotMapChar,
+		    (CORBA::CompletionStatus)stream.completion());
+    }
+  }
+  s = b.extract();
+  return b.length() - 1;
+}",TRUE,CWE_476
+22,22,22_vdisc.c,"__ecereMethod_OptionBox_OptionSet(struct __ecereNameSpace__ecere__com__Instance * this, struct __ecereNameSpace__ecere__com__Instance * options)
+{
+struct OptionBox * __ecerePointer_OptionBox = (struct OptionBox *)(this ? (((char *)this) + __ecereClass_OptionBox->offset) : 0);
+
+if(((((((struct __ecereNameSpace__ecere__com__Instance *)(char *)this)->_class->templateArgs[0].dataTypeClass->type == 1) ? ((uint64)(uint64 * )((unsigned char * )options + __ecerePointer_OptionBox->option)) : (((struct __ecereNameSpace__ecere__com__Instance *)(char *)this)->_class->templateArgs[0].dataTypeClass->type == 0 || ((struct __ecereNameSpace__ecere__com__Instance *)(char *)this)->_class->templateArgs[0].dataTypeClass->type == 5) ? (uint64)*((void **)(uint64 * )((unsigned char * )options + __ecerePointer_OptionBox->option)) : ((((struct __ecereNameSpace__ecere__com__Instance *)(char *)this)->_class->templateArgs[0].dataTypeClass->typeSize == 1) ? *((unsigned char *)(uint64 * )((unsigned char * )options + __ecerePointer_OptionBox->option)) : ((((struct __ecereNameSpace__ecere__com__Instance *)(char *)this)->_class->templateArgs[0].dataTypeClass->typeSize == 2) ? *((unsigned short *)(uint64 * )((unsigned char * )options + __ecerePointer_OptionBox->option)) : ((((struct __ecereNameSpace__ecere__com__Instance *)(char *)this)->_class->templateArgs[0].dataTypeClass->typeSize == 4) ? *((unsigned int *)(uint64 * )((unsigned char * )options + __ecerePointer_OptionBox->option)) : *((uint64 *)((unsigned char *)options + __ecerePointer_OptionBox->option)))))))))
+return 0x1;
+return 0x0;
+}",TRUE,CWE_476
+23,23,23_vdisc.c,"dispatch(omniCallDescriptor& call_desc)
+{
+  ASSERT_OMNI_TRACEDMUTEX_HELD(*omni::internalLock, 1);
+  OMNIORB_ASSERT(pd_adapter && pd_servant);
+
+  if (pd_deactivated || !call_desc.haslocalCallFn()) {
+    // This localIdentity is dead and unusable, or the call descriptor
+    // is unable to do a direct local call (because it's a DII call).
+    // Either way, replace the object reference's identity with an
+    // inProcessIdentity and invoke on that.
+    //
+    // Note that in the case of a DII call, we have dropped the
+    // localIdentity, meaning the next non-DII call will have to
+    // re-discover it. We do it this way since if the application has
+    // done one DII call, it's likely to do more, so it's best to
+    // avoid repeatedly creating inProcessIdentities.
+
+    if (omniORB::trace(15)) {
+      omniORB::logger l;
+      l << this << "" is no longer active. Using in process identity.\n"";
+    }
+    omniIdentity* id = omni::createInProcessIdentity(key(), keysize());
+    call_desc.objref()->_setIdentity(id);
+    id->dispatch(call_desc);
+    return;
+  }
+
+  if (call_desc.containsValues() && orbParameters::copyValuesInLocalCalls) {
+    // Must use a call handle to call via a memory stream.
+    if (omniORB::trace(25)) {
+      omniORB::logger l;
+      l << ""Local call on "" << this << "" involves valuetypes; call via a ""
+	<< ""memory buffer.\n"";
+    }
+    omniCallHandle call_handle(&call_desc, 0);
+    dispatch(call_handle);
+    return;
+  }
+
+  call_desc.localId(this);
+
+  omniLocalIdentity_RefHolder rh(this);
+
+  omni::localInvocationCount++;
+
+#ifndef HAS_Cplusplus_catch_exception_by_base
+  // The compiler cannot catch exceptions by base class, hence
+  // we cannot trap invalid exceptions going through here.
+  pd_adapter->dispatch(call_desc, this);
+
+#else
+  try { pd_adapter->dispatch(call_desc, this); }
+
+  catch (CORBA::SystemException& ex) {
+    throw;
+  }
+  catch (CORBA::UserException& ex) {
+    call_desc.validateUserException(ex);
+    throw;
+  }
+  catch (omniORB::LOCATION_FORWARD&) {
+    throw;
+  }
+
+  catch (...) {
+    if( omniORB::trace(2) ) {
+      omniORB::logger l;
+      l << ""WARNING -- method \'"" << call_desc.op() << ""\' raised an unknown\n""
+	"" exception (not a legal CORBA exception).\n"";
+    }
+    OMNIORB_THROW(UNKNOWN,UNKNOWN_UserException, CORBA::COMPLETED_MAYBE);
+  }
+#endif
+}",TRUE,CWE_476
+24,24,24_vdisc.c,"fruitadd(char *str)
+{
+    int i;
+    struct fruit *f;
+    struct fruit *lastf = 0;
+    int highest_fruit_id = 0;
+    char buf[PL_FSIZ];
+    bool user_specified = (str == pl_fruit);
+    /* if not user-specified, then it's a fruit name for a fruit on
+     * a bones level...
+     */
+
+    /* Note: every fruit has an id (spe for fruit objects) of at least
+     * 1; 0 is an error.
+     */
+    if (user_specified) {
+        /* disallow naming after other foods (since it'd be impossible
+         * to tell the difference)
+         */
+
+        bool found = false, numeric = false;
+
+        for (i = bases[FOOD_CLASS]; objects[i].oc_class == FOOD_CLASS;
+             i++) {
+            if (!strcmp(OBJ_NAME(objects[i]), pl_fruit)) {
+                found = true;
+                break;
+            }
+        }
+        {
+            char *c;
+
+            c = pl_fruit;
+
+            for(c = pl_fruit; *c >= '0' && *c <= '9'; c++)
+                    ;
+            if (isspace(*c) || *c == 0) numeric = true;
+        }
+        if (found || numeric ||
+            !strncmp(str, ""cursed "", 7) ||
+            !strncmp(str, ""uncursed "", 9) ||
+            !strncmp(str, ""blessed "", 8) ||
+            !strncmp(str, ""partly eaten "", 13) ||
+            (!strncmp(str, ""tin of "", 7) &&
+             (!strcmp(str+7, ""spinach"") ||
+              name_to_mon(str+7) >= LOW_PM)) ||
+            !strcmp(str, ""empty tin"") ||
+            ((!strncmp(eos(str)-7,"" corpse"",7) ||
+              !strncmp(eos(str)-4, "" egg"",4)) &&
+             name_to_mon(str) >= LOW_PM))
+        {
+            strcpy(buf, pl_fruit);
+            strcpy(pl_fruit, ""candied "");
+            nmcpy(pl_fruit+8, buf, PL_FSIZ-8);
+        }
+    }
+    for(f=ffruit; f; f = f->nextf) {
+        lastf = f;
+        if(f->fid > highest_fruit_id) highest_fruit_id = f->fid;
+        if(!strncmp(str, f->fname, PL_FSIZ))
+                goto nonew;
+    }
+    /* if adding another fruit would overflow spe, use a random
+       fruit instead... we've got a lot to choose from. */
+    if (highest_fruit_id >= 127) return rnd(127);
+    highest_fruit_id++;
+    f = newfruit();
+    if (ffruit) lastf->nextf = f;
+    else ffruit = f;
+    strcpy(f->fname, str);
+    f->fid = highest_fruit_id;
+    f->nextf = 0;
+nonew:
+    if (user_specified) current_fruit = highest_fruit_id;
+    return f->fid;
+}",TRUE,CWE_476
+25,25,25_vdisc.c,"GetIntExprOrDie()
+{
+    Token err_tok = scan.GetToken();
+    SyntaxNode* res = ParseRelationalExpr();
+    if (res == NULL) Error(""expression expected"");
+    if (res->GetSymType() != top_type_int) Error(""integer expression expected"", err_tok);
+    return res;
+}",TRUE,CWE_476
+26,26,26_vdisc.c,"DeclareGlobalData(struct GlobalData * data)
+{
+struct Symbol * symbol = data->symbol;
+
+if(curExternal && (!symbol || symbol->id > curExternal->symbol->idCode))
+{
+if(inCompiler)
+{
+if(!symbol)
+symbol = data->symbol = __ecereNameSpace__ecere__com__eInstance_New(__ecereClass_Symbol);
+}
+if(!data->dataType)
+data->dataType = ProcessTypeString(data->dataTypeString, 0x0);
+DeclareType(data->dataType, 0x1, 0x1);
+if(inCompiler)
+{
+if(!symbol->pointerExternal)
+{
+struct Declaration * decl;
+struct __ecereNameSpace__ecere__sys__OldList * specifiers, * declarators;
+struct Declarator * d;
+struct External * external;
+
+specifiers = MkList();
+declarators = MkList();
+ListAdd(specifiers, MkSpecifier(EXTERN));
+d = MkDeclaratorIdentifier(MkIdentifier(data->fullName));
+d = SpecDeclFromString(data->dataTypeString, specifiers, d);
+ListAdd(declarators, MkInitDeclarator(d, (((void *)0))));
+decl = MkDeclaration(specifiers, declarators);
+external = MkExternalDeclaration(decl);
+if(curExternal)
+__ecereMethod___ecereNameSpace__ecere__sys__OldList_Insert((&*ast), curExternal->prev, external);
+external->symbol = symbol;
+symbol->pointerExternal = external;
+}
+else
+{
+__ecereMethod___ecereNameSpace__ecere__sys__OldList_Move((&*ast), symbol->pointerExternal, curExternal->prev);
+}
+if(curExternal)
+symbol->id = curExternal->symbol->idCode;
+}
+}
+}",FALSE,CWE_476
+27,27,27_vdisc.c,"dump_function_name (tree t, int flags)
+{
+  tree name = DECL_NAME (t);
+
+  if (TREE_CODE (t) == TEMPLATE_DECL)
+    t = DECL_TEMPLATE_RESULT (t);
+
+  /* Don't let the user see __comp_ctor et al.  */
+  if (DECL_CONSTRUCTOR_P (t)
+      || DECL_DESTRUCTOR_P (t))
+    name = constructor_name (DECL_CONTEXT (t));
+
+  if (DECL_DESTRUCTOR_P (t))
+    {
+      pp_complement (cxx_pp);
+      dump_decl (name, TFF_PLAIN_IDENTIFIER);
+    }
+  else if (DECL_CONV_FN_P (t))
+    {
+      /* This cannot use the hack that the operator's return
+	 type is stashed off of its name because it may be
+	 used for error reporting.  In the case of conflicting
+	 declarations, both will have the same name, yet
+	 the types will be different, hence the TREE_TYPE field
+	 of the first name will be clobbered by the second.  */
+      pp_string (cxx_pp, ""operator "");
+      dump_type (TREE_TYPE (TREE_TYPE (t)), flags);
+    }
+  else if (IDENTIFIER_OPNAME_P (name))
+    pp_tree_identifier (cxx_pp, name);
+  else
+    dump_decl (name, flags);
+
+  if (DECL_LANG_SPECIFIC (t) && DECL_TEMPLATE_INFO (t)
+      && !DECL_FRIEND_PSEUDO_TEMPLATE_INSTANTIATION (t)
+      && (DECL_TEMPLATE_SPECIALIZATION (t)
+	  || TREE_CODE (DECL_TI_TEMPLATE (t)) != TEMPLATE_DECL
+	  || DECL_TEMPLATE_SPECIALIZATION (DECL_TI_TEMPLATE (t))
+	  || PRIMARY_TEMPLATE_P (DECL_TI_TEMPLATE (t))))
+    dump_template_parms (DECL_TEMPLATE_INFO (t), !DECL_USE_TEMPLATE (t), flags);
+}",FALSE,CWE_476
+28,28,28_vdisc.c,"report(tst_suite * suite)
+{
+    int count = 0;
+    sub_suite *dptr;
+
+    if (suite && suite->tail && !suite->tail->not_run) {
+        end_suite(suite);
+    }
+
+    if (list_tests) {
+        return 0;
+    }
+
+    for (dptr = suite->head; dptr; dptr = dptr->next) {
+        count += dptr->failed;
+    }
+
+
+    printf(""\n%d tests, %d assertions, %d failures\n\n"", t_cnt, a_cnt, f_cnt);
+    if (count == 0) {
+        printf(""All tests passed.\n"");
+        return 0;
+    }
+
+    dptr = suite->head;
+    fprintf(stdout, ""%-15s\t\tTotal\tFail\tFailed %%\n"", ""Failed Tests"");
+    fprintf(stdout, ""===================================================\n"");
+    while (dptr != NULL) {
+        if (dptr->failed != 0) {
+            double percent =
+                ((double) dptr->failed / (double) dptr->num_test);
+            fprintf(stdout, ""%-15s\t\t%5d\t%4d\t%6.2f%%\n"", dptr->name,
+                    dptr->num_test, dptr->failed, percent * 100);
+        }
+        dptr = dptr->next;
+    }
+    fprintf(stdout, ""===================================================\n"");
+    fprintf(stdout, ""\n%s\n"", msg_buf);
+    return 1;
+}",FALSE,CWE_476
+29,29,29_vdisc.c,"ev_feed_event (EV_P_ void *w, int revents) EV_THROW
+{
+  W w_ = (W)w;
+  int pri = ABSPRI (w_);
+
+  if (expect_false (w_->pending))
+    pendings [pri][w_->pending - 1].events |= revents;
+  else
+    {
+      w_->pending = ++pendingcnt [pri];
+      array_needsize (ANPENDING, pendings [pri], pendingmax [pri], w_->pending, EMPTY2);
+      pendings [pri][w_->pending - 1].w      = w_;
+      pendings [pri][w_->pending - 1].events = revents;
+    }
+
+  pendingpri = NUMPRI - 1;
+}",FALSE,CWE_476
+30,30,30_vdisc.c,"resize(FXuint n){
+  const FXMetaClass **newtable,*ptr;
+  register FXuint p,x,i,m;
+  FXCALLOC(&newtable,FXMetaClass*,n);
+  for(i=0; i<nmetaClassTable; i++){
+    ptr=metaClassTable[i];
+    if(ptr && ptr!=EMPTYSLOT){
+      p=hashstring(ptr->className);
+      x=(p<<1)|1;
+      m=n-1;
+      while(1){
+        p=(p+x)&m;
+        if(newtable[p]==NULL) break;
+        }
+      newtable[p]=ptr;
+      }
+    }
+  FXFREE(&metaClassTable);
+  metaClassTable=newtable;
+  nmetaClassTable=n;
+  }",TRUE,CWE_476
+31,31,31_vdisc.c,"ra_fault_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
+              int32_t op_ret, int32_t op_errno, struct iovec *vector,
+              int32_t count, struct iatt *stbuf, struct iobref *iobref,
+              dict_t *xdata)
+{
+        ra_local_t   *local          = NULL;
+        off_t         pending_offset = 0;
+        ra_file_t    *file           = NULL;
+        ra_page_t    *page           = NULL;
+        ra_waitq_t   *waitq          = NULL;
+        fd_t         *fd             = NULL;
+        uint64_t      tmp_file       = 0;
+
+        GF_ASSERT (frame);
+
+        local = frame->local;
+        fd  = local->fd;
+
+        fd_ctx_get (fd, this, &tmp_file);
+
+        file = (ra_file_t *)(long)tmp_file;
+        pending_offset = local->pending_offset;
+
+        if (file == NULL) {
+                gf_log (this->name, GF_LOG_WARNING,
+                        ""read-ahead context not set in fd (%p)"", fd);
+                op_ret = -1;
+                op_errno = EBADF;
+                goto out;
+        }
+
+        ra_file_lock (file);
+        {
+                if (op_ret >= 0)
+                        file->stbuf = *stbuf;
+
+                page = ra_page_get (file, pending_offset);
+
+                if (!page) {
+                        gf_log (this->name, GF_LOG_TRACE,
+                                ""wasted copy: %""PRId64""[+%""PRId64""] file=%p"",
+                                pending_offset, file->page_size, file);
+                        goto unlock;
+                }
+
+                /*
+                 * ""Dirty"" means that the request was a pure read-ahead; it's
+                 * set for requests we issue ourselves, and cleared when user
+                 * requests are issued or put on the waitq.  ""Poisoned"" means
+                 * that we got a write while a read was still in flight, and we
+                 * couldn't stop it so we marked it instead.  If it's both
+                 * dirty and poisoned by the time we get here, we cancel its
+                 * effect so that a subsequent user read doesn't get data that
+                 * we know is stale (because we made it stale ourselves).  We
+                 * can't use ESTALE because that has special significance.
+                 * ECANCELED has no such special meaning, and is close to what
+                 * we're trying to indicate.
+                 */
+                if (page->dirty && page->poisoned) {
+                        op_ret = -1;
+                        op_errno = ECANCELED;
+                }
+
+                if (op_ret < 0) {
+                        waitq = ra_page_error (page, op_ret, op_errno);
+                        goto unlock;
+                }
+
+                if (page->vector) {
+                        iobref_unref (page->iobref);
+                        GF_FREE (page->vector);
+                }
+
+                page->vector = iov_dup (vector, count);
+                if (page->vector == NULL) {
+                        waitq = ra_page_error (page, -1, ENOMEM);
+                        goto unlock;
+                }
+
+                page->count = count;
+                page->iobref = iobref_ref (iobref);
+                page->ready = 1;
+
+                page->size = iov_length (vector, count);
+
+                waitq = ra_page_wakeup (page);
+        }
+unlock:
+        ra_file_unlock (file);
+
+        ra_waitq_return (waitq);
+
+        fd_unref (local->fd);
+
+        mem_put (frame->local);
+        frame->local = NULL;
+
+out:
+        STACK_DESTROY (frame->root);
+        return 0;
+}",TRUE,CWE_476
+32,32,32_vdisc.c,"gtk_cmclist_append (GtkCMCList    *clist,
+		  gchar       *text[])
+{
+  cm_return_val_if_fail (GTK_IS_CMCLIST (clist), -1);
+  cm_return_val_if_fail (text != NULL, -1);
+
+  return GTK_CMCLIST_GET_CLASS (clist)->insert_row (clist, clist->rows, text);
+}",TRUE,CWE_476
+33,33,33_vdisc.c,"DUL_DropNetwork(DUL_NETWORKKEY ** callerNetworkKey)
+{
+    PRIVATE_NETWORKKEY
+        ** networkKey;
+
+    networkKey = (PRIVATE_NETWORKKEY **) callerNetworkKey;
+
+    OFCondition cond = checkNetwork(networkKey);
+    if (cond.bad()) return cond;
+
+    if ((*networkKey)->networkSpecific.TCP.tLayerOwned) delete (*networkKey)->networkSpecific.TCP.tLayer;
+
+    if ((*networkKey)->applicationFunction & DICOM_APPLICATION_ACCEPTOR)
+    {
+#ifdef HAVE_WINSOCK_H
+            (void) shutdown((*networkKey)->networkSpecific.TCP.listenSocket, 1 /* SD_SEND */);
+            (void) closesocket((*networkKey)->networkSpecific.TCP.listenSocket);
+#else
+            (void) close((*networkKey)->networkSpecific.TCP.listenSocket);
+#endif
+    }
+
+    free(*networkKey);
+    *networkKey = NULL;
+    return EC_Normal;
+}",TRUE,CWE_476
+34,34,34_vdisc.c,"hash_insert_at (struct hash_table* ht, void *item, void const *slot)
+{
+  void *old_item = *(void **) slot;
+  if (HASH_VACANT (old_item))
+    {
+      ht->ht_fill++;
+      if (old_item == 0)
+	ht->ht_empty_slots--;
+      old_item = item;
+    }
+  *(void const **) slot = item;
+  if (ht->ht_empty_slots < ht->ht_size - ht->ht_capacity)
+    {
+      hash_rehash (ht);
+      return (void *) hash_find_slot (ht, item);
+    }
+  else
+    return (void *) slot;
+}",TRUE,CWE_476
+35,35,35_vdisc.c,"drawable_check_alloc_bounds(struct _drawable_context *ctx, GF_VisualManager *visual)
+{
+	DRInfo *dri, *prev;
+	BoundInfo *bi, *_prev;
+
+	/*get bounds info for this visual manager*/
+	prev = NULL;
+	dri = ctx->drawable->dri;
+	while (dri) {
+		if (dri->visual == visual) break;
+		if (!dri->visual) {
+			dri->visual = visual;
+			break;
+		}
+		prev = dri;
+		dri = dri->next;
+	}
+	if (!dri) {
+		GF_SAFEALLOC(dri, DRInfo);
+		dri->visual = visual;
+		if (prev) prev->next = dri;
+		else ctx->drawable->dri = dri;
+		GF_LOG(GF_LOG_DEBUG, GF_LOG_COMPOSE, (""[Visual2D] Allocating new bound info storage on visual %08x for drawable %s\n"", visual, gf_node_get_class_name(ctx->drawable->node)));
+	}
+	
+	/*get available bound info slot*/
+	_prev = NULL;
+	bi = dri->current_bounds;
+	while (bi) {
+		if (!bi->clip.width) break;
+		_prev = bi;
+		bi = bi->next;
+	}
+	if (!bi) {
+		GF_SAFEALLOC(bi, BoundInfo);
+		if (_prev) {
+//			assert(!_prev->next);
+			_prev->next = bi;
+		}
+		else {
+//			assert(!dri->current_bounds);
+			dri->current_bounds = bi;
+		}
+		//GF_LOG(GF_LOG_DEBUG, GF_LOG_COMPOSE, (""[Visual2D] Allocating new bound info for drawable %s\n"", gf_node_get_class_name(ctx->drawable->node)));
+	}
+	/*reset next bound info*/
+	if (bi->next) bi->next->clip.width = 0;
+	return bi;
+}",FALSE,CWE_476
+36,36,36_vdisc.c,"get_digit_count(void *a)
+{
+   mp_int *A;
+   LTC_ARGCHK(a != NULL);
+   A = a;
+   return A->used;
+}",FALSE,CWE_476
+37,37,37_vdisc.c,"vcc_Stv_Wildcard(struct vcc *tl, const struct token *t,
+    const struct symbol *wcsym)
+{
+	const char *p, *q;
+	struct var *v = NULL;
+	struct symbol *sym;
+	struct stvars *sv;
+	char stv[1024];
+	char buf[1024];
+
+	(void)wcsym;
+	assert((t->e - t->b) > strlen(PFX));
+	assert(!memcmp(t->b, PFX, strlen(PFX)));
+
+	p = t->b + strlen(PFX);
+	for (q = p; q < t->e && *q != '.'; q++)
+		continue;
+	bprintf(stv, ""%.*s"", (int)(q - p), p);
+
+	if (q == t->e) {
+		v = vcc_Stv_mkvar(tl, t, BOOL);
+		bprintf(buf, ""VRT_Stv(\""%s\"")"", stv);
+		v->rname = TlDup(tl, buf);
+	} else {
+		assert(*q  == '.');
+		q++;
+		for(sv = stvars; sv->name != NULL; sv++) {
+			if (strncmp(q, sv->name, t->e - q))
+				continue;
+			if (sv->name[t->e - q] != '\0')
+				continue;
+			v = vcc_Stv_mkvar(tl, t, sv->fmt);
+			bprintf(buf, ""VRT_Stv_%s(\""%s\"")"", sv->name, stv);
+			v->rname = TlDup(tl, buf);
+			break;
+		}
+	}
+
+	if (v == NULL)
+		return (NULL);
+
+	sym = VCC_AddSymbolTok(tl, t, SYM_VAR);
+	AN(sym);
+	sym->var = v;
+	sym->fmt = v->fmt;
+	sym->eval = vcc_Eval_Var;
+	sym->r_methods = v->r_methods;
+
+	return (sym);
+}",FALSE,CWE_476
+38,38,38_vdisc.c,"maybe_lookup_host(u8* name) {
+  struct hostent* h;
+  struct dns_entry *d = dns, *prev = NULL;
+  u32 ret_addr = 0;
+  struct in_addr in;
+
+#ifdef PROXY_SUPPORT
+
+  /* If configured to use proxy, look up proxy IP once; and return that
+     address for all host names. */
+
+  if (use_proxy) {
+
+    if (!use_proxy_addr) {
+
+     /* Don't bother resolving raw IP addresses, naturally. */
+
+      if (inet_aton((char*)use_proxy, &in))
+        return (use_proxy_addr = (u32)in.s_addr);
+
+      h = gethostbyname((char*)use_proxy);
+
+      /* If lookup fails with a transient error, be nice - try again. */
+
+      if (!h && h_errno == TRY_AGAIN) h = gethostbyname((char*)name);
+
+      if (!h || !(use_proxy_addr = *(u32*)h->h_addr_list[0]))
+        FATAL(""Unable to resolve proxy host name '%s'."", use_proxy);
+
+    }
+
+    return use_proxy_addr;
+
+  }
+
+  /* If no proxy... */
+
+#endif /* PROXY_SUPPORT */
+
+  /* Don't bother resolving raw IP addresses, naturally. */
+
+  if (inet_aton((char*)name, &in))
+    return (u32)in.s_addr;
+
+  while (d) {
+    if (!strcasecmp((char*)name, (char*)d->name)) return d->addr;
+    prev = d;
+    d = d->next;
+  }
+
+  h = gethostbyname((char*)name);
+
+  /* If lookup fails with a transient error, be nice - try again. */
+
+  if (!h && h_errno == TRY_AGAIN) h = gethostbyname((char*)name);
+
+  if (h) {
+
+    u32 i = 0;
+
+    /* For each address associated with the host, see if we have any
+       other hosts that resolved to that same IP. If yes, return
+       that address; otherwise, just return first. This is for HTTP
+       performance and bookkeeping reasons. */
+
+    while (h->h_addr_list[i]) {
+      d = dns;
+      while (d) {
+        if (d->addr == *(u32*)h->h_addr_list[i]) {
+          ret_addr = d->addr;
+          goto dns_got_name;
+        }
+        d = d->next;
+      }
+      i++;
+    }
+
+    ret_addr = *(u32*)h->h_addr_list[0];
+
+  }
+
+dns_got_name:
+
+  if (!prev) d = dns = ck_alloc(sizeof(struct dns_entry));
+    else d = prev->next = ck_alloc(sizeof(struct dns_entry));
+
+  d->name = ck_strdup(name);
+  d->addr = ret_addr;
+
+  return ret_addr;
+
+}",FALSE,CWE_476
+39,39,39_vdisc.c,"icalvalue_get_datetime (const icalvalue* value) {
+
+    icalerror_check_arg ((value!=0),""value"");
+    icalerror_check_value_type (value, ICAL_DATETIME_VALUE);
+    return ((struct icalvalue_impl*)value)->data.v_time;
+}",TRUE,CWE_476
+40,40,40_vdisc.c,"__ecereMethod___ecereNameSpace__ecere__sys__TempFile_Getc(struct __ecereNameSpace__ecere__com__Instance * this, char * ch)
+{
+struct __ecereNameSpace__ecere__sys__TempFile * __ecerePointer___ecereNameSpace__ecere__sys__TempFile = (struct __ecereNameSpace__ecere__sys__TempFile *)(this ? (((char *)this) + __ecereClass___ecereNameSpace__ecere__sys__TempFile->offset) : 0);
+int read = ((int (*)(struct __ecereNameSpace__ecere__com__Instance *, void *  buffer, unsigned int size, unsigned int count))__extension__ ({
+struct __ecereNameSpace__ecere__com__Instance * __internal_ClassInst = this;
+
+__internal_ClassInst ? __internal_ClassInst->_vTbl : __ecereClass___ecereNameSpace__ecere__sys__TempFile->_vTbl;
+})[__ecereVMethodID___ecereNameSpace__ecere__sys__File_Read])(this, ch, 1, 1);
+
+return !__ecerePointer___ecereNameSpace__ecere__sys__TempFile->eof && read != 0;
+}",TRUE,CWE_476
+41,41,41_vdisc.c,"paint(Graphics &g, const YRect &/*r*/) {
+    ref<YFont> font = inputFont;
+    int min, max, minOfs = 0, maxOfs = 0;
+    int textLen = fText.length();
+
+    if (curPos > markPos) {
+        min = markPos;
+        max = curPos;
+    } else {
+        min = curPos;
+        max = markPos;
+    }
+
+    if (curPos == markPos || fText == null || font == null || !fHasFocus) {
+        g.setColor(inputBg);
+        g.fillRect(0, 0, width(), height());
+    } else {
+        minOfs = font->textWidth(fText.substring(0, min)) - leftOfs;
+        maxOfs = font->textWidth(fText.substring(0, max)) - leftOfs;
+
+        if (minOfs > 0) {
+            g.setColor(inputBg);
+            g.fillRect(0, 0, minOfs, height());
+        }
+        /// !!! optimize (0, width)
+        if (minOfs < maxOfs) {
+            g.setColor(inputSelectionBg);
+            g.fillRect(minOfs, 0, maxOfs - minOfs, height());
+        }
+        if (maxOfs < int(width())) {
+            g.setColor(inputBg);
+            g.fillRect(maxOfs, 0, width() - maxOfs, height());
+        }
+    }
+
+    if (font != null) {
+        int yp = 1 + font->ascent();
+        int curOfs = font->textWidth(fText.substring(0, curPos));
+        int cx = curOfs - leftOfs;
+
+        g.setFont(font);
+
+        if (curPos == markPos || !fHasFocus || fText == null) {
+            g.setColor(inputFg);
+            if (fText != null)
+                g.drawChars(fText.substring(0, textLen), -leftOfs, yp);
+            if (fHasFocus && fCursorVisible)
+                g.drawLine(cx, 0, cx, font->height() + 2);
+        } else {
+            if (min > 0) {
+                g.setColor(inputFg);
+                g.drawChars(fText.substring(0, min), -leftOfs, yp);
+            }
+            /// !!! same here
+            if (min < max) {
+                g.setColor(inputSelectionFg);
+                g.drawChars(fText.substring(min, max - min), minOfs, yp);
+            }
+            if (max < textLen) {
+                g.setColor(inputFg);
+                g.drawChars(fText.substring(max, textLen - max), maxOfs, yp);
+            }
+        }
+    }
+}",TRUE,CWE_476
+42,42,42_vdisc.c,"fortuna_read(unsigned char *out, unsigned long outlen, prng_state *prng)
+{
+   unsigned char tmp[16];
+   unsigned long tlen;
+
+   LTC_ARGCHK(out  != NULL);
+   LTC_ARGCHK(prng != NULL);
+
+   LTC_MUTEX_LOCK(&prng->fortuna.prng_lock);
+
+   /* do we have to reseed? */
+   if (++prng->fortuna.wd == LTC_FORTUNA_WD || prng->fortuna.pool0_len >= 64) {
+      if (fortuna_reseed(prng) != CRYPT_OK) {
+         LTC_MUTEX_UNLOCK(&prng->fortuna.prng_lock);
+         return 0;
+      }
+   }
+
+   /* now generate the blocks required */
+   tlen = outlen;
+
+   /* handle whole blocks without the extra XMEMCPY */
+   while (outlen >= 16) {
+      /* encrypt the IV and store it */
+      rijndael_ecb_encrypt(prng->fortuna.IV, out, &prng->fortuna.skey);
+      out += 16;
+      outlen -= 16;
+      fortuna_update_iv(prng);
+   }
+
+   /* left over bytes? */
+   if (outlen > 0) {
+      rijndael_ecb_encrypt(prng->fortuna.IV, tmp, &prng->fortuna.skey);
+      XMEMCPY(out, tmp, outlen);
+      fortuna_update_iv(prng);
+   }
+       
+   /* generate new key */
+   rijndael_ecb_encrypt(prng->fortuna.IV, prng->fortuna.K   , &prng->fortuna.skey); 
+   fortuna_update_iv(prng);
+   
+   rijndael_ecb_encrypt(prng->fortuna.IV, prng->fortuna.K+16, &prng->fortuna.skey); 
+   fortuna_update_iv(prng);
+   
+   if (rijndael_setup(prng->fortuna.K, 32, 0, &prng->fortuna.skey) != CRYPT_OK) {
+      LTC_MUTEX_UNLOCK(&prng->fortuna.prng_lock);
+      return 0;
+   }
+
+#ifdef LTC_CLEAN_STACK
+   zeromem(tmp, sizeof(tmp));
+#endif
+   LTC_MUTEX_UNLOCK(&prng->fortuna.prng_lock);
+   return tlen;
+}",TRUE,CWE_476
+43,43,43_vdisc.c,"__ecereMethod___ecereNameSpace__ecere__gfx__drivers__LFBDisplayDriver_SetForeground(struct __ecereNameSpace__ecere__com__Instance * display, struct __ecereNameSpace__ecere__com__Instance * surface, unsigned int color)
+{
+struct __ecereNameSpace__ecere__gfx__drivers__LFBDisplay * lfbDisplay = display ? ((struct __ecereNameSpace__ecere__gfx__Display *)(((char *)display + __ecereClass___ecereNameSpace__ecere__gfx__Display->offset)))->driverData : (((void *)0));
+struct __ecereNameSpace__ecere__gfx__drivers__LFBSurface * lfbSurface = ((struct __ecereNameSpace__ecere__gfx__Surface *)(((char *)surface + __ecereClass___ecereNameSpace__ecere__gfx__Surface->offset)))->driverData;
+unsigned int index;
+
+if(display)
+color = color;
+lfbSurface->foregroundRgb = color;
+if(lfbSurface->font && lfbDisplay)
+{
+index = lfbDisplay->rgbLookup[(unsigned short)(unsigned short)__ecereProp___ecereNameSpace__ecere__gfx__Color555_Set___ecereNameSpace__ecere__gfx__Color(__ecereProp___ecereNameSpace__ecere__gfx__ColorAlpha_Get___ecereNameSpace__ecere__gfx__Color(lfbSurface->foregroundRgb))];
+lfbSurface->paletteShades = lfbDisplay->lightTable[index];
+}
+switch(((struct __ecereNameSpace__ecere__gfx__Bitmap *)(((char *)lfbSurface->bitmap + __ecereClass___ecereNameSpace__ecere__gfx__Bitmap->offset)))->pixelFormat)
+{
+case 1:
+if(display)
+lfbSurface->foreground = lfbDisplay->rgbLookup[(unsigned short)(unsigned short)__ecereProp___ecereNameSpace__ecere__gfx__Color555_Set___ecereNameSpace__ecere__gfx__Color(__ecereProp___ecereNameSpace__ecere__gfx__ColorAlpha_Get___ecereNameSpace__ecere__gfx__Color(color))];
+else
+lfbSurface->foreground = __ecereNameSpace__ecere__gfx__BestColorMatch(((struct __ecereNameSpace__ecere__gfx__Bitmap *)(((char *)lfbSurface->bitmap + __ecereClass___ecereNameSpace__ecere__gfx__Bitmap->offset)))->palette, 0, 255, __ecereProp___ecereNameSpace__ecere__gfx__ColorAlpha_Get___ecereNameSpace__ecere__gfx__Color(color));
+break;
+case 2:
+lfbSurface->foreground = (unsigned short)(unsigned short)__ecereProp___ecereNameSpace__ecere__gfx__Color444_Set___ecereNameSpace__ecere__gfx__Color(__ecereProp___ecereNameSpace__ecere__gfx__ColorAlpha_Get___ecereNameSpace__ecere__gfx__Color(color));
+break;
+case 3:
+lfbSurface->foreground = (unsigned short)(unsigned short)__ecereProp___ecereNameSpace__ecere__gfx__Color555_Set___ecereNameSpace__ecere__gfx__Color(__ecereProp___ecereNameSpace__ecere__gfx__ColorAlpha_Get___ecereNameSpace__ecere__gfx__Color(color));
+break;
+case 4:
+lfbSurface->foreground = (unsigned short)(unsigned short)__ecereProp___ecereNameSpace__ecere__gfx__Color565_Set___ecereNameSpace__ecere__gfx__Color(__ecereProp___ecereNameSpace__ecere__gfx__ColorAlpha_Get___ecereNameSpace__ecere__gfx__Color(color));
+break;
+case 5:
+lfbSurface->foreground = (unsigned int)color;
+break;
+case 8:
+lfbSurface->foreground = (unsigned int)(unsigned int)__ecereProp___ecereNameSpace__ecere__gfx__ColorRGBA_Set___ecereNameSpace__ecere__gfx__ColorAlpha(color);
+break;
+case 7:
+if(display)
+lfbSurface->foreground = __ecereNameSpace__ecere__gfx__BestColorMatch(((struct __ecereNameSpace__ecere__gfx__Bitmap *)(((char *)lfbDisplay->bitmap + __ecereClass___ecereNameSpace__ecere__gfx__Bitmap->offset)))->palette, 0, 15, __ecereProp___ecereNameSpace__ecere__gfx__ColorAlpha_Get___ecereNameSpace__ecere__gfx__Color(color)) << 8;
+else
+lfbSurface->foreground = __ecereNameSpace__ecere__gfx__BestColorMatch(((struct __ecereNameSpace__ecere__gfx__Bitmap *)(((char *)lfbSurface->bitmap + __ecereClass___ecereNameSpace__ecere__gfx__Bitmap->offset)))->palette, 0, 15, __ecereProp___ecereNameSpace__ecere__gfx__ColorAlpha_Get___ecereNameSpace__ecere__gfx__Color(color)) << 8;
+break;
+}
+}",TRUE,CWE_476
+44,44,44_vdisc.c,"expand_indexqual_conditions(IndexOptInfo *index, List *clausegroups)
+{
+	List	   *resultquals = NIL;
+	ListCell   *clausegroup_item;
+	int			indexcol = 0;
+	Oid		   *families = index->opfamily;
+
+	if (clausegroups == NIL)
+		return NIL;
+
+	clausegroup_item = list_head(clausegroups);
+	do
+	{
+		Oid			curFamily = families[0];
+		ListCell   *l;
+
+		foreach(l, (List *) lfirst(clausegroup_item))
+		{
+			RestrictInfo *rinfo = (RestrictInfo *) lfirst(l);
+			Expr	   *clause = rinfo->clause;
+
+			/* First check for boolean cases */
+			if (IsBooleanOpfamily(curFamily))
+			{
+				Expr	   *boolqual;
+
+				boolqual = expand_boolean_index_clause((Node *) clause,
+													   indexcol,
+													   index);
+				if (boolqual)
+				{
+					resultquals = lappend(resultquals,
+										  make_simple_restrictinfo(boolqual));
+					continue;
+				}
+			}
+
+			/*
+			 * Else it must be an opclause (usual case), ScalarArrayOp,
+			 * RowCompare, or NullTest
+			 */
+			if (is_opclause(clause))
+			{
+				resultquals = list_concat(resultquals,
+										  expand_indexqual_opclause(rinfo,
+																 curFamily));
+			}
+			else if (IsA(clause, ScalarArrayOpExpr))
+			{
+				/* no extra work at this time */
+				resultquals = lappend(resultquals, rinfo);
+			}
+			else if (IsA(clause, RowCompareExpr))
+			{
+				resultquals = lappend(resultquals,
+									  expand_indexqual_rowcompare(rinfo,
+																  index,
+																  indexcol));
+			}
+			else if (IsA(clause, NullTest))
+			{
+				Assert(index->amsearchnulls);
+				resultquals = lappend(resultquals,
+									  make_simple_restrictinfo(clause));
+			}
+			else
+				elog(ERROR, ""unsupported indexqual type: %d"",
+					 (int) nodeTag(clause));
+		}
+
+		clausegroup_item = lnext(clausegroup_item);
+
+		indexcol++;
+		families++;
+	} while (clausegroup_item != NULL && !DoneMatchingIndexKeys(families));
+
+	Assert(clausegroup_item == NULL);	/* else more groups than indexkeys */
+
+	return resultquals;
+}",TRUE,CWE_476
+45,45,45_vdisc.c,"ibv_cmd_post_srq_recv(struct ibv_srq *srq, struct ibv_recv_wr *wr,
+		      struct ibv_recv_wr **bad_wr)
+{
+	struct ibv_post_srq_recv *cmd;
+	struct ibv_post_srq_recv_resp resp;
+	struct ibv_recv_wr       *i;
+	struct ibv_kern_recv_wr  *n, *tmp;
+	struct ibv_sge           *s;
+	unsigned                  wr_count = 0;
+	unsigned                  sge_count = 0;
+	int                       cmd_size;
+	int                       ret = 0;
+
+	for (i = wr; i; i = i->next) {
+		wr_count++;
+		sge_count += i->num_sge;
+	}
+
+	cmd_size = sizeof *cmd + wr_count * sizeof *n + sge_count * sizeof *s;
+	cmd  = alloca(cmd_size);
+
+	IBV_INIT_CMD_RESP(cmd, cmd_size, POST_SRQ_RECV, &resp, sizeof resp);
+	cmd->srq_handle = srq->handle;
+	cmd->wr_count  = wr_count;
+	cmd->sge_count = sge_count;
+	cmd->wqe_size  = sizeof *n;
+
+	n = (struct ibv_kern_recv_wr *) ((void *) cmd + sizeof *cmd);
+	s = (struct ibv_sge *) (n + wr_count);
+
+	tmp = n;
+	for (i = wr; i; i = i->next) {
+		tmp->wr_id = i->wr_id;
+		tmp->num_sge = i->num_sge;
+
+		if (tmp->num_sge) {
+			memcpy(s, i->sg_list, tmp->num_sge * sizeof *s);
+			s += tmp->num_sge;
+		}
+
+		tmp++;
+	}
+
+	resp.bad_wr = 0;
+	if (write(srq->context->cmd_fd, cmd, cmd_size) != cmd_size)
+		ret = errno;
+
+	(void) VALGRIND_MAKE_MEM_DEFINED(&resp, sizeof resp);
+
+	wr_count = resp.bad_wr;
+	if (wr_count) {
+		i = wr;
+		while (--wr_count)
+			i = i->next;
+		*bad_wr = i;
+	} else if (ret)
+		*bad_wr = wr;
+
+	return ret;
+}",TRUE,CWE_476
+46,46,46_vdisc.c,"UTsolve(const MAT *U, const VEC *b, VEC *out, double diag)
+#endif
+{
+    unsigned int	dim, i, i_lim;
+    Real	**U_me, *b_ve, *out_ve, tmp, invdiag, tiny;
+    
+    if ( ! U || ! b )
+	error(E_NULL,""UTsolve"");
+    dim = min(U->m,U->n);
+    if ( b->dim < dim )
+	error(E_SIZES,""UTsolve"");
+    out = v_resize(out,U->n);
+    U_me = U->me;	b_ve = b->ve;	out_ve = out->ve;
+
+    tiny = 10.0/HUGE_VAL;
+
+    for ( i=0; i<dim; i++ )
+	if ( b_ve[i] != 0.0 )
+	    break;
+	else
+	    out_ve[i] = 0.0;
+    i_lim = i;
+    if ( b != out )
+    {
+	__zero__(out_ve,out->dim);
+	MEM_COPY(&(b_ve[i_lim]),&(out_ve[i_lim]),(dim-i_lim)*sizeof(Real));
+    }
+
+    if ( diag == 0.0 )
+    {
+	for (    ; i<dim; i++ )
+	{
+	    tmp = U_me[i][i];
+	    if ( fabs(tmp) <= tiny*fabs(out_ve[i]) )
+		error(E_SING,""UTsolve"");
+	    out_ve[i] /= tmp;
+	    __mltadd__(&(out_ve[i+1]),&(U_me[i][i+1]),-out_ve[i],dim-i-1);
+	}
+    }
+    else
+    {
+	invdiag = 1.0/diag;
+	for (    ; i<dim; i++ )
+	{
+	    out_ve[i] *= invdiag;
+	    __mltadd__(&(out_ve[i+1]),&(U_me[i][i+1]),-out_ve[i],dim-i-1);
+	}
+    }
+    return (out);
+}",TRUE,CWE_476
+47,47,47_vdisc.c,"ExecCallTriggerFunc(TriggerData *trigdata,
+					int tgindx,
+					FmgrInfo *finfo,
+					Instrumentation *instr,
+					MemoryContext per_tuple_context)
+{
+	FunctionCallInfoData fcinfo;
+	Datum		result;
+	MemoryContext oldContext;
+
+	finfo += tgindx;
+
+	/*
+	 * We cache fmgr lookup info, to avoid making the lookup again on each
+	 * call.
+	 */
+	if (finfo->fn_oid == InvalidOid)
+		fmgr_info(trigdata->tg_trigger->tgfoid, finfo);
+
+	Assert(finfo->fn_oid == trigdata->tg_trigger->tgfoid);
+
+	/*
+	 * If doing EXPLAIN ANALYZE, start charging time to this trigger.
+	 */
+	if (instr)
+		InstrStartNode(instr + tgindx);
+
+	/*
+	 * Do the function evaluation in the per-tuple memory context, so that
+	 * leaked memory will be reclaimed once per tuple. Note in particular that
+	 * any new tuple created by the trigger function will live till the end of
+	 * the tuple cycle.
+	 */
+	oldContext = MemoryContextSwitchTo(per_tuple_context);
+
+	/*
+	 * Call the function, passing no arguments but setting a context.
+	 */
+	InitFunctionCallInfoData(fcinfo, finfo, 0, (Node *) trigdata, NULL);
+
+	result = FunctionCallInvoke(&fcinfo);
+
+	MemoryContextSwitchTo(oldContext);
+
+	/*
+	 * Trigger protocol allows function to return a null pointer, but NOT to
+	 * set the isnull result flag.
+	 */
+	if (fcinfo.isnull)
+		ereport(ERROR,
+				(errcode(ERRCODE_E_R_I_E_TRIGGER_PROTOCOL_VIOLATED),
+				 errmsg(""trigger function %u returned null value"",
+						fcinfo.flinfo->fn_oid)));
+
+	/*
+	 * If doing EXPLAIN ANALYZE, stop charging time to this trigger, and count
+	 * one ""tuple returned"" (really the number of firings).
+	 */
+	if (instr)
+		InstrStopNode(instr + tgindx, 1);
+
+	return (HeapTuple) DatumGetPointer(result);
+}",FALSE,CWE_476
+48,48,48_vdisc.c,"sp_opendir_helper (call_frame_t *frame, xlator_t *this, loc_t *loc, fd_t *fd)
+{
+        uint64_t        value     = 0;
+        sp_inode_ctx_t *inode_ctx = NULL;
+        int32_t         ret       = 0, op_ret = -1, op_errno = EINVAL;
+
+        GF_ASSERT (frame);
+        GF_VALIDATE_OR_GOTO (frame->this ? frame->this->name : ""stat-prefetch"",
+                             this, unwind);
+        GF_VALIDATE_OR_GOTO (this->name, loc, unwind);
+
+        ret = inode_ctx_get (loc->inode, this, &value);
+        if (ret == -1) {
+                gf_log (this->name, GF_LOG_WARNING,
+                        ""stat-prefetch context not set in inode ""
+                        ""(gfid:%s)"", uuid_utoa (loc->inode->gfid));
+                goto unwind;
+        }
+
+        inode_ctx = (sp_inode_ctx_t *)(long) value;
+        GF_VALIDATE_OR_GOTO (this->name, inode_ctx, unwind);
+
+        LOCK (&inode_ctx->lock);
+        {
+                op_ret = inode_ctx->op_ret;
+                op_errno = inode_ctx->op_errno;
+        }
+        UNLOCK (&inode_ctx->lock);
+
+        if (op_ret == -1) {
+                gf_log (this->name, GF_LOG_WARNING, ""lookup-behind has failed ""
+                        ""for path (%s)(%s), unwinding opendir call waiting ""
+                        ""on it"", loc->path, strerror (op_errno));
+                goto unwind;
+        }
+
+        STACK_WIND (frame, sp_fd_cbk, FIRST_CHILD(this),
+                    FIRST_CHILD(this)->fops->opendir, loc, fd);
+
+        return 0;
+
+unwind:
+        SP_STACK_UNWIND (opendir, frame, -1, op_errno, NULL);
+        return 0;
+}",FALSE,CWE_476
+49,49,49_vdisc.c,"glusterd_defrag_stop (glusterd_volinfo_t *volinfo, u_quad_t *files,
+                      u_quad_t *size, char *op_errstr, size_t len)
+{
+        /* TODO: set a variable 'stop_defrag' here, it should be checked
+           in defrag loop */
+        int     ret = -1;
+        GF_ASSERT (volinfo);
+        GF_ASSERT (files);
+        GF_ASSERT (size);
+        GF_ASSERT (op_errstr);
+
+        if (!volinfo) {
+                ret = -1;
+                goto out;
+        }
+
+        ret = glusterd_defrag_stop_validate (volinfo, op_errstr, len);
+        if (ret) {
+                /* rebalance may be happening on other nodes */
+                ret = 0;
+                goto out;
+        }
+
+        ret = 0;
+        if (volinfo->defrag_status == GF_DEFRAG_STATUS_NOT_STARTED) {
+                goto out;
+        }
+
+        LOCK (&volinfo->defrag->lock);
+        {
+                volinfo->defrag_status = GF_DEFRAG_STATUS_STOPPED;
+                *files = volinfo->defrag->total_files;
+                *size = volinfo->defrag->total_data;
+        }
+        UNLOCK (&volinfo->defrag->lock);
+
+        ret = 0;
+out:
+        gf_log (""glusterd"", GF_LOG_DEBUG, ""Returning %d"", ret);
+        return ret;
+}",FALSE,CWE_476
+50,50,50_vdisc.c,"__ecereProp___ecereNameSpace__ecere__gui__controls__DropBox_Set_selectionText(struct __ecereNameSpace__ecere__com__Instance * this, unsigned int value)
+{
+struct __ecereNameSpace__ecere__gui__controls__DropBox * __ecerePointer___ecereNameSpace__ecere__gui__controls__DropBox = (struct __ecereNameSpace__ecere__gui__controls__DropBox *)(this ? (((char *)this) + __ecereClass___ecereNameSpace__ecere__gui__controls__DropBox->offset) : 0);
+
+__ecerePointer___ecereNameSpace__ecere__gui__controls__DropBox->selectionText = __ecereProp___ecereNameSpace__ecere__gfx__ColorAlpha_Set___ecereNameSpace__ecere__gfx__Color(value);
+__ecereNameSpace__ecere__com__eInstance_FireSelfWatchers(this, __ecereProp___ecereNameSpace__ecere__gui__controls__DropBox_selectionText), __ecereNameSpace__ecere__com__eInstance_FireSelfWatchers(this, __ecerePropM___ecereNameSpace__ecere__gui__controls__DropBox_selectionText);
+}",FALSE,CWE_476
+51,51,51_vdisc.c,"return_one_attr( LDAP *ld, LDAPMessage *entry, char *attrtype, char *mimetype,
+	int valindex )
+{
+    char		*val;
+    struct berval	**bvals;
+    unsigned long	vlen;
+
+    if (( bvals = ldap_get_values_len( ld, entry, attrtype )) == NULL ) {
+	dsgw_error( DSGW_ERR_NOATTRVALUE, attrtype, DSGW_ERROPT_EXIT, 0, NULL );
+    }
+
+    if ( valindex > ldap_count_values_len( bvals )) {
+	dsgw_error( DSGW_ERR_NOATTRVALUE, attrtype, DSGW_ERROPT_EXIT, 0, NULL );
+    }
+
+    val = bvals[ valindex ]->bv_val;
+    vlen = bvals[ valindex ]->bv_len;
+
+    fprintf( stdout, ""Content-Type: %s\n"", mimetype );
+    fprintf( stdout, ""Content-Length: %ld\n\n"", vlen );
+
+#ifdef XP_WIN32
+    /* flush any data on stdout before changing the mode */
+    fflush( stdout );
+
+    /* set the mode to binary 
+       so windows doesn't replace with carriage
+       return line feed and mess everything up
+    */
+    _setmode( _fileno( stdout ), _O_BINARY );
+#endif
+
+    fwrite( val, vlen, 1, stdout );
+
+#ifdef XP_WIN32
+    /* flush any remaining binary data */
+    fflush( stdout );
+
+    /* set the mode back to text */
+    _setmode( _fileno( stdout ), _O_TEXT );
+#endif
+
+    ldap_value_free_len( bvals );
+    free( attrtype );
+}",TRUE,CWE_476
+52,52,52_vdisc.c,"rewrite_ac_abstract_declarator
+#ifdef KC_USE_PROTOTYPES
+(ac_abstract_declarator kc_p, rview kc_current_view)
+#else
+(kc_p, kc_current_view) ac_abstract_declarator kc_p; rview kc_current_view;
+#endif
+{
+	/*SUPPRESS 622*/
+	assert_ac_abstract_declarator( kc_p, ""kc_p"" );
+	switch((int)kc_current_view) {
+	default:
+	case (int)base_rview: {
+		switch((int)kc_p->prod_sel) {
+		case (int)sel_AcAbsdeclPointer: {
+		ac_pointer ac_pointer_1 = rewrite_ac_pointer(kc_p->u.AcAbsdeclPointer.ac_pointer_1, kc_current_view);
+		if ((ac_pointer_1 == kc_p->u.AcAbsdeclPointer.ac_pointer_1))
+			return kc_p;
+		else
+			return AcAbsdeclPointer(ac_pointer_1);
+		}
+		case (int)sel_AcAbsdeclDirdecl: {
+		ac_pointer_option ac_pointer_option_1 = rewrite_ac_pointer_option(kc_p->u.AcAbsdeclDirdecl.ac_pointer_option_1, kc_current_view);
+		ac_direct_abstract_declarator ac_direct_abstract_declarator_1 = rewrite_ac_direct_abstract_declarator(kc_p->u.AcAbsdeclDirdecl.ac_direct_abstract_declarator_1, kc_current_view);
+		if ((ac_pointer_option_1 == kc_p->u.AcAbsdeclDirdecl.ac_pointer_option_1) && (ac_direct_abstract_declarator_1 == kc_p->u.AcAbsdeclDirdecl.ac_direct_abstract_declarator_1))
+			return kc_p;
+		else
+			return AcAbsdeclDirdecl(ac_pointer_option_1, ac_direct_abstract_declarator_1);
+		}
+		default: return kc_p;}
+	}
+	}
+}",TRUE,CWE_476
+53,53,53_vdisc.c,"gf_codec_use_codec(GF_Codec *codec, GF_ObjectManager *odm)
+{
+	GF_Codec *tmp;
+	if (!codec->decio) return NULL;
+	GF_SAFEALLOC(tmp, GF_Codec);
+	tmp->type = codec->type;
+	tmp->inChannels = gf_list_new();
+	tmp->Status = GF_ESM_CODEC_STOP;
+	tmp->odm = odm;
+	tmp->flags = codec->flags | GF_ESM_CODEC_IS_USE;
+	tmp->decio = codec->decio;
+	tmp->process = codec->process;
+	return tmp;
+}",TRUE,CWE_476
+54,54,54_vdisc.c,"nodetrack_new(nodetrack_callback_t callback, gpointer user_data)
+{
+	nodetrack_t*	ret = MALLOCT(nodetrack_t);
+	if (!mbr_inityet) {
+		init_global_membership();
+	}
+	if (!ret) {
+		return ret;
+	}
+	nodetrack_t_count++;
+	ret->refcount = 0;
+	if (!create_new_hashtables(&ret->nt))  {
+		free(ret);
+		ret = NULL;
+	}
+	ret->user_data = user_data;
+	ret->callback = callback;
+	ret->extra_callback = NULL;
+	ret->ext_data = NULL;
+	return ret;
+}",TRUE,CWE_476
+55,55,55_vdisc.c,"__repmgr_reload_gmdb(env)
+	ENV *env;
+{
+	DB_THREAD_INFO *ip;
+	u_int8_t *buf;
+	size_t len;
+	int ret;
+
+	ENV_GET_THREAD_INFO(env, ip);
+	if ((ret = read_gmdb(env, ip, &buf, &len)) == 0) {
+		env->rep_handle->have_gmdb = TRUE;
+		ret = __repmgr_refresh_membership(env, buf, len,
+			DB_REPMGR_VERSION);
+		__os_free(env, buf);
+	}
+	return (ret);
+}",TRUE,CWE_476
+56,56,56_vdisc.c,"bed_read(const char *fn)
+{
+	reghash_t *h = kh_init(reg);
+	gzFile fp;
+	kstream_t *ks;
+	int dret;
+	kstring_t *str;
+	// read the list
+	fp = strcmp(fn, ""-"")? gzopen(fn, ""r"") : gzdopen(fileno(stdin), ""r"");
+	if (fp == 0) return 0;
+	str = calloc(1, sizeof(kstring_t));
+	ks = ks_init(fp);
+	while (ks_getuntil(ks, 0, str, &dret) >= 0) { // read the chr name
+		int beg = -1, end = -1;
+		bed_reglist_t *p;
+		khint_t k = kh_get(reg, h, str->s);
+		if (k == kh_end(h)) { // absent from the hash table
+			int ret;
+			char *s = strdup(str->s);
+			k = kh_put(reg, h, s, &ret);
+			memset(&kh_val(h, k), 0, sizeof(bed_reglist_t));
+		}
+		p = &kh_val(h, k);
+		if (dret != '\n') { // if the lines has other characters
+			if (ks_getuntil(ks, 0, str, &dret) > 0 && isdigit(str->s[0])) {
+				beg = atoi(str->s); // begin
+				if (dret != '\n') {
+					if (ks_getuntil(ks, 0, str, &dret) > 0 && isdigit(str->s[0]))
+						end = atoi(str->s); // end
+				}
+			}
+		}
+		if (dret != '\n') while ((dret = ks_getc(ks)) > 0 && dret != '\n'); // skip the rest of the line
+		if (end < 0 && beg > 0) end = beg, beg = beg - 1; // if there is only one column
+		if (beg >= 0 && end > beg) {
+			if (p->n == p->m) {
+				p->m = p->m? p->m<<1 : 4;
+				p->a = realloc(p->a, p->m * 8);
+			}
+			p->a[p->n++] = (uint64_t)beg<<32 | end;
+		}
+	}
+	ks_destroy(ks);
+	gzclose(fp);
+	free(str->s); free(str);
+	bed_index(h);
+	return h;
+}",FALSE,CWE_476
+57,57,57_vdisc.c,"gda_meta_store_schema_get_all_tables (GdaMetaStore *store)
+{
+	GSList *list, *ret;
+	GdaMetaStoreClass *klass;
+
+	g_return_val_if_fail (GDA_IS_META_STORE (store), NULL);
+
+	gda_mutex_lock (store->priv->mutex);
+
+	klass = (GdaMetaStoreClass *) G_OBJECT_GET_CLASS (store);
+	for (ret = NULL, list = klass->cpriv->db_objects; list; list = list->next) {
+		DbObject *dbobj = DB_OBJECT (list->data);
+		if (dbobj->obj_type == GDA_SERVER_OPERATION_CREATE_TABLE)
+			ret = g_slist_prepend (ret, dbobj->obj_name);
+	}
+	for (ret = NULL, list = store->priv->p_db_objects; list; list = list->next) {
+		DbObject *dbobj = DB_OBJECT (list->data);
+		if (dbobj->obj_type == GDA_SERVER_OPERATION_CREATE_TABLE)
+			ret = g_slist_prepend (ret, dbobj->obj_name);
+	}
+
+	gda_mutex_unlock (store->priv->mutex);
+
+	return g_slist_reverse (ret);
+}",FALSE,CWE_476
+58,58,58_vdisc.c,"lsr1_Size(GF_Box *s)
+{
+	GF_Err e;
+	GF_LASeRSampleEntryBox *ptr = (GF_LASeRSampleEntryBox *)s;
+	e = gf_isom_box_get_size(s);
+	if (e) return e;
+	s->size += 8;
+	if (ptr->lsr_config) {
+		e = gf_isom_box_size((GF_Box *)ptr->lsr_config);
+		if (e) return e;
+		ptr->size += ptr->lsr_config->size;
+	}
+	if (ptr->bitrate) {
+		e = gf_isom_box_size((GF_Box *)ptr->bitrate);
+		if (e) return e;
+		ptr->size += ptr->bitrate->size;
+	}
+	if (ptr->descr) {
+		e = gf_isom_box_size((GF_Box *)ptr->bitrate);
+		if (e) return e;
+		ptr->size += ptr->bitrate->size;
+	}
+	return GF_OK;
+}",FALSE,CWE_476
+59,59,59_vdisc.c,"__ecereDestructor___ecereNameSpace__ecere__net__HTTPFile(struct __ecereNameSpace__ecere__com__Instance * this)
+{
+struct __ecereNameSpace__ecere__net__HTTPFile * __ecerePointer___ecereNameSpace__ecere__net__HTTPFile = (struct __ecereNameSpace__ecere__net__HTTPFile *)(this ? (((char *)this) + __ecereClass___ecereNameSpace__ecere__net__HTTPFile->offset) : 0);
+
+{
+(__ecereNameSpace__ecere__com__eSystem_Delete(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->location), __ecerePointer___ecereNameSpace__ecere__net__HTTPFile->location = 0);
+(__ecereNameSpace__ecere__com__eSystem_Delete(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->contentType), __ecerePointer___ecereNameSpace__ecere__net__HTTPFile->contentType = 0);
+(__ecereNameSpace__ecere__com__eSystem_Delete(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->contentDisposition), __ecerePointer___ecereNameSpace__ecere__net__HTTPFile->contentDisposition = 0);
+{
+__ecereMethod___ecereNameSpace__ecere__sys__Mutex_Wait(__ecereNameSpace__ecere__net__connectionsMutex);
+if(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection)
+{
+if(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->totalSizeSet && __ecerePointer___ecereNameSpace__ecere__net__HTTPFile->askedBody)
+{
+__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->done = 0x0;
+__ecereNameSpace__ecere__com__eInstance_SetMethod(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection, ""OnReceive"", __ecereMethod___ecereNameSpace__ecere__net__HTTPConnection_Read_OnReceive);
+while(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection && __ecereProp___ecereNameSpace__ecere__net__Socket_Get_connected(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection) && __ecerePointer___ecereNameSpace__ecere__net__HTTPFile->position + (__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->bufferCount - __ecerePointer___ecereNameSpace__ecere__net__HTTPFile->bufferPos) < __ecerePointer___ecereNameSpace__ecere__net__HTTPFile->totalSize)
+{
+__ecereMethod___ecereNameSpace__ecere__sys__Mutex_Release(__ecereNameSpace__ecere__net__connectionsMutex);
+__ecereMethod___ecereNameSpace__ecere__net__Socket_Process(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection);
+__ecereMethod___ecereNameSpace__ecere__sys__Mutex_Wait(__ecereNameSpace__ecere__net__connectionsMutex);
+__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->position += __ecerePointer___ecereNameSpace__ecere__net__HTTPFile->bufferCount - __ecerePointer___ecereNameSpace__ecere__net__HTTPFile->bufferPos;
+__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->bufferCount = 0;
+__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->bufferPos = 0;
+}
+__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->position = 0;
+}
+if(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection)
+{
+((struct __ecereNameSpace__ecere__net__HTTPConnection *)(((char *)__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection + __ecereClass___ecereNameSpace__ecere__net__HTTPConnection->offset)))->file = (((void *)0));
+if(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->close)
+__ecereMethod___ecereNameSpace__ecere__net__Socket_Disconnect(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection, (int)0);
+(__ecereNameSpace__ecere__com__eInstance_DecRef(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection), __ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection = 0);
+}
+}
+__ecereMethod___ecereNameSpace__ecere__sys__Mutex_Release(__ecereNameSpace__ecere__net__connectionsMutex);
+if(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->chunked)
+{
+while(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection && __ecereProp___ecereNameSpace__ecere__net__Socket_Get_connected(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection) && ((struct __ecereNameSpace__ecere__net__HTTPConnection *)(((char *)__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection + __ecereClass___ecereNameSpace__ecere__net__HTTPConnection->offset)))->file)
+{
+__ecereMethod___ecereNameSpace__ecere__sys__Mutex_Release(__ecereNameSpace__ecere__net__connectionsMutex);
+__ecereMethod___ecereNameSpace__ecere__net__Socket_Process(__ecerePointer___ecereNameSpace__ecere__net__HTTPFile->connection);
+__ecereMethod___ecereNameSpace__ecere__sys__Mutex_Wait(__ecereNameSpace__ecere__net__connectionsMutex);
+}
+}
+}
+}
+}",FALSE,CWE_476
+60,60,60_vdisc.c,"print_x_range_from_list (gnuplot_info *gi, 
+				     const DATASET *dset, 
+				     const int *list,
+				     FILE *fp)
+{
+    const double *x, *d = NULL;
+    int k, l0 = list[0];
+
+    if (gi->flags & GPT_DUMMY) {
+	/* the factor variable comes last and the x variable 
+	   is in second-last place */
+	d = dset->Z[list[l0]];
+	k = l0 - 1;
+    } else {
+	/* the x variable comes last in the list */
+	k = l0;
+    }
+
+    x = dset->Z[list[k]];
+
+    if (gretl_isdummy(gi->t1, gi->t2, x)) {
+	fputs(""set xrange [-1:2]\n"", fp);	
+	fputs(""set xtics (\""0\"" 0, \""1\"" 1)\n"", fp);
+	gi->xrange = 3;
+    } else {
+	double xmin, xmin0 = NADBL;
+	double xmax, xmax0 = NADBL;
+	int t, i, vy, obs_ok;
+
+	for (t=gi->t1; t<=gi->t2; t++) {
+	    obs_ok = 0;
+	    if (!na(x[t]) && (d == NULL || !na(d[t]))) {
+		for (i=1; i<k; i++) {
+		    vy = list[i];
+		    if (!na(dset->Z[vy][t])) {
+			/* got x obs and at least one y obs */
+			obs_ok = 1;
+			break;
+		    }
+		}
+	    }
+	    if (obs_ok) {
+		if (na(xmin0) || x[t] < xmin0) {
+		    xmin0 = x[t];
+		}
+		if (na(xmax0) || x[t] > xmax0) {
+		    xmax0 = x[t];
+		}
+	    }
+	}
+		    
+	gi->xrange = xmax0 - xmin0;
+
+	if (gi->xrange == 0.0) {
+	    /* construct a non-empty range */
+	    xmin = xmin0 - 0.5;
+	    xmax = xmin0 + 0.5;
+	} else {
+	    xmin = xmin0 - gi->xrange * .025;
+	    if (xmin0 >= 0.0 && xmin < 0.0) {
+		xmin = 0.0;
+	    }
+	    xmax = xmax0 + gi->xrange * .025;
+	}
+
+	fprintf(fp, ""set xrange [%.10g:%.10g]\n"", xmin, xmax);
+	gi->xrange = xmax - xmin;
+	check_tic_labels(xmin0, xmax0, gi, 'x');
+    }
+}",TRUE,CWE_476
+61,61,61_vdisc.c,"gfs_face_ca (const FttCellFace * face, FttVector * ca)
+{
+  gdouble f;
+
+  g_return_if_fail (face != NULL);
+  g_return_if_fail (ca != NULL);
+
+  ftt_face_pos (face, ca);
+  if ((f = GFS_FACE_FRACTION (face)) < 1.) {
+    GfsSolidVector * s = GFS_STATE (face->cell)->solid;
+    gdouble h = ftt_cell_size (face->cell);
+#if FTT_2D
+    FttComponent cp = FTT_ORTHOGONAL_COMPONENT (face->d/2);
+
+    (&ca->x)[cp] += (s->s[2*cp] > s->s[2*cp + 1]) ? (1. - f)/2.*h : (f - 1.)/2.*h;
+#else /* 3D */
+    static guint perpendicular[FTT_DIMENSION][2] = {
+      {FTT_Y, FTT_Z}, {FTT_Z, FTT_X}, {FTT_X, FTT_Y}
+    };
+    FttComponent c0 = face->d/2;
+    FttComponent c1 = perpendicular[c0][0];
+    FttComponent c2 = perpendicular[c0][1];
+    gboolean s1, s2;
+    FttVector m, p;
+    gdouble n, alpha;
+
+    m.x = s->s[2*c1 + 1] - s->s[2*c1];
+    m.y = s->s[2*c2 + 1] - s->s[2*c2];
+    s1 = (m.x < 0.);
+    s2 = (m.y < 0.);
+    m.x = fabs (m.x);
+    m.y = fabs (m.y);
+    n = m.x + m.y;
+    if (n > 0.) {
+      m.x /= n;
+      m.y /= n;
+      alpha = gfs_line_alpha (&m, f);
+      gfs_line_center (&m, alpha, f, &p);
+      if (s1) p.x = 1. - p.x;
+      if (s2) p.y = 1. - p.y;
+      (&ca->x)[c1] += (p.x - 0.5)*h;
+      (&ca->x)[c2] += (p.y - 0.5)*h;
+    }
+#endif /* 3D */
+  }
+}",TRUE,CWE_476
+62,62,62_vdisc.c,"camel_settings_clone (CamelSettings *settings)
+{
+	CamelSettingsClass *class;
+	CamelSettings *clone;
+
+	g_return_val_if_fail (CAMEL_IS_SETTINGS (settings), NULL);
+
+	class = CAMEL_SETTINGS_GET_CLASS (settings);
+	g_return_val_if_fail (class->clone != NULL, NULL);
+
+	clone = class->clone (settings);
+
+	/* Make sure the documented invariant is satisfied. */
+	g_warn_if_fail (camel_settings_equal (settings, clone));
+
+	return clone;
+}",TRUE,CWE_476
+63,63,63_vdisc.c,"parse_get_line(ParseContext *context)
+{
+    Octstr *result;
+    long pos;
+
+    gw_assert(context != NULL);
+
+    pos = octstr_search_char(context->data, '\n', context->pos);
+    if (pos < 0 || pos >= context->limit) {
+        context->error = 1;
+        return NULL;
+    }
+    
+    result = octstr_copy(context->data, context->pos, pos - context->pos);
+    context->pos = pos + 1;
+
+    octstr_strip_crlfs(result);
+
+    return result;
+}",TRUE,CWE_476
+64,64,64_vdisc.c,"sp_lookup_cbk (call_frame_t *frame, void *cookie, xlator_t *this,
+               int32_t op_ret, int32_t op_errno, inode_t *inode,
+               struct iatt *buf, dict_t *dict, struct iatt *postparent)
+{
+        struct list_head     waiting_ops = {0, };
+        call_stub_t         *stub        = NULL, *tmp = NULL;
+        sp_local_t          *local       = NULL;
+        int                  need_unwind = 0;
+        char                 looked_up   = 0, lookup_in_progress = 0;
+
+        GF_ASSERT (frame);
+
+        INIT_LIST_HEAD (&waiting_ops);
+
+        local = frame->local;
+        if (local == NULL) {
+                op_ret = -1;
+                op_errno = EINVAL;
+                gf_log (this->name, GF_LOG_WARNING, ""local is NULL, but it is ""
+                        ""needed to find and resume operations waiting on ""
+                        ""lookup"");
+                goto out;
+        }
+
+        if (this == NULL) {
+                op_ret = -1;
+                op_errno = EINVAL;
+                gf_log (frame->this ? frame->this->name : ""stat-prefetch"",
+                        GF_LOG_WARNING, ""xlator object (this) is NULL"");
+                goto out;
+        }
+
+        /* For '/' Entry is never cached, don't try to remove it */
+        if ((op_ret == -1) && local->loc.parent) {
+                sp_remove_caches_from_all_fds_opened (this, local->loc.parent,
+                                                      (char *)local->loc.name);
+        }
+
+        if (local->is_lookup)
+                need_unwind = 1;
+
+        lookup_in_progress = 0;
+        looked_up = 1;
+        sp_update_inode_ctx (this, local->loc.inode, &op_ret, &op_errno,
+                             &lookup_in_progress, &looked_up, buf,
+                             &waiting_ops, &op_errno);
+
+        list_for_each_entry_safe (stub, tmp, &waiting_ops, list) {
+                list_del_init (&stub->list);
+                call_resume (stub);
+        }
+
+out:
+        if (need_unwind) {
+                SP_STACK_UNWIND (lookup, frame, op_ret, op_errno, inode, buf,
+                                 dict, postparent);
+        }
+
+        return 0;
+}",TRUE,CWE_476
+65,65,65_vdisc.c,"ComputeRowAMaxImpl(Vector& rows_norms, bool init) const
+  {
+    DBG_ASSERT(initialized_);
+
+    DenseVector* dense_vec = static_cast<DenseVector*>(&rows_norms);
+    DBG_ASSERT(dynamic_cast<DenseVector*>(&rows_norms));
+
+    const Index* irn=Irows();
+    const Index* jcn=Jcols();
+    const Number* val=values_;
+    Number* vec_vals=dense_vec->Values();
+    vec_vals--;
+
+    const Number zero = 0.;
+    IpBlasDcopy(NRows(), &zero, 0, vec_vals, 1);
+
+    for (Index i=0; i<Nonzeros(); i++) {
+      const double f = fabs(*val);
+      vec_vals[*irn] = Max(vec_vals[*irn], f);
+      vec_vals[*jcn] = Max(vec_vals[*jcn], f);
+      val++;
+      irn++;
+      jcn++;
+    }
+  }",FALSE,CWE_476
+66,66,66_vdisc.c,"count_agg_clauses_walker(Node *node, AggClauseCounts *counts)
+{
+	if (node == NULL)
+		return false;
+	if (IsA(node, Aggref))
+	{
+		Aggref	   *aggref = (Aggref *) node;
+		Oid		   *inputTypes;
+		int			numArguments;
+		HeapTuple	aggTuple;
+		Form_pg_aggregate aggform;
+		Oid			aggtranstype;
+		int			i;
+		ListCell   *l;
+
+		Assert(aggref->agglevelsup == 0);
+		counts->numAggs++;
+		if (aggref->aggdistinct)
+			counts->numDistinctAggs++;
+
+		/* extract argument types */
+		numArguments = list_length(aggref->args);
+		inputTypes = (Oid *) palloc(sizeof(Oid) * numArguments);
+		i = 0;
+		foreach(l, aggref->args)
+		{
+			inputTypes[i++] = exprType((Node *) lfirst(l));
+		}
+
+		/* fetch aggregate transition datatype from pg_aggregate */
+		aggTuple = SearchSysCache(AGGFNOID,
+								  ObjectIdGetDatum(aggref->aggfnoid),
+								  0, 0, 0);
+		if (!HeapTupleIsValid(aggTuple))
+			elog(ERROR, ""cache lookup failed for aggregate %u"",
+				 aggref->aggfnoid);
+		aggform = (Form_pg_aggregate) GETSTRUCT(aggTuple);
+		aggtranstype = aggform->aggtranstype;
+		ReleaseSysCache(aggTuple);
+
+		/* resolve actual type of transition state, if polymorphic */
+		if (IsPolymorphicType(aggtranstype))
+		{
+			/* have to fetch the agg's declared input types... */
+			Oid		   *declaredArgTypes;
+			int			agg_nargs;
+
+			(void) get_func_signature(aggref->aggfnoid,
+									  &declaredArgTypes, &agg_nargs);
+			Assert(agg_nargs == numArguments);
+			aggtranstype = enforce_generic_type_consistency(inputTypes,
+															declaredArgTypes,
+															agg_nargs,
+															aggtranstype,
+															false);
+			pfree(declaredArgTypes);
+		}
+
+		/*
+		 * If the transition type is pass-by-value then it doesn't add
+		 * anything to the required size of the hashtable.	If it is
+		 * pass-by-reference then we have to add the estimated size of the
+		 * value itself, plus palloc overhead.
+		 */
+		if (!get_typbyval(aggtranstype))
+		{
+			int32		aggtranstypmod;
+			int32		avgwidth;
+
+			/*
+			 * If transition state is of same type as first input, assume it's
+			 * the same typmod (same width) as well.  This works for cases
+			 * like MAX/MIN and is probably somewhat reasonable otherwise.
+			 */
+			if (numArguments > 0 && aggtranstype == inputTypes[0])
+				aggtranstypmod = exprTypmod((Node *) linitial(aggref->args));
+			else
+				aggtranstypmod = -1;
+
+			avgwidth = get_typavgwidth(aggtranstype, aggtranstypmod);
+			avgwidth = MAXALIGN(avgwidth);
+
+			counts->transitionSpace += avgwidth + 2 * sizeof(void *);
+		}
+
+		/*
+		 * Complain if the aggregate's arguments contain any aggregates;
+		 * nested agg functions are semantically nonsensical.
+		 */
+		if (contain_agg_clause((Node *) aggref->args))
+			ereport(ERROR,
+					(errcode(ERRCODE_GROUPING_ERROR),
+					 errmsg(""aggregate function calls cannot be nested"")));
+
+		/*
+		 * Having checked that, we need not recurse into the argument.
+		 */
+		return false;
+	}
+	Assert(!IsA(node, SubLink));
+	return expression_tree_walker(node, count_agg_clauses_walker,
+								  (void *) counts);
+}",FALSE,CWE_476
+67,67,67_vdisc.c,"glusterfs_translator_heal_response_send (rpcsvc_request_t *req, int op_ret,
+                                         char *msg, dict_t *output)
+{
+        gd1_mgmt_brick_op_rsp    rsp = {0,};
+        int                      ret = -1;
+        GF_ASSERT (msg);
+        GF_ASSERT (req);
+        GF_ASSERT (output);
+
+        rsp.op_ret = op_ret;
+        rsp.op_errno = 0;
+        if (ret && msg[0])
+                rsp.op_errstr = msg;
+        else
+                rsp.op_errstr = """";
+
+        ret = dict_allocate_and_serialize (output, &rsp.output.output_val,
+                                        (size_t *)&rsp.output.output_len);
+        if (ret) {
+                gf_log (THIS->name, GF_LOG_ERROR, ""Couldn't serialize ""
+                        ""output dict."");
+                goto out;
+        }
+
+        ret = glusterfs_submit_reply (req, &rsp, NULL, 0, NULL,
+                                     (xdrproc_t)xdr_gd1_mgmt_brick_op_rsp);
+
+out:
+        if (rsp.output.output_val)
+                GF_FREE (rsp.output.output_val);
+
+        return ret;
+}",FALSE,CWE_476
+68,68,68_vdisc.c,"vev_add(struct vev_base *evb, struct vev *e)
+{
+	struct vevsig *es;
+
+	CHECK_OBJ_NOTNULL(evb, VEV_BASE_MAGIC);
+	assert(e->magic != VEV_MAGIC);
+	assert(e->callback != NULL);
+	assert(e->sig >= 0);
+	assert(e->timeout >= 0.0);
+	assert(e->fd < 0 || e->fd_flags);
+	assert(evb->thread == pthread_self());
+	DBG(evb, ""ev_add(%p) fd = %d\n"", e, e->fd);
+
+	if (e->sig > 0 && vev_get_sig(e->sig))
+		return (ENOMEM);
+
+	if (e->fd >= 0 && vev_get_pfd(evb))
+		return (ENOMEM);
+
+	if (e->sig > 0) {
+		es = &vev_sigs[e->sig];
+		if (es->vev != NULL)
+			return (EBUSY);
+		assert(es->happened == 0);
+		es->vev = e;
+		es->vevb = evb;
+		es->sigact.sa_flags = e->sig_flags;
+		es->sigact.sa_handler = vev_sighandler;
+	} else {
+		es = NULL;
+	}
+
+	if (e->fd >= 0) {
+		assert(evb->lpfd < evb->npfd);
+		evb->pfd[evb->lpfd].fd = e->fd;
+		evb->pfd[evb->lpfd].events =
+		    e->fd_flags & (EV_RD|EV_WR|EV_ERR|EV_HUP);
+		e->__poll_idx = evb->lpfd;
+		evb->lpfd++;
+		DBG(evb, ""... pidx = %d lpfd = %d\n"",
+		    e->__poll_idx, evb->lpfd);
+	} else
+		e->__poll_idx = -1;
+
+	e->magic = VEV_MAGIC;	/* before binheap_insert() */
+
+	if (e->timeout != 0.0) {
+		e->__when += TIM_mono() + e->timeout;
+		binheap_insert(evb->binheap, e);
+		assert(e->__binheap_idx > 0);
+		DBG(evb, ""... bidx = %d\n"", e->__binheap_idx);
+	} else {
+		e->__when = 0.0;
+		e->__binheap_idx = 0;
+	}
+
+	e->__vevb = evb;
+	e->__privflags = 0;
+	if (e->fd < 0)
+		VTAILQ_INSERT_TAIL(&evb->events, e, __list);
+	else
+		VTAILQ_INSERT_HEAD(&evb->events, e, __list);
+
+	if (e->sig > 0) {
+		assert(es != NULL);
+		assert(sigaction(e->sig, &es->sigact, NULL) == 0);
+	}
+
+	return (0);
+}",FALSE,CWE_476
+69,69,69_vdisc.c,"transformTopLevelStmt(ParseState *pstate, Node *parseTree)
+{
+	if (IsA(parseTree, SelectStmt))
+	{
+		SelectStmt *stmt = (SelectStmt *) parseTree;
+
+		/* If it's a set-operation tree, drill down to leftmost SelectStmt */
+		while (stmt && stmt->op != SETOP_NONE)
+			stmt = stmt->larg;
+		Assert(stmt && IsA(stmt, SelectStmt) &&stmt->larg == NULL);
+
+		if (stmt->intoClause)
+		{
+			CreateTableAsStmt *ctas = makeNode(CreateTableAsStmt);
+
+			ctas->query = parseTree;
+			ctas->into = stmt->intoClause;
+			ctas->relkind = OBJECT_TABLE;
+			ctas->is_select_into = true;
+
+			/*
+			 * Remove the intoClause from the SelectStmt.  This makes it safe
+			 * for transformSelectStmt to complain if it finds intoClause set
+			 * (implying that the INTO appeared in a disallowed place).
+			 */
+			stmt->intoClause = NULL;
+
+			parseTree = (Node *) ctas;
+		}
+	}
+
+	return transformStmt(pstate, parseTree);
+}",TRUE,CWE_476
+70,70,70_vdisc.c,"__ecereNameSpace__ecere__sys__FileFind(char * path, char * extensions)
+{
+struct __ecereNameSpace__ecere__sys__FileDesc * result = (((void *)0));
+struct __ecereNameSpace__ecere__sys__FileDesc * file;
+
+if((file = __ecereNameSpace__ecere__com__eInstance_New(__ecereClass___ecereNameSpace__ecere__sys__FileDesc)))
+{
+char archiveName[797], * archiveFile;
+
+if(__ecereNameSpace__ecere__sys__SplitArchivePath(path, archiveName, &archiveFile))
+{
+if(((unsigned int (*)(struct __ecereNameSpace__ecere__sys__FileDesc * file, char *  archive, char *  name))__ecereClass___ecereNameSpace__ecere__sys__EARFileSystem->_vTbl[__ecereVMethodID___ecereNameSpace__ecere__sys__FileSystem_Find])(file, archiveName, archiveFile))
+{
+file->system = __ecereClass___ecereNameSpace__ecere__sys__EARFileSystem;
+result = file;
+}
+}
+else
+{
+struct __ecereNameSpace__ecere__sys__Dir * d;
+
+if((d = file->dir = __ecereNameSpace__ecere__com__eInstance_New(__ecereClass___ecereNameSpace__ecere__sys__Dir)))
+{
+struct dirent * de;
+struct stat s;
+
+d->d = opendir((path && path[0]) ? path : ""."");
+if(d->d && (de = readdir(d->d)))
+{
+if(path[0])
+{
+strcpy(file->path, path);
+if(path[1])
+strcat(file->path, ((__ecereNameSpace__ecere__com__GetRuntimePlatform() == 1) ? ""\\"" : ""/""));
+}
+strcpy(file->name, (*de).d_name);
+strcat(file->path, file->name);
+if(!stat(file->path, &s))
+{
+file->stats.attribs = (s.st_mode & 0040000) ? ((((unsigned int)(0x1)) << 6)) : (((unsigned int)(0x1)));
+file->stats.size = (unsigned int)s.st_size;
+file->stats.accessed = s.st_atim.tv_sec;
+file->stats.modified = s.st_mtim.tv_sec;
+file->stats.created = s.st_ctim.tv_sec;
+}
+strcpy(d->name, path);
+result = file;
+}
+}
+if(!result)
+((d ? (__ecereClass___ecereNameSpace__ecere__sys__Dir->Destructor ? __ecereClass___ecereNameSpace__ecere__sys__Dir->Destructor(d) : 0, __ecereNameSpace__ecere__com__eSystem_Delete(d)) : 0), d = 0);
+}
+if(!result)
+((file ? (__ecereClass___ecereNameSpace__ecere__sys__FileDesc->Destructor ? __ecereClass___ecereNameSpace__ecere__sys__FileDesc->Destructor(file) : 0, __ecereNameSpace__ecere__com__eSystem_Delete(file)) : 0), file = 0);
+}
+if(result)
+{
+while(result && !__ecereMethod___ecereNameSpace__ecere__sys__FileDesc_Validate(result, extensions))
+result = __ecereMethod___ecereNameSpace__ecere__sys__FileDesc_FindNext(result, extensions);
+}
+return result;
+}",TRUE,CWE_476
+71,71,71_vdisc.c,"preorderNonRecursive(BinarySearchTreeNode* root) {
+    BinarySearchTreeNode* current = root;
+    while (current) {
+        if (!current->visited) {
+            current->print();
+            current->visited = true;
+        }
+
+        if (current->left && !current->left->visited) {
+            current = current->left;
+            continue;
+        } else if (current->right && !current->right->visited) {
+            current = current->right;
+            continue;
+        }
+
+        if (current->left)
+            current->left->visited = false;
+        if (current->right)
+            current->right->visited = false;
+
+        current = current->parent;
+    };
+    root->visited = false;
+}",TRUE,CWE_476
+72,72,72_vdisc.c,"mprRemoveRangeOfItems(MprList *lp, int start, int end)
+{
+    void    **items;
+    int     i, count;
+
+    mprAssert(lp);
+    mprAssert(lp->capacity > 0);
+    mprAssert(lp->length > 0);
+    mprAssert(start > end);
+
+    if (start < 0 || start >= lp->length) {
+        return MPR_ERR_CANT_FIND;
+    }
+    if (end < 0 || end >= lp->length) {
+        return MPR_ERR_CANT_FIND;
+    }
+    if (start > end) {
+        return MPR_ERR_BAD_ARGS;
+    }
+
+    /*
+        Copy down to compress
+     */
+    items = lp->items;
+    count = end - start;
+    lock(lp);
+    for (i = start; i < (lp->length - count); i++) {
+        items[i] = items[i + count];
+    }
+    lp->length -= count;
+    for (i = lp->length; i < lp->capacity; i++) {
+        items[i] = 0;
+    }
+    unlock(lp);
+    return 0;
+}",TRUE,CWE_476
+73,73,73_vdisc.c,"newmodule (char *modname) {
+    Module p = (Module) malloc (sizeof (struct module));
+    checkptr(p);
+    p->name = strsave(modname);
+    p->usecount = 0;
+    p->head = p->tail = NULL;
+    return p;
+}",TRUE,CWE_476
+74,74,74_vdisc.c,"sam_header2key_val(void *iter, const char type[2], const char key_tag[2], const char value_tag[2], const char **_key, const char **_value)
+{
+    list_t *l = iter;
+    if ( !l ) return NULL;
+
+    while (l)
+    {
+        HeaderLine *hline = l->data;
+        if ( hline->type[0]!=type[0] || hline->type[1]!=type[1] )
+        {
+            l = l->next;
+            continue;
+        }
+
+        HeaderTag *key, *value;
+        key   = header_line_has_tag(hline,key_tag);
+        value = header_line_has_tag(hline,value_tag);
+        if ( !key && !value ) 
+        {
+            l = l->next;
+            continue;
+        }
+
+        *_key = key->value;
+        *_value = value->value;
+        return l->next;
+    }
+    return l;
+}",TRUE,CWE_476
+75,75,75_vdisc.c,"HSP_store(HSP *nascent_hsp){
+    register HSPset *hsp_set = nascent_hsp->hsp_set;
+    register PQueue *pq;
+    register HSP *hsp = NULL;
+    g_assert(nascent_hsp);
+    if(nascent_hsp->score < hsp_set->param->threshold)
+        return;
+    if(hsp_set->param->has->filter_threshold){ /* If have filter */
+        /* Get cobs value */
+        nascent_hsp->cobs = HSP_find_cobs(nascent_hsp);
+        pq = hsp_set->filter[HSP_query_cobs(nascent_hsp)];
+        if(pq){ /* Put in PQueue if better than worst */
+            if(PQueue_total(pq)
+               < hsp_set->param->has->filter_threshold){
+                hsp = HSP_create(nascent_hsp);
+                PQueue_push(pq, hsp);
+            } else {
+                g_assert(PQueue_total(pq));
+                hsp = PQueue_top(pq);
+                if(hsp->score < nascent_hsp->score){
+                    hsp = PQueue_pop(pq);
+                    HSP_destroy(hsp);
+                    hsp = HSP_create(nascent_hsp);
+                    PQueue_push(pq, hsp);
+                    }
+                }
+        } else {
+            pq = PQueue_create(hsp_set->pqueue_set,
+                               HSP_PQueue_comp_func, NULL);
+            hsp_set->filter[HSP_query_cobs(nascent_hsp)] = pq;
+            hsp = HSP_create(nascent_hsp);
+            PQueue_push(pq, hsp);
+            hsp_set->is_empty = FALSE;
+            }
+    } else {
+        hsp = HSP_create(nascent_hsp);
+        g_ptr_array_add(hsp_set->hsp_list, hsp);
+        hsp_set->is_empty = FALSE;
+        }
+    return;
+    }",TRUE,CWE_476
+76,76,76_vdisc.c,"build_data_xyplot_peaks(XYPlotWinData* winData, XYPlotData* dataPeaks)
+{
+	gint loop;
+	gint line_width = winData->line_width;
+	gint point_size = winData->point_size;
+	GdkColor line_color = winData->line_color;
+	GdkColor point_color = winData->point_color;
+	
+	line_color.red *=0.9; 
+	line_color.green *=0.9; 
+	line_color.blue *=0.9; 
+	point_color.red *=0.9; 
+	point_color.green *=0.9; 
+	point_color.blue *=0.9; 
+	if(dataPeaks->x && dataPeaks->y)
+	{
+		line_width = dataPeaks->line_width;
+		point_size = dataPeaks->point_size;
+		line_color = dataPeaks->line_color;
+		point_color = dataPeaks->point_color;
+	}
+
+	dataPeaks->size=3*winData->size+2;
+	if(dataPeaks->size>0)
+	{
+		if(dataPeaks->x) g_free(dataPeaks->x);
+		if(dataPeaks->y) g_free(dataPeaks->y);
+		dataPeaks->x = (gdouble*)g_malloc(sizeof(gdouble)*dataPeaks->size);
+		dataPeaks->y = (gdouble*)g_malloc(sizeof(gdouble)*dataPeaks->size);
+	}
+	
+     
+	dataPeaks->x[0]=winData->xmin;
+	/* dataPeaks->y[0]=winData->ymin;*/
+	dataPeaks->y[0]=0;
+	dataPeaks->x[dataPeaks->size-1]=winData->xmax;
+	/* dataPeaks->y[dataPeaks->size-1]=winData->ymin;*/
+	dataPeaks->y[dataPeaks->size-1]=0;
+	for (loop=0; loop<winData->size; loop++){
+		gint iold = loop*3+1;
+		gdouble xx = winData->x[loop]*winData->scaleX+winData->shiftX;
+		dataPeaks->x[iold]=xx;
+		/* dataPeaks->y[iold]=winData->ymin;*/
+		dataPeaks->y[iold]=0;
+
+		dataPeaks->x[iold+1]=xx;
+		dataPeaks->y[iold+1]=winData->y[loop]*winData->scaleY;
+
+		dataPeaks->x[iold+2]=xx;
+		/* dataPeaks->y[iold+2]=winData->ymin;*/
+		dataPeaks->y[iold+2]=0;
+	}
+
+	sprintf(dataPeaks->point_str,""+"");
+	dataPeaks->point_size=point_size;
+	dataPeaks->line_width=line_width;
+	dataPeaks->point_color=point_color; 
+
+	dataPeaks->line_color=line_color; 
+
+	dataPeaks->line_style=winData->line_style; 
+}",TRUE,CWE_476
+77,77,77_vdisc.c,"camel_certdb_load (CamelCertDB *certdb)
+{
+	CamelCertDBClass *class;
+	CamelCert *cert;
+	FILE *in;
+	gint i;
+
+	g_return_val_if_fail (CAMEL_IS_CERTDB (certdb), -1);
+	g_return_val_if_fail (certdb->filename, -1);
+
+	in = g_fopen (certdb->filename, ""rb"");
+	if (in == NULL)
+		return -1;
+
+	class = CAMEL_CERTDB_GET_CLASS (certdb);
+	if (!class->header_load || !class->cert_load) {
+		fclose (in);
+		in = NULL;
+	}
+	g_return_val_if_fail (class->header_load != NULL, -1);
+	g_return_val_if_fail (class->cert_load != NULL, -1);
+
+	camel_certdb_lock (certdb, CAMEL_CERTDB_IO_LOCK);
+	if (class->header_load (certdb, in) == -1)
+		goto error;
+
+	for (i = 0; i < certdb->saved_certs; i++) {
+		cert = class->cert_load (certdb, in);
+
+		if (cert == NULL)
+			goto error;
+
+		/* NOTE: If we are upgrading from an evolution-data-server version
+		 * prior to the change to look up certs by hostname (bug 606181),
+		 * this ""put"" will result in duplicate entries for the same
+		 * hostname being dropped.  The change will become permanent on
+		 * disk the next time the certdb is dirtied for some reason and
+		 * has to be saved. */
+		camel_certdb_put (certdb, cert);
+	}
+
+	camel_certdb_unlock (certdb, CAMEL_CERTDB_IO_LOCK);
+
+	if (fclose (in) != 0)
+		return -1;
+
+	certdb->flags &= ~CAMEL_CERTDB_DIRTY;
+
+	return 0;
+
+ error:
+
+	g_warning (""Cannot load certificate database: %s"", g_strerror (ferror (in)));
+
+	camel_certdb_unlock (certdb, CAMEL_CERTDB_IO_LOCK);
+
+	fclose (in);
+
+	return -1;
+}",TRUE,CWE_476
+78,78,78_vdisc.c,"espDefineView(HttpRoute *route, cchar *path, void *view)
+{
+    Esp         *esp;
+
+    mprAssert(route);
+    mprAssert(path && *path);
+    mprAssert(view);
+
+    esp = MPR->espService;
+	path = mprGetPortablePath(mprJoinPath(route->dir, path));
+    mprAddKey(esp->views, path, view);
+}",TRUE,CWE_476
+79,79,79_vdisc.c,"p_pw_update_properties(GapStbPropWidget *pw)
+{
+  p_pw_update_info_labels_and_cliptype_senstivity(pw);
+
+  pw->go_render_all_request = TRUE;
+  pw->go_job_framenr = pw->stb_elem_refptr->from_frame;
+  if(pw->go_timertag < 0)
+  {
+    pw->go_timertag = (gint32) g_timeout_add(16, (GtkFunction)p_pw_timer_go_job, pw);
+  }
+
+}",TRUE,CWE_476
+80,80,80_vdisc.c,"rb_const_get_0(VALUE klass, ID id, int exclude, int recurse, int visibility)
+{
+    VALUE value, tmp;
+    int mod_retry = 0;
+
+    tmp = klass;
+  retry:
+    while (RTEST(tmp)) {
+	VALUE am = 0;
+	st_data_t data;
+	while (RCLASS_CONST_TBL(tmp) && st_lookup(RCLASS_CONST_TBL(tmp), (st_data_t)id, &data)) {
+	    rb_const_entry_t *ce = (rb_const_entry_t *)data;
+	    if (visibility && ce->flag == CONST_PRIVATE) {
+		rb_name_error(id, ""private constant %s::%s referenced"", rb_class2name(klass), rb_id2name(id));
+	    }
+	    value = ce->value;
+	    if (value == Qundef) {
+		if (am == tmp) break;
+		am = tmp;
+		rb_autoload_load(tmp, id);
+		continue;
+	    }
+	    if (exclude && tmp == rb_cObject && klass != rb_cObject) {
+		rb_warn(""toplevel constant %s referenced by %s::%s"",
+			rb_id2name(id), rb_class2name(klass), rb_id2name(id));
+	    }
+	    return value;
+	}
+	if (!recurse) break;
+	tmp = RCLASS_SUPER(tmp);
+    }
+    if (!exclude && !mod_retry && BUILTIN_TYPE(klass) == T_MODULE) {
+	mod_retry = 1;
+	tmp = rb_cObject;
+	goto retry;
+    }
+
+    value = const_missing(klass, id);
+    rb_vm_inc_const_missing_count();
+    return value;
+}",TRUE,CWE_476
+81,81,81_vdisc.c,"row_upd_index_parse(
+/*================*/
+	byte*		ptr,	/*!< in: buffer */
+	byte*		end_ptr,/*!< in: buffer end */
+	mem_heap_t*	heap,	/*!< in: memory heap where update vector is
+				built */
+	upd_t**		update_out)/*!< out: update vector */
+{
+	upd_t*		update;
+	upd_field_t*	upd_field;
+	dfield_t*	new_val;
+	ulint		len;
+	ulint		n_fields;
+	ulint		info_bits;
+	ulint		i;
+
+	if (end_ptr < ptr + 1) {
+
+		return(NULL);
+	}
+
+	info_bits = mach_read_from_1(ptr);
+	ptr++;
+	ptr = mach_parse_compressed(ptr, end_ptr, &n_fields);
+
+	if (ptr == NULL) {
+
+		return(NULL);
+	}
+
+	update = upd_create(n_fields, heap);
+	update->info_bits = info_bits;
+
+	for (i = 0; i < n_fields; i++) {
+		ulint	field_no;
+		upd_field = upd_get_nth_field(update, i);
+		new_val = &(upd_field->new_val);
+
+		ptr = mach_parse_compressed(ptr, end_ptr, &field_no);
+
+		if (ptr == NULL) {
+
+			return(NULL);
+		}
+
+		upd_field->field_no = field_no;
+
+		ptr = mach_parse_compressed(ptr, end_ptr, &len);
+
+		if (ptr == NULL) {
+
+			return(NULL);
+		}
+
+		if (len != UNIV_SQL_NULL) {
+
+			if (end_ptr < ptr + len) {
+
+				return(NULL);
+			}
+
+			dfield_set_data(new_val,
+					mem_heap_dup(heap, ptr, len), len);
+			ptr += len;
+		} else {
+			dfield_set_null(new_val);
+		}
+	}
+
+	*update_out = update;
+
+	return(ptr);
+}",TRUE,CWE_476
+82,82,82_vdisc.c,"__ecereMethod___ecereNameSpace__ecere__gui__controls__Button_OnMouseLeave(struct __ecereNameSpace__ecere__com__Instance * this, unsigned int mods)
+{
+struct __ecereNameSpace__ecere__gui__controls__Button * __ecerePointer___ecereNameSpace__ecere__gui__controls__Button = (struct __ecereNameSpace__ecere__gui__controls__Button *)(this ? (((char *)this) + __ecereClass___ecereNameSpace__ecere__gui__controls__Button->offset) : 0);
+
+if(!__ecerePointer___ecereNameSpace__ecere__gui__controls__Button->key)
+{
+if((!((unsigned int)((__ecerePointer___ecereNameSpace__ecere__gui__controls__Button->buttonStyle & 0x8) >> 3)) || !__ecerePointer___ecereNameSpace__ecere__gui__controls__Button->hint))
+{
+if(!((unsigned int)((__ecerePointer___ecereNameSpace__ecere__gui__controls__Button->buttonStyle & 0x20) >> 5)) || __ecerePointer___ecereNameSpace__ecere__gui__controls__Button->state == 2)
+__ecerePointer___ecereNameSpace__ecere__gui__controls__Button->state = 0;
+}
+if(((unsigned int (*)(struct __ecereNameSpace__ecere__com__Instance *, struct __ecereNameSpace__ecere__com__Instance * button, unsigned int mods))__extension__ ({
+struct __ecereNameSpace__ecere__com__Instance * __internal_ClassInst = this;
+
+__internal_ClassInst ? __internal_ClassInst->_vTbl : __ecereClass___ecereNameSpace__ecere__gui__controls__Button->_vTbl;
+})[__ecereVMethodID___ecereNameSpace__ecere__gui__controls__Button_NotifyMouseLeave])(__ecereProp___ecereNameSpace__ecere__gui__Window_Get_master(this), this, mods))
+__ecereMethod___ecereNameSpace__ecere__gui__Window_Update(this, (((void *)0)));
+}
+__ecerePointer___ecereNameSpace__ecere__gui__controls__Button->over = 0x0;
+return 0x1;
+}",TRUE,CWE_476
+83,83,83_vdisc.c,"swap_relation_files(Oid r1, Oid r2)
+{
+	Relation	relRelation;
+	HeapTuple	reltup1,
+				reltup2;
+	Form_pg_class relform1,
+				relform2;
+	Oid			swaptemp;
+	CatalogIndexState indstate;
+
+	/* We need writable copies of both pg_class tuples. */
+	relRelation = heap_open(RelationRelationId, RowExclusiveLock);
+
+	reltup1 = SearchSysCacheCopy(RELOID,
+								 ObjectIdGetDatum(r1),
+								 0, 0, 0);
+	if (!HeapTupleIsValid(reltup1))
+		elog(ERROR, ""cache lookup failed for relation %u"", r1);
+	relform1 = (Form_pg_class) GETSTRUCT(reltup1);
+
+	reltup2 = SearchSysCacheCopy(RELOID,
+								 ObjectIdGetDatum(r2),
+								 0, 0, 0);
+	if (!HeapTupleIsValid(reltup2))
+		elog(ERROR, ""cache lookup failed for relation %u"", r2);
+	relform2 = (Form_pg_class) GETSTRUCT(reltup2);
+
+	/*
+	 * Actually swap the fields in the two tuples
+	 */
+	swaptemp = relform1->relfilenode;
+	relform1->relfilenode = relform2->relfilenode;
+	relform2->relfilenode = swaptemp;
+
+	swaptemp = relform1->reltablespace;
+	relform1->reltablespace = relform2->reltablespace;
+	relform2->reltablespace = swaptemp;
+
+	swaptemp = relform1->reltoastrelid;
+	relform1->reltoastrelid = relform2->reltoastrelid;
+	relform2->reltoastrelid = swaptemp;
+
+	/* we should not swap reltoastidxid */
+
+	/* swap size statistics too, since new rel has freshly-updated stats */
+	{
+		int4		swap_pages;
+		float4		swap_tuples;
+
+		swap_pages = relform1->relpages;
+		relform1->relpages = relform2->relpages;
+		relform2->relpages = swap_pages;
+
+		swap_tuples = relform1->reltuples;
+		relform1->reltuples = relform2->reltuples;
+		relform2->reltuples = swap_tuples;
+	}
+
+	/* Update the tuples in pg_class */
+	simple_heap_update(relRelation, &reltup1->t_self, reltup1);
+	simple_heap_update(relRelation, &reltup2->t_self, reltup2);
+
+	/* Keep system catalogs current */
+	indstate = CatalogOpenIndexes(relRelation);
+	CatalogIndexInsert(indstate, reltup1);
+	CatalogIndexInsert(indstate, reltup2);
+	CatalogCloseIndexes(indstate);
+
+	/*
+	 * If we have toast tables associated with the relations being swapped,
+	 * change their dependency links to re-associate them with their new
+	 * owning relations.  Otherwise the wrong one will get dropped ...
+	 *
+	 * NOTE: it is possible that only one table has a toast table; this can
+	 * happen in CLUSTER if there were dropped columns in the old table, and
+	 * in ALTER TABLE when adding or changing type of columns.
+	 *
+	 * NOTE: at present, a TOAST table's only dependency is the one on its
+	 * owning table.  If more are ever created, we'd need to use something
+	 * more selective than deleteDependencyRecordsFor() to get rid of only the
+	 * link we want.
+	 */
+	if (relform1->reltoastrelid || relform2->reltoastrelid)
+	{
+		ObjectAddress baseobject,
+					toastobject;
+		long		count;
+
+		/* Delete old dependencies */
+		if (relform1->reltoastrelid)
+		{
+			count = deleteDependencyRecordsFor(RelationRelationId,
+											   relform1->reltoastrelid);
+			if (count != 1)
+				elog(ERROR, ""expected one dependency record for TOAST table, found %ld"",
+					 count);
+		}
+		if (relform2->reltoastrelid)
+		{
+			count = deleteDependencyRecordsFor(RelationRelationId,
+											   relform2->reltoastrelid);
+			if (count != 1)
+				elog(ERROR, ""expected one dependency record for TOAST table, found %ld"",
+					 count);
+		}
+
+		/* Register new dependencies */
+		baseobject.classId = RelationRelationId;
+		baseobject.objectSubId = 0;
+		toastobject.classId = RelationRelationId;
+		toastobject.objectSubId = 0;
+
+		if (relform1->reltoastrelid)
+		{
+			baseobject.objectId = r1;
+			toastobject.objectId = relform1->reltoastrelid;
+			recordDependencyOn(&toastobject, &baseobject, DEPENDENCY_INTERNAL);
+		}
+
+		if (relform2->reltoastrelid)
+		{
+			baseobject.objectId = r2;
+			toastobject.objectId = relform2->reltoastrelid;
+			recordDependencyOn(&toastobject, &baseobject, DEPENDENCY_INTERNAL);
+		}
+	}
+
+	/*
+	 * Blow away the old relcache entries now.	We need this kluge because
+	 * relcache.c keeps a link to the smgr relation for the physical file, and
+	 * that will be out of date as soon as we do CommandCounterIncrement.
+	 * Whichever of the rels is the second to be cleared during cache
+	 * invalidation will have a dangling reference to an already-deleted smgr
+	 * relation.  Rather than trying to avoid this by ordering operations just
+	 * so, it's easiest to not have the relcache entries there at all.
+	 * (Fortunately, since one of the entries is local in our transaction,
+	 * it's sufficient to clear out our own relcache this way; the problem
+	 * cannot arise for other backends when they see our update on the
+	 * non-local relation.)
+	 */
+	RelationForgetRelation(r1);
+	RelationForgetRelation(r2);
+
+	/* Clean up. */
+	heap_freetuple(reltup1);
+	heap_freetuple(reltup2);
+
+	heap_close(relRelation, RowExclusiveLock);
+}",FALSE,CWE_476
+84,84,84_vdisc.c,"get_fi_for_callee (gimple call)
+{
+  tree decl, fn = gimple_call_fn (call);
+
+  if (fn && TREE_CODE (fn) == OBJ_TYPE_REF)
+    fn = OBJ_TYPE_REF_EXPR (fn);
+
+  /* If we can directly resolve the function being called, do so.
+     Otherwise, it must be some sort of indirect expression that
+     we should still be able to handle.  */
+  decl = gimple_call_addr_fndecl (fn);
+  if (decl)
+    return get_vi_for_tree (decl);
+
+  /* If the function is anything other than a SSA name pointer we have no
+     clue and should be getting ANYFN (well, ANYTHING for now).  */
+  if (!fn || TREE_CODE (fn) != SSA_NAME)
+    return get_varinfo (anything_id);
+
+  if (SSA_NAME_IS_DEFAULT_DEF (fn)
+      && (TREE_CODE (SSA_NAME_VAR (fn)) == PARM_DECL
+	  || TREE_CODE (SSA_NAME_VAR (fn)) == RESULT_DECL))
+    fn = SSA_NAME_VAR (fn);
+
+  return get_vi_for_tree (fn);
+}",FALSE,CWE_476
+85,85,85_vdisc.c,"associndex(ASSOC *ap, BOOL create, long dim, VALUE *indices)
+{
+	ASSOCELEM **listhead;
+	ASSOCELEM *ep;
+	STATIC VALUE val;
+	QCKHASH hash;
+	int i;
+
+	if (dim < 0) {
+		math_error(""Negative dimension for indexing association"");
+		/*NOTREACHED*/
+	}
+
+	/*
+	 * Calculate the hash value to use for this set of indices
+	 * so that we can first select the correct hash chain, and
+	 * also so we can quickly compare each element for a match.
+	 */
+	hash = FNV1_32_BASIS;
+	for (i = 0; i < dim; i++)
+		hash = hashvalue(&indices[i], hash);
+
+	/*
+	 * Search the correct hash chain for the specified set of indices.
+	 * If found, return the address of the found element's value.
+	 */
+	listhead = &ap->a_table[hash % ap->a_size];
+	for (ep = *listhead; ep; ep = ep->e_next) {
+		if ((ep->e_hash != hash) || (ep->e_dim != dim))
+			continue;
+		if (compareindices(ep->e_indices, indices, dim))
+			return &ep->e_value;
+	}
+
+	/*
+	 * The set of indices was not found.
+	 * Either return a pointer to a NULL value for a read reference,
+	 * or allocate a new element in the list for a write reference.
+	 */
+	if (!create) {
+		val.v_type = V_NULL;
+		val.v_subtype = V_NOSUBTYPE;
+		return &val;
+	}
+
+	ep = (ASSOCELEM *) malloc(ELEMSIZE(dim));
+	if (ep == NULL) {
+		math_error(""Cannot allocate association element"");
+		/*NOTREACHED*/
+	}
+	ep->e_dim = dim;
+	ep->e_hash = hash;
+	ep->e_value.v_type = V_NULL;
+	ep->e_value.v_subtype = V_NOSUBTYPE;
+	for (i = 0; i < dim; i++)
+		copyvalue(&indices[i], &ep->e_indices[i]);
+	ep->e_next = *listhead;
+	*listhead = ep;
+	ap->a_count++;
+
+	resize(ap, ap->a_count / CHAINLENGTH);
+
+	return &ep->e_value;
+}",FALSE,CWE_476
+86,86,86_vdisc.c,"ri_GenerateQualCollation(StringInfo buf, Oid collation)
+{
+	HeapTuple	tp;
+	Form_pg_collation colltup;
+	char	   *collname;
+	char		onename[MAX_QUOTED_NAME_LEN];
+
+	/* Nothing to do if it's a noncollatable data type */
+	if (!OidIsValid(collation))
+		return;
+
+	tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(collation));
+	if (!HeapTupleIsValid(tp))
+		elog(ERROR, ""cache lookup failed for collation %u"", collation);
+	colltup = (Form_pg_collation) GETSTRUCT(tp);
+	collname = NameStr(colltup->collname);
+
+	/*
+	 * We qualify the name always, for simplicity and to ensure the query is
+	 * not search-path-dependent.
+	 */
+	quoteOneName(onename, get_namespace_name(colltup->collnamespace));
+	appendStringInfo(buf, "" COLLATE %s"", onename);
+	quoteOneName(onename, collname);
+	appendStringInfo(buf, "".%s"", onename);
+
+	ReleaseSysCache(tp);
+}",FALSE,CWE_476
+87,87,87_vdisc.c,"Append_rm_eoln(string1, string2)
+     char       **string1;
+     const char  *string2;
+{
+    int length;
+    /*  char    *Reallocspace(); */
+    /*  char    *Catstr(); */
+
+    length = Lenstr(*string1);
+
+    if(((length>1)&&(*string1)[length-1]=='\n') ||(*string1)[0]=='\n')
+        length--;
+
+    (*string1)=(char*)Reallocspace((*string1),
+                                   (unsigned int)(sizeof(char)*(Lenstr(string2)+length+1)));
+
+    (*string1)[length]='\0';
+
+    Catstr((*string1), string2);
+}",TRUE,CWE_476
+88,88,88_vdisc.c,"httpHdrCcPackInto(const HttpHdrCc * cc, Packer * p)
+{
+    http_hdr_cc_type flag;
+    int pcount = 0;
+    assert(cc && p);
+    for (flag = 0; flag < CC_ENUM_END; flag++) {
+	if (EBIT_TEST(cc->mask, flag) && flag != CC_OTHER) {
+
+	    /* print option name */
+	    packerPrintf(p, (pcount ? "", %s"" : ""%s""), strBuf(CcFieldsInfo[flag].name));
+
+	    /* handle options with values */
+	    if (flag == CC_MAX_AGE)
+		packerPrintf(p, ""=%d"", (int) cc->max_age);
+
+	    if (flag == CC_S_MAXAGE)
+		packerPrintf(p, ""=%d"", (int) cc->s_maxage);
+
+	    if (flag == CC_MAX_STALE && cc->max_stale >= 0)
+		packerPrintf(p, ""=%d"", (int) cc->max_stale);
+
+	    if (flag == CC_STALE_WHILE_REVALIDATE)
+		packerPrintf(p, ""=%d"", (int) cc->stale_while_revalidate);
+
+	    pcount++;
+	}
+    }
+    if (strLen(cc->other))
+	packerPrintf(p, (pcount ? "", %s"" : ""%s""), strBuf(cc->other));
+}",TRUE,CWE_476
+89,89,89_vdisc.c,"object_register_finalizer (MonoObject *obj, void (*callback)(void *, void*))
+{
+	MonoDomain *domain;
+
+	if (obj == NULL)
+		mono_raise_exception (mono_get_exception_argument_null (""obj""));
+
+	domain = obj->vtable->domain;
+
+#if HAVE_BOEHM_GC
+	if (mono_domain_is_unloading (domain) && (callback != NULL))
+		/*
+		 * Can't register finalizers in a dying appdomain, since they
+		 * could be invoked after the appdomain has been unloaded.
+		 */
+		return;
+
+	mono_domain_finalizers_lock (domain);
+
+	if (callback)
+		g_hash_table_insert (domain->finalizable_objects_hash, obj, obj);
+	else
+		g_hash_table_remove (domain->finalizable_objects_hash, obj);
+
+	mono_domain_finalizers_unlock (domain);
+
+	mono_gc_register_for_finalization (obj, callback);
+#elif defined(HAVE_SGEN_GC)
+	/*
+	 * If we register finalizers for domains that are unloading we might
+	 * end up running them while or after the domain is being cleared, so
+	 * the objects will not be valid anymore.
+	 */
+	if (!mono_domain_is_unloading (domain))
+		mono_gc_register_for_finalization (obj, callback);
+#endif
+}",TRUE,CWE_476
+90,90,90_vdisc.c,"bgzf_index_add_block(BGZF *fp)
+{
+    fp->idx->noffs++;
+    if ( fp->idx->noffs > fp->idx->moffs )
+    {
+        fp->idx->moffs = fp->idx->noffs;
+        kroundup32(fp->idx->moffs);
+        fp->idx->offs = (bgzidx1_t*) realloc(fp->idx->offs, fp->idx->moffs*sizeof(bgzidx1_t));
+        if ( !fp->idx->offs ) return -1;
+    }
+    fp->idx->offs[ fp->idx->noffs-1 ].uaddr = fp->idx->ublock_addr;
+    fp->idx->offs[ fp->idx->noffs-1 ].caddr = fp->block_address;
+    return 0;
+}",TRUE,CWE_476
+91,91,91_vdisc.c,"nm_setting_need_secrets (NMSetting *setting)
+{
+	GPtrArray *secrets = NULL;
+
+	g_return_val_if_fail (NM_IS_SETTING (setting), NULL);
+
+	if (NM_SETTING_GET_CLASS (setting)->need_secrets)
+		secrets = NM_SETTING_GET_CLASS (setting)->need_secrets (setting);
+
+	return secrets;
+}",TRUE,CWE_476
+92,92,92_vdisc.c,"mkTex(operation op, TexTarget targ,
+                 uint16_t tic, uint16_t tsc,
+                 const std::vector<Value *> &def,
+                 const std::vector<Value *> &src)
+{
+   TexInstruction *tex = new_TexInstruction(func, op);
+
+   for (size_t d = 0; d < def.size() && def[d]; ++d)
+      tex->setDef(d, def[d]);
+   for (size_t s = 0; s < src.size() && src[s]; ++s)
+      tex->setSrc(s, src[s]);
+
+   tex->setTexture(targ, tic, tsc);
+
+   insert(tex);
+   return tex;
+}",FALSE,CWE_476
+93,93,93_vdisc.c,"gcm_done(gcm_state *gcm, 
+                     unsigned char *tag,    unsigned long *taglen)
+{
+   unsigned long x;
+   int err;
+
+   LTC_ARGCHK(gcm     != NULL);
+   LTC_ARGCHK(tag     != NULL);
+   LTC_ARGCHK(taglen  != NULL);
+
+   if (gcm->buflen > 16 || gcm->buflen < 0) {
+      return CRYPT_INVALID_ARG;
+   }
+
+   if ((err = cipher_is_valid(gcm->cipher)) != CRYPT_OK) {
+      return err;
+   }
+
+
+   if (gcm->mode != GCM_MODE_TEXT) {
+      return CRYPT_INVALID_ARG;
+   }
+
+   /* handle remaining ciphertext */
+   if (gcm->buflen) {
+      gcm->pttotlen += gcm->buflen * CONST64(8);
+      gcm_mult_h(gcm, gcm->X);
+   }
+
+   /* length */
+   STORE64H(gcm->totlen, gcm->buf);
+   STORE64H(gcm->pttotlen, gcm->buf+8);
+   for (x = 0; x < 16; x++) {
+       gcm->X[x] ^= gcm->buf[x];
+   }
+   gcm_mult_h(gcm, gcm->X);
+
+   /* encrypt original counter */
+   if ((err = cipher_descriptor[gcm->cipher].ecb_encrypt(gcm->Y_0, gcm->buf, &gcm->K)) != CRYPT_OK) {
+      return err;
+   }
+   for (x = 0; x < 16 && x < *taglen; x++) {
+       tag[x] = gcm->buf[x] ^ gcm->X[x];
+   }
+   *taglen = x;
+
+   cipher_descriptor[gcm->cipher].done(&gcm->K);
+
+   return CRYPT_OK;
+}",FALSE,CWE_476
+94,94,94_vdisc.c,"gnm_expr_new_funcall (GnmFunc *func, GnmExprList *arg_list)
+{
+	GnmExprList *arg_list0 = arg_list;
+	int argc = gnm_expr_list_length (arg_list);
+	GnmExprConstPtr *argv = argc ? g_new (GnmExprConstPtr, argc) : NULL;
+	int i;
+
+	for (i = 0; arg_list; i++, arg_list = arg_list->next)
+		argv[i] = arg_list->data;
+	gnm_expr_list_free (arg_list0);
+
+	return gnm_expr_new_funcallv (func, argc, argv);
+}",FALSE,CWE_476
+95,95,95_vdisc.c,"unparse_fnarguments
+#ifdef KC_USE_PROTOTYPES
+(fnarguments kc_p, void (*kc_printer)(char*, uview), uview kc_current_view)
+#else
+(kc_p, kc_printer, kc_current_view) fnarguments kc_p; void (*kc_printer)KC__P((char*, uview)); uview kc_current_view;
+#endif
+{
+	/*SUPPRESS 622*/
+	assert_fnarguments(kc_p, ""kc_p"");
+	switch((int)kc_current_view) {
+	case (int)view_gen_fnk_c: {
+		if (( kc_p->prod_sel == sel_Nilfnarguments)) {
+#line 7440 ""../gen.k""
+/*EMPTY*/
+#line 15617 ""unpk.c""
+		} else
+		if (( kc_p->prod_sel == sel_Consfnarguments) && ( kc_p->u.Consfnarguments.fnarguments_1->prod_sel == sel_Nilfnarguments)) {
+#line 7441 ""../gen.k""
+		ID a_fnarg =  kc_p->u.Consfnarguments.ID_1;
+		unparse_ID(a_fnarg, kc_printer, kc_current_view);
+		} else
+		if (( kc_p->prod_sel == sel_Consfnarguments)) {
+#line 7444 ""../gen.k""
+		ID a_fnarg =  kc_p->u.Consfnarguments.ID_1;
+#line 7444 ""../gen.k""
+		fnarguments r_fnargs =  kc_p->u.Consfnarguments.fnarguments_1;
+		unparse_fnarguments(r_fnargs, kc_printer, kc_current_view);
+		{ (*kc_printer)("", "", kc_current_view); }
+		unparse_ID(a_fnarg, kc_printer, kc_current_view);
+		} else
+		goto kc_unparsing_default;
+		break;
+	}
+	default:
+	kc_unparsing_default:
+	case (int)base_uview: {
+		switch((int)kc_p->prod_sel) {
+		case (int)sel_Consfnarguments:
+			unparse_ID( kc_p->u.Consfnarguments.ID_1, kc_printer, kc_current_view );
+			unparse_fnarguments( kc_p->u.Consfnarguments.fnarguments_1, kc_printer, kc_current_view );
+			break;
+		default:;}
+		break;
+	}
+	}
+}",FALSE,CWE_476
+96,96,96_vdisc.c,"__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned char *s, unsigned int slen) {
+    size_t curlen = intrev32ifbe(ZIPLIST_BYTES(zl)), reqlen;
+    unsigned int prevlensize, prevlen = 0;
+    size_t offset;
+    int nextdiff = 0;
+    unsigned char encoding = 0;
+    long long value = 123456789; /* initialized to avoid warning. Using a value
+                                    that is easy to see if for some reason
+                                    we use it uninitialized. */
+    zlentry tail;
+
+    /* Find out prevlen for the entry that is inserted. */
+    if (p[0] != ZIP_END) {
+        ZIP_DECODE_PREVLEN(p, prevlensize, prevlen);
+    } else {
+        unsigned char *ptail = ZIPLIST_ENTRY_TAIL(zl);
+        if (ptail[0] != ZIP_END) {
+            prevlen = zipRawEntryLength(ptail);
+        }
+    }
+
+    /* See if the entry can be encoded */
+    if (zipTryEncoding(s,slen,&value,&encoding)) {
+        /* 'encoding' is set to the appropriate integer encoding */
+        reqlen = zipIntSize(encoding);
+    } else {
+        /* 'encoding' is untouched, however zipEncodeLength will use the
+         * string length to figure out how to encode it. */
+        reqlen = slen;
+    }
+    /* We need space for both the length of the previous entry and
+     * the length of the payload. */
+    reqlen += zipPrevEncodeLength(NULL,prevlen);
+    reqlen += zipEncodeLength(NULL,encoding,slen);
+
+    /* When the insert position is not equal to the tail, we need to
+     * make sure that the next entry can hold this entry's length in
+     * its prevlen field. */
+    nextdiff = (p[0] != ZIP_END) ? zipPrevLenByteDiff(p,reqlen) : 0;
+
+    /* Store offset because a realloc may change the address of zl. */
+    offset = p-zl;
+    zl = ziplistResize(zl,curlen+reqlen+nextdiff);
+    p = zl+offset;
+
+    /* Apply memory move when necessary and update tail offset. */
+    if (p[0] != ZIP_END) {
+        /* Subtract one because of the ZIP_END bytes */
+        memmove(p+reqlen,p-nextdiff,curlen-offset-1+nextdiff);
+
+        /* Encode this entry's raw length in the next entry. */
+        zipPrevEncodeLength(p+reqlen,reqlen);
+
+        /* Update offset for tail */
+        ZIPLIST_TAIL_OFFSET(zl) =
+            intrev32ifbe(intrev32ifbe(ZIPLIST_TAIL_OFFSET(zl))+reqlen);
+
+        /* When the tail contains more than one entry, we need to take
+         * ""nextdiff"" in account as well. Otherwise, a change in the
+         * size of prevlen doesn't have an effect on the *tail* offset. */
+        tail = zipEntry(p+reqlen);
+        if (p[reqlen+tail.headersize+tail.len] != ZIP_END) {
+            ZIPLIST_TAIL_OFFSET(zl) =
+                intrev32ifbe(intrev32ifbe(ZIPLIST_TAIL_OFFSET(zl))+nextdiff);
+        }
+    } else {
+        /* This element will be the new tail. */
+        ZIPLIST_TAIL_OFFSET(zl) = intrev32ifbe(p-zl);
+    }
+
+    /* When nextdiff != 0, the raw length of the next entry has changed, so
+     * we need to cascade the update throughout the ziplist */
+    if (nextdiff != 0) {
+        offset = p-zl;
+        zl = __ziplistCascadeUpdate(zl,p+reqlen);
+        p = zl+offset;
+    }
+
+    /* Write the entry */
+    p += zipPrevEncodeLength(p,prevlen);
+    p += zipEncodeLength(p,encoding,slen);
+    if (ZIP_IS_STR(encoding)) {
+        memcpy(p,s,slen);
+    } else {
+        zipSaveInteger(p,value,encoding);
+    }
+    ZIPLIST_INCR_LENGTH(zl,1);
+    return zl;
+}",TRUE,CWE_476
+97,97,97_vdisc.c,"Rewind()
+{
+ if ( ! this->InputStream ) //need to already have an open file
+   {
+   vtkGenericWarningMacro(<<""No input file opened to rewind..."");
+   }
+ this->InputStream->clear();
+ this->InputStream->seekg(0);
+}",TRUE,CWE_476
+98,98,98_vdisc.c,"GAM_get_query_threshold(GAM *gam, Sequence *query){
+    register GAM_QueryResult *gqr;
+    register GAM_StoredResult *gsr;
+    register GAM_QueryInfo *gqi;
+    if(gam->gas->best_n){
+        gqr = g_tree_lookup(gam->bestn_tree, query->id);
+        if(gqr && (PQueue_total(gqr->pq) >= gam->gas->best_n)){
+            gsr = PQueue_top(gqr->pq);
+            if(gam->verbosity > 2)
+                g_message(""Using threshold [%d] for query [%s]"",
+                      gsr->score, query->id);
+            return gsr->score;
+            }
+        }
+    if(gam->gas->percent_threshold){
+        gqi = g_tree_lookup(gam->percent_threshold_tree, query->id);
+        if(!gqi){
+            gqi = GAM_QueryInfo_create(query, gam);
+            g_tree_insert(gam->percent_threshold_tree, gqi->query_id,
+                                                       gqi);
+            }
+        return gqi->threshold;
+        }
+    return gam->gas->threshold;
+    }",TRUE,CWE_476
+99,99,99_vdisc.c,"vac_update_relstats(Relation relation,
+					BlockNumber num_pages, double num_tuples,
+					bool hasindex, TransactionId frozenxid)
+{
+	Oid			relid = RelationGetRelid(relation);
+	Relation	rd;
+	HeapTuple	ctup;
+	Form_pg_class pgcform;
+	bool		dirty;
+
+	rd = heap_open(RelationRelationId, RowExclusiveLock);
+
+	/* Fetch a copy of the tuple to scribble on */
+	ctup = SearchSysCacheCopy(RELOID,
+							  ObjectIdGetDatum(relid),
+							  0, 0, 0);
+	if (!HeapTupleIsValid(ctup))
+		elog(ERROR, ""pg_class entry for relid %u vanished during vacuuming"",
+			 relid);
+	pgcform = (Form_pg_class) GETSTRUCT(ctup);
+
+	/* Apply required updates, if any, to copied tuple */
+
+	dirty = false;
+	if (pgcform->relpages != (int32) num_pages)
+	{
+		pgcform->relpages = (int32) num_pages;
+		dirty = true;
+	}
+	if (pgcform->reltuples != (float4) num_tuples)
+	{
+		pgcform->reltuples = (float4) num_tuples;
+		dirty = true;
+	}
+	if (pgcform->relhasindex != hasindex)
+	{
+		pgcform->relhasindex = hasindex;
+		dirty = true;
+	}
+
+	/*
+	 * If we have discovered that there are no indexes, then there's no
+	 * primary key either.	This could be done more thoroughly...
+	 */
+	if (!hasindex)
+	{
+		if (pgcform->relhaspkey)
+		{
+			pgcform->relhaspkey = false;
+			dirty = true;
+		}
+	}
+
+	/* We also clear relhasrules and relhastriggers if needed */
+	if (pgcform->relhasrules && relation->rd_rules == NULL)
+	{
+		pgcform->relhasrules = false;
+		dirty = true;
+	}
+	if (pgcform->relhastriggers && relation->trigdesc == NULL)
+	{
+		pgcform->relhastriggers = false;
+		dirty = true;
+	}
+
+	/*
+	 * relfrozenxid should never go backward.  Caller can pass
+	 * InvalidTransactionId if it has no new data.
+	 */
+	if (TransactionIdIsNormal(frozenxid) &&
+		TransactionIdPrecedes(pgcform->relfrozenxid, frozenxid))
+	{
+		pgcform->relfrozenxid = frozenxid;
+		dirty = true;
+	}
+
+	/* If anything changed, write out the tuple. */
+	if (dirty)
+		heap_inplace_update(rd, ctup);
+
+	heap_close(rd, RowExclusiveLock);
+}",TRUE,CWE_476
+100,100,100_vdisc.c,"fqdncache_nbgethostbyaddr(struct in_addr addr, FQDNH * handler, void *handlerData)
+{
+    fqdncache_entry *f = NULL;
+    char *name = inet_ntoa(addr);
+    generic_cbdata *c;
+    assert(handler);
+    debug(35, 4) (""fqdncache_nbgethostbyaddr: Name '%s'.\n"", name);
+    FqdncacheStats.requests++;
+    if (name == NULL || name[0] == '\0') {
+	debug(35, 4) (""fqdncache_nbgethostbyaddr: Invalid name!\n"");
+	dns_error_message = ""Invalid hostname"";
+	handler(NULL, handlerData);
+	return;
+    }
+    f = fqdncache_get(name);
+    if (NULL == f) {
+	/* miss */
+	(void) 0;
+    } else if (fqdncacheExpiredEntry(f)) {
+	/* hit, but expired -- bummer */
+	fqdncacheRelease(f);
+	f = NULL;
+    } else {
+	/* hit */
+	debug(35, 4) (""fqdncache_nbgethostbyaddr: HIT for '%s'\n"", name);
+	if (f->flags.negcached)
+	    FqdncacheStats.negative_hits++;
+	else
+	    FqdncacheStats.hits++;
+	f->handler = handler;
+	f->handlerData = handlerData;
+	cbdataLock(handlerData);
+	fqdncacheCallback(f);
+	return;
+    }
+
+    debug(35, 5) (""fqdncache_nbgethostbyaddr: MISS for '%s'\n"", name);
+    FqdncacheStats.misses++;
+    f = fqdncacheCreateEntry(name);
+    f->handler = handler;
+    f->handlerData = handlerData;
+    cbdataLock(handlerData);
+    f->request_time = current_time;
+    c = cbdataAlloc(generic_cbdata);
+    c->data = f;
+#if USE_DNSSERVERS
+    dnsSubmit(hashKeyStr(&f->hash), fqdncacheHandleReply, c);
+#else
+    idnsPTRLookup(addr, fqdncacheHandleReply, c);
+#endif
+}",TRUE,CWE_476

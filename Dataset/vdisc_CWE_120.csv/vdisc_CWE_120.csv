@@ -1,0 +1,4253 @@
+,testCase_ID,filename,code,bug,type
+0,0,0_vdisc.c,"create_NUBspline_1d_z (NUgrid* x_grid, BCtype_z xBC, complex_double *data)
+{
+  // First, create the spline structure
+  NUBspline_1d_z* spline = malloc (sizeof(NUBspline_1d_z));
+  if (spline == NULL)
+    return spline;
+  spline->sp_code = NU1D;
+  spline->t_code  = DOUBLE_COMPLEX;
+
+  // Next, create the basis
+  spline->x_basis = create_NUBasis (x_grid, xBC.lCode==PERIODIC);
+  // M is the number of data points
+  int M; 
+  if (xBC.lCode == PERIODIC) M = x_grid->num_points - 1;
+  else                       M = x_grid->num_points;
+  int N = x_grid->num_points + 2;
+
+  // Allocate coefficients and solve  
+  spline->coefs = malloc(N*sizeof(complex_double));
+  find_NUBcoefs_1d_z (spline->x_basis, xBC, data, 1, spline->coefs, 1);
+    
+  return spline;
+}",TRUE,CWE_120
+1,1,1_vdisc.c,"m92_startup(void)
+{
+	unsigned char *RAM = memory_region(REGION_CPU1);
+
+	memcpy(RAM+0xffff0,RAM+0x7fff0,0x10); /* Start vector */
+	bankaddress = 0xa0000; /* Initial bank */
+	set_m92_bank();
+
+	/* Mirror used by In The Hunt for protection */
+	memcpy(RAM+0xc0000,RAM+0x00000,0x10000);
+	cpu_setbank(2,&RAM[0xc0000]);
+
+	RAM = memory_region(REGION_CPU2);
+	memcpy(RAM+0xffff0,RAM+0x1fff0,0x10); /* Sound cpu Start vector */
+
+	m92_game_kludge=0;
+	m92_irq_vectorbase=0x80;
+	m92_raster_enable=1;
+	m92_sprite_buffer_busy=0x80;
+}",TRUE,CWE_120
+2,2,2_vdisc.c,"chirp_multi_lookup(const char *volume, const char *path, struct file_info *info, time_t stoptime)
+{
+	int result, fields;
+	char *buffer;
+
+	if(!chirp_multi_lpath(volume, path, info->lpath, stoptime))
+		return 0;
+
+	result = chirp_reli_getfile_buffer(current_volume->host, info->lpath, &buffer, stoptime);
+	if(result <= 0)
+		return 0;
+
+	fields = sscanf(buffer, ""%s %s"", info->rhost, info->rpath);
+
+	free(buffer);
+
+	debug(D_MULTI, ""lookup: /multi/%s%s at /chirp/%s/%s"", volume, path, info->rhost, info->rpath);
+
+	if(fields == 2) {
+		return 1;
+	} else {
+		errno = EIO;
+		return 0;
+	}
+}",TRUE,CWE_120
+3,3,3_vdisc.c,"_parse(VisuConfigFileEntry *entry, gchar **tokens, guint iLine,
+                       VisuData *dataObj, VisuGlView *view, GError **error)
+{
+  gboolean ret;
+  static guint sig = 0;
+
+  if (!sig)
+    sig = g_signal_lookup(""entryParsed"", VISU_TYPE_OBJECT);
+
+  ret = TRUE;
+  if (tokens)
+    {
+      if (entry->read)
+        ret = entry->read(entry, tokens, entry->nbLines, iLine, dataObj, view, error);
+      g_strfreev(tokens);
+      if (ret)
+        g_signal_emit(VISU_OBJECT_INSTANCE, sig, entry->kquark, entry->key);
+    }
+  return ret;
+}",FALSE,CWE_120
+4,4,4_vdisc.c,"CDE_create_path_symlink_dirs() {
+  char *p;
+  int m, n;
+  struct stat st;
+  char tmp_buf[MAXPATHLEN];
+
+  for (p = getenv(""PATH""); p && *p; p += m) {
+    if (strchr(p, ':')) {
+      n = strchr(p, ':') - p;
+      m = n + 1;
+    }
+    else {
+      m = n = strlen(p);
+    }
+
+    strncpy(tmp_buf, p, n);
+    tmp_buf[n] = '\0';
+
+    // this will NOT follow the symlink ...
+    if (lstat(tmp_buf, &st) == 0) {
+      char is_symlink = S_ISLNK(st.st_mode);
+      if (is_symlink) {
+        char* tmp = strdup(tmp_buf);
+        copy_file_into_cde_root(tmp, cde_starting_pwd);
+        free(tmp);
+      }
+    }
+  }
+
+  // also, this is hacky, but also check /usr/lib to see
+  // whether it's a symlink.  ld-linux.so.2 will likely try to look
+  // for libraries in those places, but they're not in any convenient
+  // environment variable
+  //
+  // note that the other 2 directories that ld-linux.so.2 usually
+  // tries to look for libs in, /bin and /lib, will be taken care of by
+  // CDE_create_toplevel_symlink_dirs()
+  strcpy(tmp_buf, ""/usr/lib"");
+  // this will NOT follow the symlink ...
+  if (lstat(tmp_buf, &st) == 0) {
+    char is_symlink = S_ISLNK(st.st_mode);
+    if (is_symlink) {
+      char* tmp = strdup(tmp_buf);
+      copy_file_into_cde_root(tmp, cde_starting_pwd);
+      free(tmp);
+    }
+  }
+}",FALSE,CWE_120
+5,5,5_vdisc.c,"parse_forward(const char *in, struct survey_record *out)
+{
+    char dummy1;
+    int status;
+
+    if (out->haslabel == YES) {
+	status =
+	    sscanf(in, FORMAT_1, out->label, out->n_s, &out->deg, &dummy1,
+		   &out->min, &dummy1, &out->sec, out->e_w, &out->dist);
+    }
+    else {
+	status = sscanf(in, FORMAT_2, out->n_s, &out->deg, &dummy1,
+			&out->min, &dummy1, &out->sec, out->e_w, &out->dist);
+    }
+
+    if ((status != 9 && out->haslabel == YES) ||
+	(status != 8 && out->haslabel == NO))
+	return 0;
+
+    out->dd = DMS2DD(out->deg, out->min, out->sec);
+    if (out->n_s[0] == 'N') {
+	if (out->e_w[0] == 'E') {
+	    out->dd = 90.0 - out->dd;
+	}
+	else if (out->e_w[0] == 'W') {
+	    out->dd = 90.0 + out->dd;
+	}
+	else {
+	    return 0;
+	}
+    }
+    else if (out->n_s[0] == 'S') {
+	if (out->e_w[0] == 'E') {
+	    out->dd = 270 + out->dd;
+	}
+	else if (out->e_w[0] == 'W') {
+	    out->dd = 270 - out->dd;
+	}
+	else {
+	    return 0;
+	}
+    }
+    else {
+	return 0;
+    }
+    out->rads = DEG2RAD(out->dd);
+    out->x += out->dist * cos(out->rads);
+    out->y += out->dist * sin(out->rads);
+
+    return status;
+}",FALSE,CWE_120
+6,6,6_vdisc.c,"sparsematrix_subset_rows(sparsematrix_t* sp, const int* rows, int NR) {
+	bl* newrows;
+	int i;
+	assert(NR <= sp->R);
+	newrows = malloc(NR * sizeof(bl));
+	for (i=0; i<NR; i++)
+		newrows[i] = sp->rows[rows[i]];
+	free(sp->rows);
+	sp->rows = newrows;
+	sp->R = NR;
+}",FALSE,CWE_120
+7,7,7_vdisc.c,"gperror(unsigned int code,
+	     char *message)
+{
+  char full_message[BUFSIZ];
+
+  if (state.pass == 2) {
+    if(message == NULL)
+      message = gp_geterror(code);
+
+#ifndef GP_USER_ERROR
+    /* standard output */
+    if (!state.quiet) {
+      if (state.src)
+        snprintf(full_message, sizeof(full_message),
+                 ""%s:%d:Error [%03d] %s"",
+                 state.src->name,
+                 state.src->line_number,
+                 code,
+                 message);
+      else
+        snprintf(full_message, sizeof(full_message),
+                 ""Error [%03d] %s"",
+                 code,
+                 message);
+
+      printf(""%s\n"", full_message);
+    }
+#else
+    user_error(code, message);
+#endif
+
+    /* list file output */
+    snprintf(full_message, sizeof(full_message),
+	     ""Error [%03d] : %s"",
+	     code,
+	     message);
+
+    lst_line(full_message);
+
+    state.num.errors++;
+  }
+}",FALSE,CWE_120
+8,8,8_vdisc.c,"OTF_Heap_initDefHeap( OTF_Heap* heap, OTF_Reader* reader ) {
+
+
+	uint32_t i;
+	uint32_t j;
+	uint8_t enabled;
+	OTF_MapEntry* entry;
+	OTF_RStream* stream;
+	OTF_RBuffer* buffer;
+
+
+	heap->n= 0;
+	heap->s= 1 + OTF_MasterControl_getCount( reader->mc );
+
+	heap->buffers= (OTF_RBuffer**) malloc( heap->s * sizeof(OTF_RBuffer*) );
+	if( NULL == heap->buffers ) {
+	
+		OTF_Error( ""ERROR in function %s, file: %s, line: %i:\n ""
+				""no memory left.\n"",
+				__FUNCTION__, __FILE__, __LINE__ );
+
+		return 0;
+	}
+
+	/* stream 0 */
+	stream= OTF_Reader_getStream( reader, 0 );
+	if( NULL != stream ) {
+	
+		buffer= OTF_RStream_getDefBuffer( stream );
+		if( NULL != buffer ) {
+		
+			/* buffer == NULL allowed! */
+			heap->buffers[ heap->n ]= buffer;
+			(heap->n)++;
+		}
+	}
+
+	/* remaining streams */
+
+	for ( i= 0; i < heap->s -1; i++ ) {
+	
+		entry= OTF_MasterControl_getEntryByIndex( reader->mc, i );
+		if( NULL == entry ) {
+		
+			OTF_Error( ""ERROR in function %s, file: %s, line: %i:\n ""
+					""OTF_MasterControl_getEntryByIndex() failed.\n"",
+					__FUNCTION__, __FILE__, __LINE__ );
+
+			free( heap->buffers );
+			heap->buffers= NULL;
+			
+			return 0;
+		}
+
+		enabled= 0;
+		j= 0;
+		while ( ( j < entry->n ) && ( 0 == enabled ) ) {
+
+			enabled= enabled || OTF_ProcessList_getStatus( reader->processList,	entry->values[j] );
+			j++;
+		}
+
+		if ( enabled ) {
+
+			stream= OTF_Reader_getStream( reader, entry->argument );
+			if( NULL == stream ) {
+	
+				OTF_Error( ""ERROR in function %s, file: %s, line: %i:\n ""
+						""cannot get stream '%llu'\n"",
+						__FUNCTION__, __FILE__, __LINE__,
+						(long long unsigned) entry->argument );
+
+				free( heap->buffers );
+				heap->buffers= NULL;
+		
+				return 0;
+			}
+
+			buffer= OTF_RStream_getDefBuffer( stream );
+
+			/* buffer == NULL allowed! */
+			heap->buffers[ heap->n ]= buffer;
+			(heap->n)++;
+		}
+	}
+
+	return 1;
+}",TRUE,CWE_120
+9,9,9_vdisc.c,"dump_output_wav (char *dest, void *buf, rRCOEntry * entry, void *arg)
+{
+  int i;
+  rRCOSoundEntry *rse = ((rRCOSoundEntry *) entry->extra);
+
+  void **vagData = (void **) malloc (rse->channels * sizeof (void *));
+  int *vagLen = (int *) malloc (rse->channels * sizeof (int));
+
+  uint8_t ret;
+
+  for (i = 0; i < rse->channels; i++) {
+    vagLen[i] = rse->channelData[i * 2];
+    vagData[i] = (void *) ((char *) buf + rse->channelData[i * 2 + 1]);
+  }
+
+  ret = vag2wav (dest, rse->channels, vagLen, vagData);
+  free (vagData);
+  free (vagLen);
+  return ret;
+}",TRUE,CWE_120
+10,10,10_vdisc.c,"test_date_rfc2822__format_rfc2822_positive_offset(void)
+{
+	git_time t = {1397031663, 120};
+	char buf[GIT_DATE_RFC2822_SZ];
+
+	cl_git_pass(git__date_rfc2822_fmt(buf, sizeof(buf), &t));
+	cl_assert(strcmp(buf, ""Wed, 9 Apr 2014 10:21:03 +0200"") == 0);
+}",FALSE,CWE_120
+11,11,11_vdisc.c,"toggle_cb (GtkWidget *item, char *pref_name)
+{
+	char buf[256];
+
+	if (GTK_CHECK_MENU_ITEM (item)->active)
+		snprintf (buf, sizeof (buf), ""set %s 1"", pref_name);
+	else
+		snprintf (buf, sizeof (buf), ""set %s 0"", pref_name);
+
+	handle_command (current_sess, buf, FALSE);
+}",FALSE,CWE_120
+12,12,12_vdisc.c,"main (int argc, char **argv)
+{
+	struct event_base *base = event_base_new();
+	struct evhttp *http = evhttp_new(base);
+	int c;
+
+	unsigned short port = 8080;
+	while ((c = getopt(argc, argv, ""p:l:"")) != -1) {
+		switch (c) {
+		case 'p':
+			port = atoi(optarg);
+			break;
+		case 'l':
+			content_len = atol(optarg);
+			if (content_len == 0) {
+				fprintf(stderr, ""Bad content length\n"");
+				exit(1);
+			}
+			break;
+		default:
+			fprintf(stderr, ""Illegal argument \""%c\""\n"", c);
+			exit(1);
+		}
+	}
+
+#ifndef WIN32
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+		return (1);
+#endif
+
+	content = malloc(content_len);
+	if (content == NULL) {
+		fprintf(stderr, ""Cannot allocate content\n"");
+		exit(1);
+	} else {
+		int i = 0;
+		for (i = 0; i < content_len; ++i)
+			content[i] = (i & 255);
+	}
+
+	evhttp_set_cb(http, ""/ind"", http_basic_cb, NULL);
+	fprintf(stderr, ""/ind - basic content (memory copy)\n"");
+
+#ifdef _EVENT2_EVENT_H_
+	evhttp_set_cb(http, ""/ref"", http_ref_cb, NULL);
+	fprintf(stderr, ""/ref - basic content (reference)\n"");
+#endif
+
+	fprintf(stderr, ""Serving %d bytes on port %d\n"",
+	    (int)content_len, port);
+
+	evhttp_bind_socket(http, ""0.0.0.0"", port);
+
+	event_base_dispatch(base);
+
+	/* NOTREACHED */
+	return (0);
+}",FALSE,CWE_120
+13,13,13_vdisc.c,"rb_get_ssl_certfp(rb_fde_t *F, uint8_t certfp[RB_SSL_CERTFP_LEN])
+{
+	gnutls_x509_crt_t cert;
+	unsigned int cert_list_size;
+	const gnutls_datum_t *cert_list;
+	uint8_t digest[RB_SSL_CERTFP_LEN * 2];
+	size_t digest_size;
+
+	if (gnutls_certificate_type_get(SSL_P(F)) != GNUTLS_CRT_X509)
+		return 0;
+
+	if (gnutls_x509_crt_init(&cert) < 0)
+		return 0;
+
+	cert_list_size = 0;
+	cert_list = gnutls_certificate_get_peers(SSL_P(F), &cert_list_size);
+	if (cert_list == NULL)
+	{
+		gnutls_x509_crt_deinit(cert);
+		return 0;
+	}
+
+	if (gnutls_x509_crt_import(cert, &cert_list[0], GNUTLS_X509_FMT_DER) < 0)
+	{
+		gnutls_x509_crt_deinit(cert);
+		return 0;
+	}
+
+	if (gnutls_x509_crt_get_fingerprint(cert, GNUTLS_DIG_SHA1, digest, &digest_size) < 0)
+	{
+		gnutls_x509_crt_deinit(cert);
+		return 0;
+	}
+
+	memcpy(certfp, digest, RB_SSL_CERTFP_LEN);
+
+	gnutls_x509_crt_deinit(cert);
+	return 1;
+}",FALSE,CWE_120
+14,14,14_vdisc.c,"hermon_register_netdev ( struct hermon *hermon,
+				    struct hermon_port *port ) {
+	struct net_device *netdev = port->netdev;
+	struct ib_device *ibdev = port->ibdev;
+	struct hermonprm_query_port_cap query_port;
+	union {
+		uint8_t bytes[8];
+		uint32_t dwords[2];
+	} mac;
+	int rc;
+
+	/* Retrieve MAC address */
+	if ( ( rc = hermon_cmd_query_port ( hermon, ibdev->port,
+					    &query_port ) ) != 0 ) {
+		DBGC ( hermon, ""Hermon %p port %d could not query port: %s\n"",
+		       hermon, ibdev->port, strerror ( rc ) );
+		return rc;
+	}
+	mac.dwords[0] = htonl ( MLX_GET ( &query_port, mac_47_32 ) );
+	mac.dwords[1] = htonl ( MLX_GET ( &query_port, mac_31_0 ) );
+	memcpy ( netdev->hw_addr,
+		 &mac.bytes[ sizeof ( mac.bytes ) - ETH_ALEN ], ETH_ALEN );
+
+	/* Register network device */
+	if ( ( rc = register_netdev ( netdev ) ) != 0 ) {
+		DBGC ( hermon, ""Hermon %p port %d could not register network ""
+		       ""device: %s\n"", hermon, ibdev->port, strerror ( rc ) );
+		return rc;
+	}
+
+	return 0;
+}",FALSE,CWE_120
+15,15,15_vdisc.c,"create_hash_table(unsigned int sz)
+{
+    struct hash_table *tbl;
+    unsigned int i;
+
+    tbl = (struct hash_table *)malloc(sizeof(*tbl) + sz*sizeof(struct list_head));
+
+    if (!tbl)
+    {
+	debug(DEBUG_APPERROR, ""malloc for hash_table failed"");
+	return NULL;
+    }
+	
+    tbl->ht_size  = sz;
+    tbl->ht_lists = (struct list_head *)(tbl + 1);
+    tbl->iterator = 0;
+
+    for (i = 0; i < sz; i++)
+	INIT_LIST_HEAD(&tbl->ht_lists[i]);
+
+    return tbl;
+}",TRUE,CWE_120
+16,16,16_vdisc.c,"fixgrid34(NCDAPCOMMON* nccomm, CDFnode* grid)
+{
+    unsigned int i,glen;
+    CDFnode* array;
+
+    glen = nclistlength(grid->subnodes);
+    array = (CDFnode*)nclistget(grid->subnodes,0);	        
+    if(nccomm->controls.flags & (NCF_NC3)) {
+        /* Rename grid Array: variable, but leave its oc base name alone */
+        nullfree(array->ncbasename);
+        array->ncbasename = nulldup(grid->ncbasename);
+        if(!array->ncbasename) return NC_ENOMEM;
+    }
+    /* validate and modify the grid structure */
+    if((glen-1) != nclistlength(array->array.dimensions)) goto invalid;
+    for(i=1;i<glen;i++) {
+	CDFnode* arraydim = (CDFnode*)nclistget(array->array.dimensions,i-1);
+	CDFnode* map = (CDFnode*)nclistget(grid->subnodes,i);
+	CDFnode* mapdim;
+	/* map must have 1 dimension */
+	if(nclistlength(map->array.dimensions) != 1) goto invalid;
+	/* and the map name must match the ith array dimension */
+	if(!DIMFLAG(arraydim,CDFDIMANON)
+	   && strcmp(arraydim->name,map->name)!= 0)
+	    goto invalid;
+	/* and the map name must match its dim name (if any) */
+	mapdim = (CDFnode*)nclistget(map->array.dimensions,0);
+	if(!DIMFLAG(mapdim,CDFDIMANON) && strcmp(mapdim->name,map->name)!= 0)
+	    goto invalid;
+	/* Add appropriate names for the anonymous dimensions */
+	/* Do the map name first, so the array dim may inherit */
+	if(DIMFLAG(mapdim,CDFDIMANON)) {
+	    nullfree(mapdim->name);
+	    nullfree(mapdim->ncbasename);
+	    mapdim->name = nulldup(map->name);
+	    if(!mapdim->name) return NC_ENOMEM;
+	    mapdim->ncbasename = cdflegalname3(mapdim->name);
+	    if(!mapdim->ncbasename) return NC_ENOMEM;
+	    DIMFLAGCLR(mapdim,CDFDIMANON);
+	}
+	if(DIMFLAG(arraydim,CDFDIMANON)) {
+	    nullfree(arraydim->name); /* just in case */
+	    nullfree(arraydim->ncbasename);
+	    arraydim->name = nulldup(map->name);
+	    if(!arraydim->name) return NC_ENOMEM;
+	    arraydim->ncbasename = cdflegalname3(arraydim->name);
+	    if(!arraydim->ncbasename) return NC_ENOMEM;
+	    DIMFLAGCLR(arraydim,CDFDIMANON);
+	}
+        if(FLAGSET(nccomm->controls,(NCF_NCDAP|NCF_NC3))) {
+	    char tmp[3*NC_MAX_NAME];
+            /* Add the grid name to the basename of the map */
+	    snprintf(tmp,sizeof(tmp),""%s%s%s"",map->container->ncbasename,
+					  nccomm->cdf.separator,
+					  map->ncbasename);
+	    nullfree(map->ncbasename);
+            map->ncbasename = nulldup(tmp);
+	    if(!map->ncbasename) return NC_ENOMEM;
+	}
+    }
+    return NC_NOERR;
+invalid:
+    return NC_EINVAL; /* mal-formed grid */
+}",TRUE,CWE_120
+17,17,17_vdisc.c,"newdbfld (char *fldname, DBFFieldType dbtype, gaint len, gaint prec, 
+			gaint flag, char *val) {
+  gaint sz;
+  struct dbfld *newfld;
+  char *value;
+  
+  /* create the new field */
+  newfld = (struct dbfld *) galloc (sizeof(struct dbfld),""dbfld""); 
+  if (newfld != NULL) {
+    strcpy(newfld->name,fldname);
+    newfld->type = dbtype;
+    newfld->len = len;
+    newfld->prec = prec;
+    newfld->flag = flag;        
+    if (flag==0) {
+      /* allocate space for the field value */
+      sz = (len+1) * sizeof(char);
+      if ((value = (void *)galloc(sz,""valuec"")) == NULL) {
+	gaprnt (0,""Error in newdbfld: memory allocation failed for data base field value \n"");
+	gree (newfld,""g1"");
+	return NULL;
+      }
+      strcpy(value,val);
+      newfld->value = value;
+    }
+    else {
+      newfld->value = NULL;
+    }
+    newfld->next = NULL;
+    return newfld;  
+  } else {
+    gaprnt (0,""Error in newdbfld: memory allocation failed for new data base field \n"");
+    return NULL;
+  }
+}",TRUE,CWE_120
+18,18,18_vdisc.c,"cmd_sort(char *tag, int usinguid)
+{
+    int c;
+    struct sortcrit *sortcrit = NULL;
+    static struct buf arg;
+    int charset = 0;
+    struct searchargs *searchargs;
+    clock_t start = clock();
+    char mytime[100];
+    int n;
+
+    if (backend_current) {
+	/* remote mailbox */
+	char *cmd = usinguid ? ""UID Sort"" : ""Sort"";
+
+	prot_printf(backend_current->out, ""%s %s "", tag, cmd);
+	if (!pipe_command(backend_current, 65536)) {
+	    pipe_including_tag(backend_current, tag, 0);
+	}
+	return;
+    }
+
+    /* local mailbox */
+    c = getsortcriteria(tag, &sortcrit);
+    if (c == EOF) {
+	eatline(imapd_in, ' ');
+	freesortcrit(sortcrit);
+	return;
+    }
+
+    /* get charset */
+    if (c != ' ') {
+	prot_printf(imapd_out, ""%s BAD Missing charset in Sort\r\n"",
+		    tag);
+	eatline(imapd_in, c);
+	freesortcrit(sortcrit);
+	return;
+    }
+
+    c = getword(imapd_in, &arg);
+    if (c != ' ') {
+	prot_printf(imapd_out, ""%s BAD Missing search criteria in Sort\r\n"",
+		    tag);
+	eatline(imapd_in, c);
+	freesortcrit(sortcrit);
+	return;
+    }
+    lcase(arg.s);
+    charset = charset_lookupname(arg.s);
+
+    if (charset == -1) {
+	prot_printf(imapd_out, ""%s NO %s\r\n"", tag,
+	       error_message(IMAP_UNRECOGNIZED_CHARSET));
+	eatline(imapd_in, c);
+	freesortcrit(sortcrit);
+	return;
+    }
+
+    searchargs = (struct searchargs *)xzmalloc(sizeof(struct searchargs));
+
+    c = getsearchprogram(tag, searchargs, &charset, 0);
+    if (c == EOF) {
+	eatline(imapd_in, ' ');
+	freesearchargs(searchargs);
+	freesortcrit(sortcrit);
+	return;
+    }
+
+    if (c == '\r') c = prot_getc(imapd_in);
+    if (c != '\n') {
+	prot_printf(imapd_out, 
+		    ""%s BAD Unexpected extra arguments to Sort\r\n"", tag);
+	eatline(imapd_in, c);
+	freesearchargs(searchargs);
+	freesortcrit(sortcrit);
+	return;
+    }
+
+    n = index_sort(imapd_index, sortcrit, searchargs, usinguid);
+    snprintf(mytime, sizeof(mytime), ""%2.3f"",
+	     (clock() - start) / (double) CLOCKS_PER_SEC);
+    prot_printf(imapd_out, ""%s OK %s (%d msgs in %s secs)\r\n"", tag,
+		error_message(IMAP_OK_COMPLETED), n, mytime);
+
+    freesortcrit(sortcrit);
+    freesearchargs(searchargs);
+    return;
+}",TRUE,CWE_120
+19,19,19_vdisc.c,"FileTail (const char *fileName, char **tail)
+{
+   const char *ptr;     /* A pointer to last \ or // in fileName. */
+
+   myAssert (fileName != NULL);
+   myAssert (sizeof (char) == 1);
+
+   ptr = strrchr (fileName, '/');
+   if (ptr == NULL) {
+      ptr = strrchr (fileName, '\\');
+      if (ptr == NULL) {
+         ptr = fileName;
+      } else {
+         ptr++;
+      }
+   } else {
+      ptr++;
+   }
+   *tail = (char *) malloc (strlen (ptr) + 1);
+   strcpy (*tail, ptr);
+}",TRUE,CWE_120
+20,20,20_vdisc.c,"vpnc_getline(char **lineptr, size_t *n, FILE *stream)
+{
+	char *buf;
+	size_t buflen, llen = 0;
+	int c, buf_allocated = 0;
+
+	if (lineptr == NULL || n == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	buf = *lineptr;
+	buflen = *n;
+	if (buf == NULL || buflen == 0) {
+		buflen = GETLINE_MAX_BUFLEN;
+		buf = (char *)malloc(buflen);
+		if (buf == NULL)
+			return -1;
+		buf_allocated = 1;
+	}
+
+	/* Read a line from the input */
+	while (llen < buflen - 1) {
+		c = fgetc(stream);
+		if (c == EOF || feof(stream)) {
+			if (llen == 0)
+				goto eof_or_ceot;
+			else
+				break;
+		}
+		if (llen == 0 && c == CEOT)
+			goto eof_or_ceot;
+		if (c == '\n' || c == '\r')
+			break;
+		buf[llen++] = (char) c;
+	}
+
+	buf[llen] = 0;
+	if (buf_allocated) {
+		*lineptr = buf;
+		*n = buflen;
+	}
+	return llen;
+
+eof_or_ceot:
+	if (buf_allocated)
+		free(buf);
+	return -1;
+}",TRUE,CWE_120
+21,21,21_vdisc.c,"gf_cmx_copy(GF_ColorMatrix *_this, GF_ColorMatrix *from)
+{
+	if (!_this || !from) return;
+	memcpy(_this->m, from->m, sizeof(Fixed)*20);
+	gf_cmx_identity(_this);
+}",FALSE,CWE_120
+22,22,22_vdisc.c,"walloc(PERSON *pn)
+{
+	register WHERE *w;
+
+	if ((w = (WHERE *)malloc((u_int) sizeof(WHERE))) == NULL) {
+		eprintf(""finger: Out of space.\n"");
+		exit(1);
+	}
+	if (pn->whead == NULL)
+		pn->whead = pn->wtail = w;
+	else {
+		pn->wtail->next = w;
+		pn->wtail = w;
+	}
+	w->next = NULL;
+	return(w);
+}",FALSE,CWE_120
+23,23,23_vdisc.c,"_ecore_con_socks_svr_init_v4(Ecore_Con_Server *svr, Ecore_Con_Socks_v4 *v4)
+{
+   size_t addrlen, buflen, ulen = 1;
+   unsigned char *sbuf;
+
+   addrlen = v4->lookup ? strlen(svr->name) + 1 : 0;
+   if (v4->username) ulen += v4->ulen;
+   buflen = sizeof(char) * (8  + ulen + addrlen);
+   sbuf = malloc(buflen);
+   if (!sbuf)
+     {
+        ecore_con_event_server_error(svr, ""Memory allocation failure!"");
+        _ecore_con_server_kill(svr);
+        return EINA_FALSE;
+     }
+   /* http://en.wikipedia.org/wiki/SOCKS */
+   sbuf[0] = 4;
+   sbuf[1] = v4->bind ? 2 : 1;
+   sbuf[2] = svr->port >> 8;
+   sbuf[3] = svr->port & 0xff;
+   if (addrlen)
+     {
+        sbuf[4] = sbuf[5] = sbuf[6] = 0;
+        sbuf[7] = 1;
+     }
+   else
+     /* SOCKSv4 only handles IPV4, so addrlen is always 4 */
+     memcpy(sbuf + 4, svr->ecs_addr, 4);
+   if (v4->username)
+     memcpy(sbuf + 8, v4->username, ulen);
+   else
+     sbuf[8] = 0;
+   if (addrlen) memcpy(sbuf + 8 + ulen, svr->name, addrlen);
+
+   svr->ecs_buf = eina_binbuf_manage_new_length(sbuf, buflen);
+   return EINA_TRUE;
+}",FALSE,CWE_120
+24,24,24_vdisc.c,"countgetchar(void)
+{
+  int c=getchar();
+  if(cgcpushback) {cgcpushback=0; return c;}
+  cgccol++;
+  if(c=='\n') {cgccol=0; cgcrow++;}
+  return c;
+}",FALSE,CWE_120
+25,25,25_vdisc.c,"delete_eattr_entry(struct gfs2_inode *ip, struct gfs2_buffer_head *leaf_bh,
+		       struct gfs2_ea_header *ea_hdr,
+		       struct gfs2_ea_header *ea_hdr_prev, void *private)
+{
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	char ea_name[256];
+	uint32_t avail_size;
+	int max_ptrs;
+
+	if (!ea_hdr->ea_name_len){
+		/* Skip this entry for now */
+		return 1;
+	}
+
+	memset(ea_name, 0, sizeof(ea_name));
+	strncpy(ea_name, (char *)ea_hdr + sizeof(struct gfs2_ea_header),
+		ea_hdr->ea_name_len);
+
+	if (!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
+	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
+		/* Skip invalid entry */
+		return 1;
+	}
+
+	if (!ea_hdr->ea_num_ptrs)
+		return 0;
+
+	avail_size = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
+	max_ptrs = (be32_to_cpu(ea_hdr->ea_data_len) + avail_size - 1) /
+		avail_size;
+
+	if (max_ptrs > ea_hdr->ea_num_ptrs)
+		return 1;
+
+	log_debug( _(""  Pointers Required: %d\n  Pointers Reported: %d\n""),
+		   max_ptrs, ea_hdr->ea_num_ptrs);
+
+	return 0;
+}",FALSE,CWE_120
+26,26,26_vdisc.c,"UpdateRNG(void)
+{
+    char           randbuf[RAND_BUF_SIZE];
+    int            fd,  count;
+    int            c;
+    int            rv		= 0;
+#ifdef XP_UNIX
+    cc_t           orig_cc_min;
+    cc_t           orig_cc_time;
+    tcflag_t       orig_lflag;
+    struct termios tio;
+#endif
+    char meter[] = { 
+      ""\r|                                                            |"" };
+
+#define FPS fprintf(stderr, 
+    FPS ""\n"");
+    FPS ""A random seed must be generated that will be used in the\n"");
+    FPS ""creation of your key.  One of the easiest ways to create a\n"");
+    FPS ""random seed is to use the timing of keystrokes on a keyboard.\n"");
+    FPS ""\n"");
+    FPS ""To begin, type keys on the keyboard until this progress meter\n"");
+    FPS ""is full.  DO NOT USE THE AUTOREPEAT FUNCTION ON YOUR KEYBOARD!\n"");
+    FPS ""\n"");
+    FPS ""\n"");
+    FPS ""Continue typing until the progress meter is full:\n\n"");
+    FPS ""%s"", meter);
+    FPS ""\r|"");
+
+    /* turn off echo on stdin & return on 1 char instead of NL */
+    fd = fileno(stdin);
+
+#if defined(XP_UNIX)
+    tcgetattr(fd, &tio);
+    orig_lflag = tio.c_lflag;
+    orig_cc_min = tio.c_cc[VMIN];
+    orig_cc_time = tio.c_cc[VTIME];
+    tio.c_lflag &= ~ECHO;
+    tio.c_lflag &= ~ICANON;
+    tio.c_cc[VMIN] = 1;
+    tio.c_cc[VTIME] = 0;
+    tcsetattr(fd, TCSAFLUSH, &tio);
+#endif
+
+    /* Get random noise from keyboard strokes */
+    count = 0;
+    while (count < sizeof randbuf) {
+#if defined(XP_UNIX)
+	c = getc(stdin);
+#else
+	c = getch();
+#endif
+	if (c == EOF) {
+	    rv = -1;
+	    break;
+	}
+	randbuf[count] = c;
+	if (count == 0 || c != randbuf[count-1]) {
+	    count++;
+	    FPS ""*"");
+	}
+    }
+    PK11_RandomUpdate(randbuf, sizeof randbuf);
+    memset(randbuf, 0, sizeof randbuf);
+
+    FPS ""\n\n"");
+    FPS ""Finished.  Press enter to continue: "");
+    while ((c = getc(stdin)) != '\n' && c != EOF)
+	;
+    if (c == EOF) 
+	rv = -1;
+    FPS ""\n"");
+
+#undef FPS
+
+#if defined(XP_UNIX)
+    /* set back termio the way it was */
+    tio.c_lflag = orig_lflag;
+    tio.c_cc[VMIN] = orig_cc_min;
+    tio.c_cc[VTIME] = orig_cc_time;
+    tcsetattr(fd, TCSAFLUSH, &tio);
+#endif
+    return rv;
+}",TRUE,CWE_120
+27,27,27_vdisc.c,"show_registers(struct device *d, struct device_attribute *attr,
+			      char *buf)
+{
+	int i;
+	struct ipw2100_priv *priv = dev_get_drvdata(d);
+	struct net_device *dev = priv->net_dev;
+	char *out = buf;
+	u32 val = 0;
+
+	out += sprintf(out, ""%30s [Address ] : Hex\n"", ""Register"");
+
+	for (i = 0; i < ARRAY_SIZE(hw_data); i++) {
+		read_register(dev, hw_data[i].addr, &val);
+		out += sprintf(out, ""%30s [%08X] : %08X\n"",
+			       hw_data[i].name, hw_data[i].addr, val);
+	}
+
+	return out - buf;
+}",TRUE,CWE_120
+28,28,28_vdisc.c,"Csec_client_setAuthorizationId(Csec_context_t *ctx, const char *mech, const char *principal) {
+  char *func = ""Csec_client_setAuthorizationId"";
+  SAVE_ERR;
+
+  Csec_clear_errmsg();
+  Csec_trace(func, ""Entering\n"");
+
+  /* Checking ths status of the context */
+  if (ctx == NULL) {
+    serrno = EINVAL;
+    Csec_errmsg(func, ""Context is NULL"");
+    return -1;
+  }
+    
+  if (!(ctx->flags& CSEC_CTX_INITIALIZED)) {
+    serrno = ESEC_CTX_NOT_INITIALIZED;
+    return -1;
+  }
+
+  if (!Csec_context_is_client(ctx)) {
+    serrno = EINVAL;
+    Csec_errmsg(func, ""Not a client context"");
+    return -1;
+  }
+
+  /* Sanity check - complain if we already have an established security context */
+  if (ctx->flags& CSEC_CTX_CONTEXT_ESTABLISHED) {
+    serrno = EINVAL;
+    Csec_errmsg(func, ""A security context has already been established"");
+    return -1;
+  }
+
+  if (mech==NULL || strlen(mech) > CA_MAXCSECPROTOLEN) {
+    serrno = EINVAL;
+    Csec_errmsg(func, ""Supplied mech name is invalid"");
+    return -1;
+  }
+
+  if (principal==NULL || strlen(principal) > CA_MAXCSECNAMELEN) {
+    serrno = EINVAL;
+    Csec_errmsg(func, ""Supplied principal is invalid"");
+    return -1;
+  }
+
+  strncpy(ctx->client_authorization_mech, mech, CA_MAXCSECPROTOLEN);
+  ctx->client_authorization_mech[CA_MAXCSECPROTOLEN] = '\0';
+
+  strncpy(ctx->client_authorization_id, principal, CA_MAXCSECNAMELEN);
+  ctx->client_authorization_id[CA_MAXCSECNAMELEN] = '\0';
+
+  ctx->flags |= CSEC_CTX_AUTHID_AVAIL;
+
+  Csec_trace(func, ""Set to: %s %s\n"",ctx->client_authorization_mech, ctx->client_authorization_id);
+
+  RESTORE_ERR(0);
+  return 0;
+}",TRUE,CWE_120
+29,29,29_vdisc.c,"newsnntp_quit(newsnntp * f)
+{
+  char command[NNTP_STRING_SIZE];
+  char * response;
+  int r;
+  int res;
+
+  if (f->nntp_stream == NULL)
+    return NEWSNNTP_ERROR_BAD_STATE;
+
+  snprintf(command, NNTP_STRING_SIZE, ""QUIT\r\n"");
+  r = send_command(f, command);
+  if (r == -1) {
+    res = NEWSNNTP_ERROR_STREAM;
+    goto close;
+  }
+  
+  response = read_line(f);
+  if (response == NULL) {
+    res = NEWSNNTP_ERROR_STREAM;
+    goto close;
+  }
+
+  parse_response(f, response);
+
+  res = NEWSNNTP_NO_ERROR;
+
+ close:
+
+  mailstream_close(f->nntp_stream);
+
+  f->nntp_stream = NULL;
+  
+  return res;
+}",TRUE,CWE_120
+30,30,30_vdisc.c,"gedit_document_input_stream_read (GInputStream  *stream,
+				  void          *buffer,
+				  gsize          count,
+				  GCancellable  *cancellable,
+				  GError       **error)
+{
+	GeditDocumentInputStream *dstream;
+	GtkTextIter iter;
+	gssize space_left, read, n;
+
+	dstream = GEDIT_DOCUMENT_INPUT_STREAM (stream);
+
+	if (count < 6)
+	{
+		g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NO_SPACE,
+				     ""Not enougth space in destination"");
+		return -1;
+	}
+
+	if (g_cancellable_set_error_if_cancelled (cancellable, error))
+		return -1;
+
+	/* Initialize the mark to the first char in the text buffer */
+	if (!dstream->priv->is_initialized)
+	{
+		gtk_text_buffer_get_start_iter (dstream->priv->buffer, &iter);
+		dstream->priv->pos = gtk_text_buffer_create_mark (dstream->priv->buffer,
+								  NULL,
+								  &iter,
+								  FALSE);
+
+		dstream->priv->is_initialized = TRUE;
+	}
+
+	space_left = count;
+	read = 0;
+
+	do
+	{
+		n = read_line (dstream, (gchar *)buffer + read, space_left);
+		read += n;
+		space_left -= n;
+	} while (space_left > 0 && n != 0 && dstream->priv->bytes_partial == 0);
+
+	/* Make sure that non-empty files are always terminated with \n (see bug #95676).
+	 * Note that we strip the trailing \n when loading the file */
+	gtk_text_buffer_get_iter_at_mark (dstream->priv->buffer,
+					  &iter,
+					  dstream->priv->pos);
+
+	if (gtk_text_iter_is_end (&iter) &&
+	    !gtk_text_iter_is_start (&iter) &&
+	    dstream->priv->ensure_trailing_newline)
+	{
+		gssize newline_size;
+
+		newline_size = get_new_line_size (dstream);
+
+		if (space_left >= newline_size &&
+		    !dstream->priv->newline_added)
+		{
+			const gchar *newline;
+
+			newline = get_new_line (dstream);
+
+			memcpy ((gchar *)buffer + read, newline, newline_size);
+
+			read += newline_size;
+			dstream->priv->newline_added = TRUE;
+		}
+	}
+
+	return read;
+}",FALSE,CWE_120
+31,31,31_vdisc.c,"eb_bind_appendix(EB_Appendix *appendix, const char *path)
+{
+    EB_Error_Code error_code;
+    char temporary_path[EB_MAX_PATH_LENGTH + 1];
+    int is_ebnet;
+
+    eb_lock(&appendix->lock);
+    LOG((""in: eb_bind_appendix(path=%s)"", path));
+
+    /*
+     * Reset structure members in the appendix.
+     */
+    if (appendix->path != NULL) {
+	eb_finalize_appendix(appendix);
+	eb_initialize_appendix(appendix);
+    }
+
+    /*
+     * Assign a book code.
+     */
+    pthread_mutex_lock(&appendix_counter_mutex);
+    appendix->code = appendix_counter++;
+    pthread_mutex_unlock(&appendix_counter_mutex);
+
+    /*
+     * Check whether `path' is URL.
+     */
+    is_ebnet = is_ebnet_url(path);
+#ifndef ENABLE_EBNET
+    if (is_ebnet) {
+	error_code = EB_ERR_EBNET_UNSUPPORTED;
+	goto failed;
+    }
+#endif
+
+    /*
+     * Set path of the appendix.
+     * The length of the file name ""path/subdir/subsubdir/file.;1"" must
+     * be EB_MAX_PATH_LENGTH maximum.
+     */
+    if (EB_MAX_PATH_LENGTH < strlen(path)) {
+	error_code = EB_ERR_TOO_LONG_FILE_NAME;
+	goto failed;
+    }
+    strcpy(temporary_path, path);
+#ifdef ENABLE_EBNET
+    if (is_ebnet)
+	error_code = ebnet_canonicalize_url(temporary_path);
+    else
+	error_code = eb_canonicalize_path_name(temporary_path);
+#else
+    error_code = eb_canonicalize_path_name(temporary_path);
+#endif
+    if (error_code != EB_SUCCESS)
+	goto failed;
+    appendix->path_length = strlen(temporary_path);
+
+    if (EB_MAX_PATH_LENGTH
+	< appendix->path_length + 1 + EB_MAX_RELATIVE_PATH_LENGTH) {
+	error_code = EB_ERR_TOO_LONG_FILE_NAME;
+	goto failed;
+    }
+
+    appendix->path = (char *)malloc(appendix->path_length + 1);
+    if (appendix->path == NULL) {
+	error_code = EB_ERR_MEMORY_EXHAUSTED;
+	goto failed;
+    }
+    strcpy(appendix->path, temporary_path);
+
+    /*
+     * Establish a connection with a ebnet server.
+     */
+#ifdef ENABLE_EBNET
+    if (is_ebnet) {
+	error_code = ebnet_bind_appendix(appendix, appendix->path);
+	if (error_code != EB_SUCCESS)
+	    goto failed;
+    }
+#endif
+
+    /*
+     * Read information from the catalog file.
+     */
+    error_code = eb_load_appendix_catalog(appendix);
+    if (error_code != EB_SUCCESS)
+	goto failed;
+
+    LOG((""out: eb_bind_appendix(appendix=%d) = %s"", (int)appendix->code,
+	eb_error_string(EB_SUCCESS)));
+    eb_unlock(&appendix->lock);
+
+    return EB_SUCCESS;
+
+    /*
+     * An error occurs...
+     */
+  failed:
+    eb_finalize_appendix(appendix);
+    LOG((""out: eb_bind_appendix() = %s"", eb_error_string(error_code)));
+    eb_unlock(&appendix->lock);
+    return error_code;
+}",FALSE,CWE_120
+32,32,32_vdisc.c,"set_kernel_filter(pcap_t *handle, struct sock_fprog *fcode)
+{
+	int total_filter_on = 0;
+	int save_mode;
+	int ret;
+	int save_errno;
+
+	/*
+	 * The socket filter code doesn't discard all packets queued
+	 * up on the socket when the filter is changed; this means
+	 * that packets that don't match the new filter may show up
+	 * after the new filter is put onto the socket, if those
+	 * packets haven't yet been read.
+	 *
+	 * This means, for example, that if you do a tcpdump capture
+	 * with a filter, the first few packets in the capture might
+	 * be packets that wouldn't have passed the filter.
+	 *
+	 * We therefore discard all packets queued up on the socket
+	 * when setting a kernel filter.  (This isn't an issue for
+	 * userland filters, as the userland filtering is done after
+	 * packets are queued up.)
+	 *
+	 * To flush those packets, we put the socket in read-only mode,
+	 * and read packets from the socket until there are no more to
+	 * read.
+	 *
+	 * In order to keep that from being an infinite loop - i.e.,
+	 * to keep more packets from arriving while we're draining
+	 * the queue - we put the ""total filter"", which is a filter
+	 * that rejects all packets, onto the socket before draining
+	 * the queue.
+	 *
+	 * This code deliberately ignores any errors, so that you may
+	 * get bogus packets if an error occurs, rather than having
+	 * the filtering done in userland even if it could have been
+	 * done in the kernel.
+	 */
+	if (setsockopt(handle->fd, SOL_SOCKET, SO_ATTACH_FILTER,
+		       &total_fcode, sizeof(total_fcode)) == 0) {
+		char drain[1];
+
+		/*
+		 * Note that we've put the total filter onto the socket.
+		 */
+		total_filter_on = 1;
+
+		/*
+		 * Save the socket's current mode, and put it in
+		 * non-blocking mode; we drain it by reading packets
+		 * until we get an error (which is normally a
+		 * ""nothing more to be read"" error).
+		 */
+		save_mode = fcntl(handle->fd, F_GETFL, 0);
+		if (save_mode != -1 &&
+		    fcntl(handle->fd, F_SETFL, save_mode | O_NONBLOCK) >= 0) {
+			while (recv(handle->fd, &drain, sizeof drain,
+			       MSG_TRUNC) >= 0)
+				;
+			save_errno = errno;
+			fcntl(handle->fd, F_SETFL, save_mode);
+			if (save_errno != EAGAIN) {
+				/* Fatal error */
+				reset_kernel_filter(handle);
+				snprintf(handle->errbuf, PCAP_ERRBUF_SIZE,
+				 ""recv: %s"", pcap_strerror(save_errno));
+				return -2;
+			}
+		}
+	}
+
+	/*
+	 * Now attach the new filter.
+	 */
+	ret = setsockopt(handle->fd, SOL_SOCKET, SO_ATTACH_FILTER,
+			 fcode, sizeof(*fcode));
+	if (ret == -1 && total_filter_on) {
+		/*
+		 * Well, we couldn't set that filter on the socket,
+		 * but we could set the total filter on the socket.
+		 *
+		 * This could, for example, mean that the filter was
+		 * too big to put into the kernel, so we'll have to
+		 * filter in userland; in any case, we'll be doing
+		 * filtering in userland, so we need to remove the
+		 * total filter so we see packets.
+		 */
+		save_errno = errno;
+
+		/*
+		 * XXX - if this fails, we're really screwed;
+		 * we have the total filter on the socket,
+		 * and it won't come off.  What do we do then?
+		 */
+		reset_kernel_filter(handle);
+
+		errno = save_errno;
+	}
+	return ret;
+}",FALSE,CWE_120
+33,33,33_vdisc.c,"can_pay(object *pl) {
+    int unpaid_count = 0, i;
+    uint64 unpaid_price = 0;
+    uint64 player_wealth = query_money(pl);
+    uint32 coincount[NUM_COINS];
+
+    if (!pl || pl->type != PLAYER) {
+        LOG(llevError, ""can_pay(): called against something that isn't a player\n"");
+        return 0;
+    }
+
+    for (i = 0; i < NUM_COINS; i++)
+        coincount[i] = 0;
+
+    count_unpaid(pl, pl->inv, &unpaid_count, &unpaid_price, coincount);
+
+    if (unpaid_price > player_wealth) {
+        char buf[MAX_BUF], coinbuf[MAX_BUF];
+        int denominations = 0;
+        char *value = stringbuffer_finish(cost_string_from_value(unpaid_price, LARGEST_COIN_GIVEN, NULL));
+
+        snprintf(buf, sizeof(buf), ""You have %d unpaid items that would cost you %s, "", unpaid_count, value);
+        free(value);
+        for (i = 0; i < NUM_COINS; i++) {
+            if (coincount[i] > 0 && coins[i]) {
+                if (denominations == 0)
+                    snprintf(buf+strlen(buf), sizeof(buf)-strlen(buf), ""but you only have"");
+                denominations++;
+                snprintf(coinbuf, sizeof(coinbuf), "" %u %s,"", coincount[i], find_archetype(coins[i])->clone.name_pl);
+                snprintf(buf+strlen(buf), sizeof(buf)-strlen(buf), ""%s"", coinbuf);
+            }
+        }
+        if (denominations == 0)
+            snprintf(buf+strlen(buf), sizeof(buf)-strlen(buf), ""but you don't have any money."");
+        else if (denominations > 1)
+            make_list_like(buf);
+        draw_ext_info(NDI_UNIQUE, 0, pl, MSG_TYPE_SHOP,
+                      MSG_TYPE_SHOP_PAYMENT, buf);
+        return 0;
+    } else
+        return 1;
+}",FALSE,CWE_120
+34,34,34_vdisc.c,"readline(char usrbuf[])
+{
+  event_t event;
+  glk_request_line_event(glkMainWin, usrbuf, 255, 0);
+  /* FIXME: buffer size should be infallible: all existing calls use 256 or
+     80 character buffers, except parse which uses LISTLEN (currently 100)
+   */
+  do
+  {
+    glk_select(&event);
+    if (evtype_Arrange == event.type)
+      statusline();
+  } while (event.type != evtype_LineInput);
+  usrbuf[event.val1] = 0;
+  return TRUE;
+}",FALSE,CWE_120
+35,35,35_vdisc.c,"gst_tag_list_from_exif_buffer_with_tiff_header (GstBuffer * buffer)
+{
+  GstByteReader reader;
+  guint16 fortytwo = 42;
+  guint16 endianness = 0;
+  guint32 offset;
+  GstTagList *taglist = NULL;
+  GstBuffer *subbuffer;
+  GstMapInfo info, sinfo;
+
+  gst_buffer_map (buffer, &info, GST_MAP_READ);
+
+  GST_LOG (""Parsing exif tags with tiff header of size %"" G_GSIZE_FORMAT,
+      info.size);
+
+  gst_byte_reader_init (&reader, info.data, info.size);
+
+  GST_LOG (""Parsing the tiff header"");
+  if (!gst_byte_reader_get_uint16_be (&reader, &endianness)) {
+    goto byte_reader_fail;
+  }
+
+  if (endianness == TIFF_LITTLE_ENDIAN) {
+    if (!gst_byte_reader_get_uint16_le (&reader, &fortytwo) ||
+        !gst_byte_reader_get_uint32_le (&reader, &offset))
+      goto byte_reader_fail;
+  } else if (endianness == TIFF_BIG_ENDIAN) {
+    if (!gst_byte_reader_get_uint16_be (&reader, &fortytwo) ||
+        !gst_byte_reader_get_uint32_be (&reader, &offset))
+      goto byte_reader_fail;
+  } else
+    goto invalid_endianness;
+
+  if (fortytwo != 42)
+    goto invalid_magic;
+
+  subbuffer = gst_buffer_new_and_alloc (info.size - (TIFF_HEADER_SIZE - 2));
+
+  gst_buffer_map (subbuffer, &sinfo, GST_MAP_WRITE);
+  memcpy (sinfo.data, info.data + TIFF_HEADER_SIZE,
+      info.size - TIFF_HEADER_SIZE);
+  gst_buffer_unmap (subbuffer, &sinfo);
+
+  taglist = gst_tag_list_from_exif_buffer (subbuffer,
+      endianness == TIFF_LITTLE_ENDIAN ? G_LITTLE_ENDIAN : G_BIG_ENDIAN, 8);
+
+  gst_buffer_unref (subbuffer);
+
+done:
+  gst_buffer_unmap (buffer, &info);
+
+  return taglist;
+
+byte_reader_fail:
+  {
+    GST_WARNING (""Failed to read values from buffer"");
+    goto done;
+  }
+invalid_endianness:
+  {
+    GST_WARNING (""Invalid endianness number %u"", endianness);
+    goto done;
+  }
+invalid_magic:
+  {
+    GST_WARNING (""Invalid magic number %u, should be 42"", fortytwo);
+    goto done;
+  }
+}",TRUE,CWE_120
+36,36,36_vdisc.c,"_e_fm2_device_check_desktop_icons_list_cb(const char *name, const char *path, void *data)
+{
+   char buf[PATH_MAX], buf2[PATH_MAX];
+   Eina_List *l;
+   char *file;
+
+   if (path[0] != '|') return; // not e17 link
+   if (!eina_str_has_extension(name, "".desktop"")) return;
+   snprintf(buf, sizeof(buf), ""%s/%s"", path, name);
+   if (ecore_file_size(buf) > 200) return; // unlikely that we're going to write a desktop file this long
+   e_user_dir_snprintf(buf2, sizeof(buf2), ""fileman/favorites/%s"", name);
+   if (!ecore_file_exists(buf2)) return;
+   EINA_LIST_FOREACH(data, l, file)
+     if (!strcmp(file, buf)) return; // valid link
+
+   ecore_file_unlink(buf);
+   ecore_file_unlink(buf2);
+}",TRUE,CWE_120
+37,37,37_vdisc.c,"fill_sprite(
+        int                             sprite_width,
+        int                             sprite_height,
+        int                             sprite_stride,
+        int                             sprite_index,
+        void                            *sprite_fb_ptr)
+{
+    __u32                           *pLinePat0,
+                                    *pLinePat1,
+                                    *pLinePtr;
+    int                             i,
+                                    line;
+    int                             stripe_width;
+
+    stripe_width = ((sprite_width > 64) &&
+                    (sprite_height > 64)) ? (sprite_index + 1) * 8 :
+                                            (sprite_index + 1) * 2;
+
+    // Note:  sprite_stride is in bytes.  pLinePat0 and pLinePat1
+    //        are both __u32 pointers
+    pLinePat0 = sprite_fb_ptr;
+    pLinePat1 = pLinePat0 + (stripe_width * (sprite_stride / sizeof(*pLinePat0)));
+
+    for (i = 0; i < sprite_width; i++) {
+        *(pLinePat0 + i) = ((i / stripe_width) & 0x1) ? 0 : ~0;
+        *(pLinePat1 + i) = ~(*(pLinePat0 + i));
+    }
+
+    for (line = 1; line < sprite_height; line++) {
+        if (line == stripe_width) {
+            continue;
+        }
+
+        pLinePtr = ((line / stripe_width) & 0x1) ? pLinePat1 : pLinePat0;
+        memcpy( pLinePat0 + ((sprite_stride / sizeof(*pLinePat0)) * line),
+                pLinePtr,
+                sprite_width * sizeof(*pLinePat0));
+    }
+
+    return;
+}",TRUE,CWE_120
+38,38,38_vdisc.c,"addarp(uchar* packet, int length)
+{
+    uchar bssid[6], smac[6], dmac[6];
+    uchar flip[4096];
+    int z=0, i=0;
+
+    if(packet == NULL)
+        return -1;
+
+    if(length != 68 && length != 86)
+        return -1;
+
+    z = ( ( packet[1] & 3 ) != 3 ) ? 24 : 30;
+
+    if(( packet[1] & 3 ) == 0)
+    {
+        memcpy( dmac, packet + 4, 6 );
+        memcpy( smac, packet + 10, 6 );
+        memcpy( bssid, packet + 16, 6 );
+    }
+    else
+    {
+        memcpy( dmac, packet + 4, 6 );
+        memcpy( bssid, packet + 10, 6 );
+        memcpy( smac, packet + 16, 6 );
+    }
+
+    if(memcmp(dmac, BROADCAST, 6) != 0)
+        return -1;
+
+    if(memcmp(bssid, opt.r_bssid, 6) != 0)
+        return -1;
+
+    if(opt.nb_arp >= opt.ringbuffer)
+        return -1;
+
+    memset(flip, 0, 4096);
+
+    flip[49-z-4] ^= ((rand() % 255)+1); //flip random bits in last byte of sender MAC
+    flip[53-z-4] ^= ((rand() % 255)+1); //flip random bits in last byte of sender IP
+
+    add_crc32_plain(flip, length-z-4-4);
+    for(i=0; i<length-z-4; i++)
+        (packet+z+4)[i] ^= flip[i];
+
+    arp[opt.nb_arp].buf = (uchar*) malloc(length);
+    arp[opt.nb_arp].len = length;
+    memcpy(arp[opt.nb_arp].buf, packet, length);
+    opt.nb_arp++;
+
+    if(opt.nb_arp == 1 && !opt.quiet)
+    {
+        PCT; printf(""Starting Caffe-Latte attack against %02X:%02X:%02X:%02X:%02X:%02X at %d pps.\n"",
+                smac[0],smac[1],smac[2],smac[3],smac[4],smac[5],opt.r_nbpps);
+    }
+
+    if(opt.verbose)
+    {
+        PCT; printf(""Added an ARP to the caffe-latte ringbuffer %d/%d\n"", opt.nb_arp, opt.ringbuffer);
+    }
+
+    return 0;
+}",TRUE,CWE_120
+39,39,39_vdisc.c,"setuptipf(long m, tree *t)
+{
+  /* initialize branch lengths and views in a tip */
+  long i=0;
+  intvector n=(long *)Malloc(spp * sizeof(long)); 
+  node *WITH;
+
+  WITH = t->nodep[m - 1];
+  memcpy(WITH->d, x[m - 1], (nonodes2 * sizeof(double)));
+  memcpy(n, reps[m - 1], (spp * sizeof(long)));
+  for (i = 0; i < spp; i++) {
+    if (i + 1 != m && n[i] > 0) {
+      if (WITH->d[i] < epsilonf)
+        WITH->d[i] = epsilonf;
+      WITH->w[i] = n[i] / exp(power * log(WITH->d[i]));
+    } else {
+      WITH->w[i] = 0.0;
+      WITH->d[i] = 0.0;
+    }
+  }
+  for (i = spp; i < nonodes2; i++) {
+    WITH->w[i] = 1.0;
+    WITH->d[i] = 0.0;
+  }
+  WITH->index = m;
+  if (WITH->iter) WITH->v = 0.0;
+  free(n);
+}",TRUE,CWE_120
+40,40,40_vdisc.c,"static_grab_objects (int *box, gamgi_enum class,
+gamgi_window *window)
+{
+GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable (window->area);
+GdkGLContext *glcontext = gtk_widget_get_gl_context (window->area);
+gamgi_object **objects;
+int *levels;
+int width, height;
+gamgi_object *object;
+gamgi_slist *slist_old, *slist_new;
+int number;
+int level;
+
+/*************************************
+ * count number of candidate objects *
+ *************************************/
+
+number = 0;
+gamgi_engine_count_window (window, class, &number);
+if (number == 0) return NULL;
+
+/****************************************************************
+ * 1) allocate array to store candidate objects addresses       *
+ * 2) allocate array to store candidate objects scanning levels *
+ ****************************************************************/
+
+objects = (gamgi_object **) malloc (number * sizeof (object));
+if (objects == NULL) return NULL;
+
+levels = (int *) malloc (number * sizeof (int));
+if (levels == NULL) return NULL;
+for (level = 0; level < number; level++) levels[level] = 0;
+
+/***********************************************
+ * render objects sucessively until no more    *
+ * objects can be found in selection rectangle *
+ ***********************************************/
+
+width = box[2] - box[0] + 1;
+height = box[3] - box[1] + 1;
+slist_new = NULL;
+level = 0;
+
+do
+  {
+  level++;
+  slist_old = slist_new;
+
+  /***********************************************************
+   * 3D code: draw candidate objects in back buffer, each    *
+   * one with a different color, store their addresses in    *
+   * objects and the scans when they were selected in levels *
+   *                                                         *
+   * when an object is selected, it stops being rendered, so *
+   * objects hidden below can be selected in the next scans  *
+   ***********************************************************/
+         
+  if (gdk_gl_drawable_gl_begin (gldrawable, glcontext) == TRUE)
+    {      
+    static_start ();
+    gamgi_mesa_grab_window (window, class, level, -1, objects, levels);
+    gdk_gl_drawable_gl_end (gldrawable);
+    }
+
+  /***********************************************************
+   * 2D code: read the selection rectangle and analyse each  *
+   * pixel to find all the rendered objects inside. Build    *
+   * a list with all the objects found in the various scans. *
+   ***********************************************************/
+
+  slist_new = static_grab_pixels (box[0], box[1],
+  width, height, objects, levels, level, slist_old);
+  } while (slist_new != slist_old);
+
+/******************
+ * free resources *
+ ******************/
+
+free (objects);
+free (levels);
+
+return slist_new;
+}",TRUE,CWE_120
+41,41,41_vdisc.c,"v5PutSin(const struct sockaddr_in *sin, int sinLen, v5HeadType *reply)
+{
+    reply->atyp=ATYP_V4;		/* in case of errors */
+    switch (sin->sin_family) {
+	default:
+	    reply->cmd=SOCKS5_GENFAIL;
+	    /* fall through */
+	case AF_INET:
+	    memcpy(reply->destAddr,&sin->sin_addr,4);
+	    memcpy(reply->destAddr+4,&sin->sin_port,sizeof(sin->sin_port));
+	    return 4+sizeof(sin->sin_port);
+#ifdef AF_INET6
+	case AF_INET6:
+	    reply->atyp=ATYP_V6;
+	    memcpy(reply->destAddr,&sin->sin_addr,16);
+	    memcpy(reply->destAddr+16,&sin->sin_port,sizeof(sin->sin_port));
+	    return 16+sizeof(sin->sin_port);
+#endif
+    }
+}",TRUE,CWE_120
+42,42,42_vdisc.c,"send_charset_update(struct unistimsession *pte, int charset)
+{
+	const unsigned char* packet_send_charset;
+	int packet_size;
+	BUFFSEND;
+	if (unistimdebug) {
+		ast_verb(0, ""Sending set default charset\n"");
+	}
+	if (charset == LANG_DEFAULT) {
+		charset = options_languages[find_language(pte->device->language)].encoding;
+	}
+	switch (charset) {
+	case ISO_8859_2:
+		packet_send_charset = packet_send_charset_iso_8859_2;
+		packet_size = sizeof(packet_send_charset_iso_8859_2);
+		break;
+	case ISO_8859_4:
+		packet_send_charset = packet_send_charset_iso_8859_4;
+		packet_size = sizeof(packet_send_charset_iso_8859_4);
+		break;
+	case ISO_8859_5:
+		packet_send_charset = packet_send_charset_iso_8859_5;
+		packet_size = sizeof(packet_send_charset_iso_8859_5);
+		break;
+	case ISO_2022_JP:
+		packet_send_charset = packet_send_charset_iso_2022_jp;
+		packet_size = sizeof(packet_send_charset_iso_2022_jp);
+		break;
+	case ISO_8859_1:
+	default:
+		packet_send_charset = packet_send_charset_iso_8859_1;
+		packet_size = sizeof(packet_send_charset_iso_8859_1);
+	}
+	memcpy(buffsend + SIZE_HEADER, packet_send_charset, packet_size);
+	send_client(SIZE_HEADER + packet_size, buffsend, pte);
+	return;
+}",FALSE,CWE_120
+43,43,43_vdisc.c,"GUI_seek_down(SDL_Surface *gui, int *start_x, int *start_y, byte neutral_color,char * section)
+{
+  byte color;
+  int y;
+  y=*start_y;
+  *start_x=0;
+  do
+  {
+    color=Get_SDL_pixel_8(gui,*start_x,y);
+    if (color!=neutral_color)
+    {
+      *start_y=y;
+      return 0;
+    }
+    y++;
+  } while (y<gui->h);
+  
+  sprintf(Gui_loading_error_message, ""Error in skin file: Was looking down from %d,%d for a '%s', and reached the end of the image\n"",
+    *start_x, *start_y, section);
+  return 1;
+}",FALSE,CWE_120
+44,44,44_vdisc.c,"dGeomSetBody (dxGeom *g, dxBody *b)
+{
+  dAASSERT (g);
+  dUASSERT (b == NULL || (g->gflags & GEOM_PLACEABLE),""geom must be placeable"");
+  CHECK_NOT_LOCKED (g->parent_space);
+
+  if (b) {
+    if (!g->body) dFreePosr(g->final_posr);
+    if (g->body != b) {
+      if (g->offset_posr) {
+        dFreePosr(g->offset_posr);
+        g->offset_posr = 0;
+      }
+      g->final_posr = &b->posr;
+      g->bodyRemove();
+      g->bodyAdd (b);
+    }
+    dGeomMoved (g);
+  }
+  else {
+    if (g->body) {
+      if (g->offset_posr)
+      {
+        // if we're offset, we already have our own final position, make sure its updated
+        g->recomputePosr();
+        dFreePosr(g->offset_posr);
+        g->offset_posr = 0;
+      }
+      else
+      {
+        g->final_posr = dAllocPosr();
+        memcpy (g->final_posr->pos,g->body->posr.pos,sizeof(dVector3));
+        memcpy (g->final_posr->R,g->body->posr.R,sizeof(dMatrix3));
+      }
+      g->bodyRemove();
+    }
+    // dGeomMoved() should not be called if the body is being set to 0, as the
+    // new position of the geom is set to the old position of the body, so the
+    // effective position of the geom remains unchanged.
+  }
+}",FALSE,CWE_120
+45,45,45_vdisc.c,"clear_krb5_ccache()
+{
+    krb5_context ctx = NULL;
+    krb5_ccache cc = NULL;
+    int rc = 0;
+
+    PR_Lock(krb5_lock);
+
+    /* initialize the kerberos context */
+    if ((rc = krb5_init_context(&ctx))) {
+        slapi_log_error(SLAPI_LOG_FATAL, ""clear_krb5_ccache"", ""Could not initialize kerberos context: %d (%s)\n"",
+                        rc, error_message(rc));
+        goto done;
+    }
+    /* get the default ccache */
+    if ((rc = krb5_cc_default(ctx, &cc))) {
+        slapi_log_error(SLAPI_LOG_FATAL, ""clear_krb5_ccache"", ""Could not get default kerberos ccache: %d (%s)\n"",
+                        rc, error_message(rc));
+        goto done;
+    }
+    /* destroy the ccache */
+    if((rc = krb5_cc_destroy(ctx, cc))){
+        slapi_log_error(SLAPI_LOG_FATAL, ""clear_krb5_ccache"", ""Could not destroy kerberos ccache: %d (%s)\n"",
+                        rc, error_message(rc));
+    } else {
+        slapi_log_error(SLAPI_LOG_TRACE,""clear_krb5_ccache"", ""Successfully cleared kerberos ccache\n"");
+    }
+
+done:
+    if(ctx){
+        krb5_free_context(ctx);
+    }
+
+    PR_Unlock(krb5_lock);
+}",FALSE,CWE_120
+46,46,46_vdisc.c,"rle_expand_block(COMP_CTX *ctx, unsigned char *out,
+	     unsigned int olen, unsigned char *in, unsigned int ilen)
+	{
+	int i;
+
+	if (olen < (ilen-1))
+		{
+		/* ZZZZZZZZZZZZZZZZZZZZZZ */
+		return(-1);
+		}
+
+	i= *(in++);
+	if (i == 0)
+		{
+		memcpy(out,in,ilen-1);
+		}
+	return(ilen-1);
+	}",FALSE,CWE_120
+47,47,47_vdisc.c,"memorybuffer_cut_rawmessage(SMSCenter *smsc, char *buff, int length)
+{
+
+    char *stx, *etx;
+    int size_of_cut_piece;
+    int size_of_the_rest;
+
+    /* We don't check for NULLs since we're sure that nobody has fooled
+       around with smsc->buffer since has_rawmessage was last called... */
+
+    stx = memchr(smsc->buffer, '\2', smsc->buflen);
+    etx = memchr(smsc->buffer, '\3', smsc->buflen);
+
+    if (*(etx + 1) == 'X')	/* secondary! UGLY KLUDGE */
+        etx++;
+
+    size_of_cut_piece = (etx - stx) + 1;
+    size_of_the_rest = (smsc->buflen - size_of_cut_piece);
+
+    if (length < size_of_cut_piece) {
+        error(0, ""the buffer you provided for cutting was too small"");
+        return -1;
+    }
+
+    /* move the part before our magic rawmessage to the safe house */
+    memcpy(buff, stx, size_of_cut_piece);
+    buff[size_of_cut_piece] = '\0'; 	/* NULL-terminate */
+
+    /* move the stuff in membuffer one step down */
+    memmove(stx, etx + 1, (smsc->buffer + smsc->bufsize) - stx );
+
+    smsc->buflen -= size_of_cut_piece;
+
+    return 0;
+
+}",TRUE,CWE_120
+48,48,48_vdisc.c,"tar_extract_dir(TAR *t, char *realname)
+{
+  mode_t mode;
+  char *filename;
+  char buf[T_BLOCKSIZE];
+  char *pathname = 0;
+  size_t len = 0;
+
+  if (!TH_ISDIR(t))
+  {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (realname)
+    {
+    filename = realname;
+    }
+  else
+    {
+    pathname = th_get_pathname(t);
+    filename = pathname;
+    }
+  mode = th_get_mode(t);
+
+  /* Make a copy of the string because dirname and mkdirhier may modify the
+   * string */
+  strncpy(buf, filename, sizeof(buf)-1);
+  buf[sizeof(buf)-1] = 0;
+
+  if (mkdirhier(dirname(buf)) == -1)
+    {
+    if (pathname)
+      {
+      free(pathname);
+      }
+    return -1;
+    }
+
+    /* Strip trailing '/'...it confuses some Unixes (and BeOS)... */
+    strncpy(buf, filename, sizeof(buf)-1);
+    buf[sizeof(buf)-1] = 0;
+    len = strlen(buf);
+    if ((len > 0) && (buf[len-1] == '/'))
+      {
+      buf[len-1] = '\0';
+      }
+
+#ifdef DEBUG
+  printf(""  ==> extracting: %s (mode %04o, directory)\n"", filename,
+         mode);
+#endif
+#ifdef WIN32
+  if (mkdir(buf) == -1)
+#else
+  if (mkdir(buf, mode & 07777) == -1)
+#endif
+  {
+#ifdef __BORLANDC__
+  /* There is a bug in the Borland Run time library which makes MKDIR
+     return EACCES when it should return EEXIST
+     if it is some other error besides directory exists
+     then return false */
+    if ( errno == EACCES) 
+    {
+      errno = EEXIST;
+    }
+#endif      
+    if (errno == EEXIST)
+    {
+      if (chmod(filename, mode & 07777) == -1)
+      {
+#ifdef DEBUG
+        perror(""chmod()"");
+#endif
+        if (pathname)
+          {
+          free(pathname);
+          }
+        return -1;
+      }
+      else
+      {
+#ifdef DEBUG
+        puts(""  *** using existing directory"");
+#endif
+        if (pathname)
+          {
+          free(pathname);
+          }
+        return 1;
+      }
+    }
+    else
+    {
+#ifdef DEBUG
+      perror(""mkdir()"");
+#endif
+      if (pathname)
+        {
+        free(pathname);
+        }
+      return -1;
+    }
+  }
+
+  if (pathname)
+    {
+    free(pathname);
+    }
+  return 0;
+}",TRUE,CWE_120
+49,49,49_vdisc.c,"sendto_match_butone(struct Client *one, struct Client *source_p,
+		    const char *mask, int what, const char *pattern, ...)
+{
+	static char buf[BUFSIZE];
+	va_list args;
+	struct Client *target_p;
+	rb_dlink_node *ptr;
+	rb_dlink_node *next_ptr;
+	buf_head_t rb_linebuf_local;
+	buf_head_t rb_linebuf_name;
+	buf_head_t rb_linebuf_id;
+
+	rb_linebuf_newbuf(&rb_linebuf_local);
+	rb_linebuf_newbuf(&rb_linebuf_name);
+	rb_linebuf_newbuf(&rb_linebuf_id);
+
+	va_start(args, pattern);
+	rb_vsnprintf(buf, sizeof(buf), pattern, args);
+	va_end(args);
+
+	if(IsServer(source_p))
+		rb_linebuf_putmsg(&rb_linebuf_local, NULL, NULL, "":%s %s"", source_p->name, buf);
+	else
+		rb_linebuf_putmsg(&rb_linebuf_local, NULL, NULL,
+				  "":%s!%s@%s %s"",
+				  source_p->name, source_p->username, source_p->host, buf);
+
+	rb_linebuf_putmsg(&rb_linebuf_name, NULL, NULL, "":%s %s"", source_p->name, buf);
+	rb_linebuf_putmsg(&rb_linebuf_id, NULL, NULL, "":%s %s"", use_id(source_p), buf);
+
+	if(what == MATCH_HOST)
+	{
+		RB_DLINK_FOREACH_SAFE(ptr, next_ptr, lclient_list.head)
+		{
+			target_p = ptr->data;
+
+			if(match(mask, target_p->host))
+				send_linebuf(target_p, &rb_linebuf_local);
+		}
+	}
+	/* what = MATCH_SERVER, if it doesnt match us, just send remote */
+	else if(match(mask, me.name))
+	{
+		RB_DLINK_FOREACH_SAFE(ptr, next_ptr, lclient_list.head)
+		{
+			target_p = ptr->data;
+			send_linebuf(target_p, &rb_linebuf_local);
+		}
+	}
+
+	RB_DLINK_FOREACH(ptr, serv_list.head)
+	{
+		target_p = ptr->data;
+
+		if(target_p == one)
+			continue;
+
+		if(has_id(target_p))
+			send_rb_linebuf_remote(target_p, source_p, &rb_linebuf_id);
+		else
+			send_rb_linebuf_remote(target_p, source_p, &rb_linebuf_name);
+	}
+
+	rb_linebuf_donebuf(&rb_linebuf_local);
+	rb_linebuf_donebuf(&rb_linebuf_id);
+	rb_linebuf_donebuf(&rb_linebuf_name);
+}",TRUE,CWE_120
+50,50,50_vdisc.c,"tmp102_show_temp(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct sensor_device_attribute *sda = to_sensor_dev_attr(attr);
+	struct tmp102 *tmp102 = tmp102_update_device(dev);
+
+	/* Is it too early even to return a read? */
+	if (tmp102->first_time)
+		return -EAGAIN;
+
+	return sprintf(buf, ""%d\n"", tmp102->temp[sda->index]);
+}",TRUE,CWE_120
+51,51,51_vdisc.c,"comm_recv_local( void )
+{
+	Ball *ball, *ballcopy;
+	Shot *shot, *shotcopy;
+
+	/* copy balls */
+	list_clear( game->balls );
+	list_reset( local_game->balls );
+	while ( (ball = list_next(local_game->balls)) ) {
+		ballcopy = salloc( 1, sizeof(Ball) );
+		ballcopy->x = ball->x;
+		ballcopy->y = ball->y;
+		ballcopy->attached = ball->attached;
+		if ( ball->attached ) {
+			if ( ball->paddle == local_game->paddles[0] )
+				ballcopy->paddle = game->paddles[0];
+			else
+				ballcopy->paddle = game->paddles[1];
+		}
+		list_add( game->balls, ballcopy );
+	}
+	
+	/* copy shots */
+	list_clear( game->shots );
+	list_reset( local_game->shots );
+	while ( (shot = list_next(local_game->shots)) ) {
+		shotcopy = salloc( 1, sizeof(Shot) );
+		shotcopy->x = shot->x;
+		shotcopy->y = shot->y;
+		list_add( game->shots, shotcopy ); 
+	}
+	
+	/* copy score */
+	game->paddles[0]->score = local_game->paddles[0]->score;
+
+	/* copy level_over */
+	game->level_over = local_game->level_over;
+	game->winner = local_game->winner;
+
+	/* modifications are transferred to game::mod
+	 * and handled by the same function that does this
+	 * for net updates below. while handle_mods()
+	 * resets the mods in the game struct, the
+	 * local_game mods must be cleared as well */
+	game->mod = local_game->mod;
+	handle_mods();
+	local_game->mod = game->mod;
+
+    /* copy new level when altered in bonus level */
+    if (local_game->blRefreshBricks)
+    {
+        local_game->blRefreshBricks = 0;
+        /* HACK HACK HACK HACK.... did I mention this is a hack? And a really
+           bad one indeed. */
+        memcpy(game->bricks,local_game->bricks,sizeof(game->bricks));
+        client_redraw_all_bricks();
+    }
+    
+	return;
+}",FALSE,CWE_120
+52,52,52_vdisc.c,"rtl92d_set_fw_rsvdpagepkt(struct ieee80211_hw *hw, bool dl_finished)
+{
+	struct rtl_priv *rtlpriv = rtl_priv(hw);
+	struct rtl_mac *mac = rtl_mac(rtl_priv(hw));
+	struct sk_buff *skb = NULL;
+	u32 totalpacketlen;
+	bool rtstatus;
+	u8 u1RsvdPageLoc[3] = { 0 };
+	bool dlok = false;
+	u8 *beacon;
+	u8 *p_pspoll;
+	u8 *nullfunc;
+	u8 *p_probersp;
+	/*---------------------------------------------------------
+						(1) beacon
+	---------------------------------------------------------*/
+	beacon = &reserved_page_packet[BEACON_PG * 128];
+	SET_80211_HDR_ADDRESS2(beacon, mac->mac_addr);
+	SET_80211_HDR_ADDRESS3(beacon, mac->bssid);
+	/*-------------------------------------------------------
+						(2) ps-poll
+	--------------------------------------------------------*/
+	p_pspoll = &reserved_page_packet[PSPOLL_PG * 128];
+	SET_80211_PS_POLL_AID(p_pspoll, (mac->assoc_id | 0xc000));
+	SET_80211_PS_POLL_BSSID(p_pspoll, mac->bssid);
+	SET_80211_PS_POLL_TA(p_pspoll, mac->mac_addr);
+	SET_H2CCMD_RSVDPAGE_LOC_PSPOLL(u1RsvdPageLoc, PSPOLL_PG);
+	/*--------------------------------------------------------
+						(3) null data
+	---------------------------------------------------------*/
+	nullfunc = &reserved_page_packet[NULL_PG * 128];
+	SET_80211_HDR_ADDRESS1(nullfunc, mac->bssid);
+	SET_80211_HDR_ADDRESS2(nullfunc, mac->mac_addr);
+	SET_80211_HDR_ADDRESS3(nullfunc, mac->bssid);
+	SET_H2CCMD_RSVDPAGE_LOC_NULL_DATA(u1RsvdPageLoc, NULL_PG);
+	/*---------------------------------------------------------
+						(4) probe response
+	----------------------------------------------------------*/
+	p_probersp = &reserved_page_packet[PROBERSP_PG * 128];
+	SET_80211_HDR_ADDRESS1(p_probersp, mac->bssid);
+	SET_80211_HDR_ADDRESS2(p_probersp, mac->mac_addr);
+	SET_80211_HDR_ADDRESS3(p_probersp, mac->bssid);
+	SET_H2CCMD_RSVDPAGE_LOC_PROBE_RSP(u1RsvdPageLoc, PROBERSP_PG);
+	totalpacketlen = TOTAL_RESERVED_PKT_LEN;
+	RT_PRINT_DATA(rtlpriv, COMP_CMD, DBG_LOUD,
+		      ""rtl92d_set_fw_rsvdpagepkt(): HW_VAR_SET_TX_CMD: ALL"",
+		      &reserved_page_packet[0], totalpacketlen);
+	RT_PRINT_DATA(rtlpriv, COMP_CMD, DBG_DMESG,
+		      ""rtl92d_set_fw_rsvdpagepkt(): HW_VAR_SET_TX_CMD: ALL"",
+		      u1RsvdPageLoc, 3);
+	skb = dev_alloc_skb(totalpacketlen);
+	if (!skb) {
+		dlok = false;
+	} else {
+		memcpy((u8 *) skb_put(skb, totalpacketlen),
+			&reserved_page_packet, totalpacketlen);
+		rtstatus = _rtl92d_cmd_send_packet(hw, skb);
+
+		if (rtstatus)
+			dlok = true;
+	}
+	if (dlok) {
+		RT_TRACE(rtlpriv, COMP_POWER, DBG_LOUD,
+			 ""Set RSVD page location to Fw\n"");
+		RT_PRINT_DATA(rtlpriv, COMP_CMD, DBG_DMESG,
+			      ""H2C_RSVDPAGE"", u1RsvdPageLoc, 3);
+		rtl92d_fill_h2c_cmd(hw, H2C_RSVDPAGE,
+			sizeof(u1RsvdPageLoc), u1RsvdPageLoc);
+	} else
+		RT_TRACE(rtlpriv, COMP_ERR, DBG_WARNING,
+			 ""Set RSVD page location to Fw FAIL!!!!!!\n"");
+}",FALSE,CWE_120
+53,53,53_vdisc.c,"diff_setup(struct diff_options *options)
+{
+	memcpy(options, &default_diff_options, sizeof(*options));
+
+	options->file = stdout;
+
+	options->line_termination = '\n';
+	options->break_opt = -1;
+	options->rename_limit = -1;
+	options->dirstat_permille = diff_dirstat_permille_default;
+	options->context = 3;
+
+	options->change = diff_change;
+	options->add_remove = diff_addremove;
+	if (diff_use_color_default > 0)
+		DIFF_OPT_SET(options, COLOR_DIFF);
+	options->detect_rename = diff_detect_rename_default;
+
+	if (diff_no_prefix) {
+		options->a_prefix = options->b_prefix = """";
+	} else if (!diff_mnemonic_prefix) {
+		options->a_prefix = ""a/"";
+		options->b_prefix = ""b/"";
+	}
+}",FALSE,CWE_120
+54,54,54_vdisc.c,"_set_smtp_configuration_data (ipmi_oem_state_data_t *state_data,
+			      uint8_t channel_number,
+			      uint8_t parameter_selector,
+			      uint8_t set_selector,
+			      uint8_t block_selector,
+			      uint8_t *buf,
+			      unsigned int buflen)
+{
+  uint8_t bytes_rq[IPMI_OEM_MAX_BYTES];
+  uint8_t bytes_rs[IPMI_OEM_MAX_BYTES];
+  int rs_len;
+  int rv = -1;
+
+  assert (state_data);
+  assert (IPMI_OEM_INTEL_SMTP_CONFIGURATION_PARAMETER_VALID (parameter_selector));
+  assert (buf);
+  assert (buflen);
+  assert (buflen <= (IPMI_OEM_MAX_BYTES - 5));
+
+  /* Intel S5500WB/Penguin Computing Relion 700
+   *
+   * Set SMTP Configuration Request
+   *
+   * 0x32 - OEM network function
+   * 0x38 - OEM cmd
+   * 0x?? - channel number
+   * 0x?? - parameter selector
+   * 0x?? - set selector
+   * 0x?? - block selector
+   * 0x?? - 0x?? - configuration data
+   *
+   * Set SMTP Configuration Response
+   *
+   * 0x38 - OEM cmd
+   * 0x?? - Completion Code
+   */
+
+  bytes_rq[0] = IPMI_CMD_OEM_INTEL_SET_SMTP_CONFIGURATION;
+  bytes_rq[1] = channel_number;
+  bytes_rq[2] = parameter_selector;
+  bytes_rq[3] = set_selector;
+  bytes_rq[4] = block_selector;
+  memcpy (&bytes_rq[5], buf, buflen);
+  
+  if ((rs_len = ipmi_cmd_raw (state_data->ipmi_ctx,
+                              0, /* lun */
+                              IPMI_NET_FN_OEM_INTEL_CONFIG_RQ, /* network function */
+                              bytes_rq, /* data */
+                              5 + buflen, /* num bytes */
+                              bytes_rs,
+                              IPMI_OEM_MAX_BYTES)) < 0)
+    {
+      pstdout_fprintf (state_data->pstate,
+                       stderr,
+                       ""ipmi_cmd_raw: %s\n"",
+                       ipmi_ctx_errormsg (state_data->ipmi_ctx));
+      goto cleanup;
+    }
+  
+  if (ipmi_oem_check_response_and_completion_code (state_data,
+                                                   bytes_rs,
+                                                   rs_len,
+                                                   2,
+						   IPMI_CMD_OEM_INTEL_GET_SMTP_CONFIGURATION,
+						   IPMI_NET_FN_OEM_INTEL_CONFIG_RS,
+                                                   NULL) < 0)
+    goto cleanup;
+
+  rv = 0;
+ cleanup:
+  return (rv);
+}",FALSE,CWE_120
+55,55,55_vdisc.c,"af_segname_hash_page_number(const char *name,char *hash,int hashlen)
+{
+    char copy[AF_MAX_NAME_LEN];
+    const char *cc = strchr((char *)name,'_');
+    if(!cc) return -1;			// not possibly correct
+    strlcpy(copy,name,sizeof(copy));
+    char *dd = strchr(copy,'_');
+    if(!dd) return -1;		        // really weird; shouldn't happen
+    *dd++ = '\000';			// terminate at _
+    if(strcmp(dd,""md5"")!=0) return -1;	// not a valid hash
+    int64_t page = af_segname_page_number(copy);
+    if(page<0) return -1;		// wasn't what we wanted
+    strlcpy(hash,dd,hashlen);
+    return page;
+}",FALSE,CWE_120
+56,56,56_vdisc.c,"write_unicode(GByteArray * bplist, gunichar2 * val, uint64_t size)
+{
+    uint64_t i = 0;
+    uint64_t size2 = size * sizeof(gunichar2);
+    uint8_t *buff = (uint8_t *) malloc(size2);
+    memcpy(buff, val, size2);
+    for (i = 0; i < size; i++)
+        byte_convert(buff + i * sizeof(gunichar2), sizeof(gunichar2));
+    write_raw_data(bplist, BPLIST_STRING, buff, size2);
+}",TRUE,CWE_120
+57,57,57_vdisc.c,"connman_inet_del_network_route(int index, const char *host)
+{
+	struct ifreq ifr;
+	struct rtentry rt;
+	struct sockaddr_in addr;
+	int sk, err = 0;
+
+	DBG(""index %d host %s"", index, host);
+
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
+		close(sk);
+		goto out;
+	}
+
+	DBG(""ifname %s"", ifr.ifr_name);
+
+	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_HOST;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(host);
+	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
+
+	rt.rt_dev = ifr.ifr_name;
+
+	if (ioctl(sk, SIOCDELRT, &rt) < 0 && errno != ESRCH)
+		err = -errno;
+
+	close(sk);
+
+out:
+	if (err < 0)
+		connman_error(""Deleting host route failed (%s)"",
+							strerror(-err));
+
+	return err;
+}",TRUE,CWE_120
+58,58,58_vdisc.c,"main (int argc, char ** argv)
+{
+  int err;
+
+#if defined (HAVE_SETLOCALE) && defined (HAVE_LC_MESSAGES)
+  setlocale (LC_MESSAGES, """");
+#endif
+#if defined (HAVE_SETLOCALE)
+  setlocale (LC_CTYPE, """");
+#endif
+  bindtextdomain (PACKAGE, LOCALEDIR);
+  textdomain (PACKAGE);
+
+  expandargv (&argc, &argv);
+
+  parse_args (argc, argv);
+
+  if (num_dump_sects > 0)
+    {
+      /* Make a copy of the dump_sects array.  */
+      cmdline_dump_sects = (dump_type *)
+          malloc (num_dump_sects * sizeof (* dump_sects));
+      if (cmdline_dump_sects == NULL)
+	error (_(""Out of memory allocating dump request table.\n""));
+      else
+	{
+	  memcpy (cmdline_dump_sects, dump_sects,
+		  num_dump_sects * sizeof (* dump_sects));
+	  num_cmdline_dump_sects = num_dump_sects;
+	}
+    }
+
+  if (optind < (argc - 1))
+    show_name = 1;
+
+  err = 0;
+  while (optind < argc)
+    err |= process_file (argv[optind++]);
+
+  if (dump_sects != NULL)
+    free (dump_sects);
+  if (cmdline_dump_sects != NULL)
+    free (cmdline_dump_sects);
+
+  return err;
+}",TRUE,CWE_120
+59,59,59_vdisc.c,"TTF_RenderText_Solid(TTF_Font *font,
+				const char *text, SDL_Color fg)
+{
+	SDL_Surface *textbuf;
+	Uint16 *unicode_text;
+	int unicode_len;
+
+	/* Copy the Latin-1 text to a UNICODE text buffer */
+	unicode_len = strlen(text);
+	unicode_text = (Uint16 *)ALLOCA((1+unicode_len+1)*(sizeof *unicode_text));
+	if ( unicode_text == NULL ) {
+		TTF_SetError(""Out of memory"");
+		return(NULL);
+	}
+	*unicode_text = UNICODE_BOM_NATIVE;
+	LATIN1_to_UNICODE(unicode_text+1, text, unicode_len);
+
+	/* Render the new text */
+	textbuf = TTF_RenderUNICODE_Solid(font, unicode_text, fg);
+
+	/* Free the text buffer and return */
+	FREEA(unicode_text);
+	return(textbuf);
+}",TRUE,CWE_120
+60,60,60_vdisc.c,"msg_channel(int p_or_n, const char *command,
+	    struct Client *client_p, struct Client *source_p, struct Channel *chptr,
+	    const char *text)
+{
+	int result;
+	char text2[BUFSIZE];
+
+	if(MyClient(source_p))
+	{
+		/* idle time shouldnt be reset by notices --fl */
+		if(p_or_n != NOTICE)
+			source_p->localClient->last = rb_current_time();
+	}
+
+	if(chptr->mode.mode & MODE_NOCOLOR)
+	{
+		rb_strlcpy(text2, text, BUFSIZE);
+		strip_colour(text2);
+		text = text2;
+		if (EmptyString(text))
+		{
+			/* could be empty after colour stripping and
+			 * that would cause problems later */
+			if(p_or_n != NOTICE)
+				sendto_one(source_p, form_str(ERR_NOTEXTTOSEND), me.name, source_p->name);
+			return;
+		}
+	}
+
+	/* chanops and voiced can flood their own channel with impunity */
+	if((result = can_send(chptr, source_p, NULL)))
+	{
+		if(result != CAN_SEND_OPV && MyClient(source_p) &&
+		   !IsOper(source_p) &&
+		   !add_channel_target(source_p, chptr))
+		{
+			sendto_one(source_p, form_str(ERR_TARGCHANGE),
+				   me.name, source_p->name, chptr->chname);
+			return;
+		}
+		if(result == CAN_SEND_OPV ||
+		   !flood_attack_channel(p_or_n, source_p, chptr, chptr->chname))
+		{
+			if (p_or_n != NOTICE && *text == '\001' &&
+					strncasecmp(text + 1, ""ACTION "", 7))
+			{
+				if (chptr->mode.mode & MODE_NOCTCP)
+				{
+					sendto_one_numeric(source_p, ERR_CANNOTSENDTOCHAN,
+							   form_str(ERR_CANNOTSENDTOCHAN), chptr->chname);
+					return;
+				}
+				else if (rb_dlink_list_length(&chptr->locmembers) > (unsigned)(GlobalSetOptions.floodcount / 2))
+					source_p->large_ctcp_sent = rb_current_time();
+			}
+			sendto_channel_flags(client_p, ALL_MEMBERS, source_p, chptr,
+					     ""%s %s :%s"", command, chptr->chname, text);
+		}
+	}
+	else if(chptr->mode.mode & MODE_OPMODERATE &&
+			(!(chptr->mode.mode & MODE_NOPRIVMSGS) ||
+			 IsMember(source_p, chptr)))
+	{
+		if(MyClient(source_p) && !IsOper(source_p) &&
+		   !add_channel_target(source_p, chptr))
+		{
+			sendto_one(source_p, form_str(ERR_TARGCHANGE),
+				   me.name, source_p->name, chptr->chname);
+			return;
+		}
+		if(!flood_attack_channel(p_or_n, source_p, chptr, chptr->chname))
+		{
+			sendto_channel_opmod(client_p, source_p, chptr,
+					     command, text);
+		}
+	}
+	else
+	{
+		if(p_or_n != NOTICE)
+			sendto_one_numeric(source_p, ERR_CANNOTSENDTOCHAN,
+					   form_str(ERR_CANNOTSENDTOCHAN), chptr->chname);
+	}
+}",FALSE,CWE_120
+61,61,61_vdisc.c,"add_player(struct game * g, int fd, char* nick)
+{
+        char joined_msg[1000];
+        int i;
+        if (g->players_number < MAX_PLAYERS_PER_GAME) {
+                /* inform other players */
+                snprintf(joined_msg, sizeof(joined_msg), ok_player_joined, nick);
+                for (i = 0; i < g->players_number; i++)
+                        send_line_log_push(g->players_conn[i], joined_msg);
+
+                g->players_conn[g->players_number] = fd;
+                g->players_nick[g->players_number] = nick;
+                g->players_number++;
+                open_players = g_list_remove(open_players, GINT_TO_POINTER(fd));
+                calculate_list_games();
+                return 1;
+        } else {
+                free(nick);
+                return 0;
+        }
+}",FALSE,CWE_120
+62,62,62_vdisc.c,"store_sell(void)
+{
+	int amt;
+	int item;
+	int get_mode = USE_EQUIP | USE_INVEN | USE_FLOOR;
+
+	object_type *o_ptr;
+	object_type object_type_body;
+	object_type *i_ptr = &object_type_body;
+
+	char o_name[120];
+
+
+	const char *reject = ""You have nothing that I want. "";
+	const char *prompt = ""Sell which item? "";
+
+	int this_store = current_store();
+
+	if (this_store == STORE_NONE)
+	{
+		msg_print(""You cannot sell items when not in a store."");
+		return;
+	}
+
+	/* Clear all current messages */
+	msg_flag = FALSE;
+	prt("""", 0, 0);
+
+	if (this_store == STORE_HOME)
+		prompt = ""Drop which item? "";
+	else
+	{
+		item_tester_hook = store_will_buy_tester;
+		get_mode |= SHOW_PRICES;
+	}
+
+	/* Get an item */
+	p_ptr->command_wrk = USE_INVEN;
+	p_ptr->command_cmd = 'd';
+	if (!get_item(&item, prompt, reject, get_mode))
+	{
+		store_flags |= STORE_KEEP_PROMPT;
+		return;
+	}
+
+	/* Get the item */
+	o_ptr = object_from_item_idx(item);
+
+	/* Hack -- Cannot remove cursed objects */
+	if ((item >= INVEN_WIELD) && cursed_p(o_ptr))
+	{
+		/* Oops */
+		msg_print(""Hmmm, it seems to be cursed."");
+		store_flags |= STORE_KEEP_PROMPT;
+
+		/* Nope */
+		return;
+	}
+
+	/* Get a quantity */
+	amt = get_quantity(NULL, o_ptr->number);
+
+	/* Allow user abort */
+	if (amt <= 0) return;
+
+	/* Get a copy of the object representing the number being sold */
+	object_copy_amt(i_ptr, object_from_item_idx(item), amt);
+
+	if (!store_check_num(this_store, i_ptr))
+	{
+		store_flags |= STORE_KEEP_PROMPT;
+
+		if (this_store == STORE_HOME)
+			msg_print(""Your home is full."");
+
+		else
+			msg_print(""I have not the room in my store to keep it."");
+
+		return;
+	}
+
+	/* Get a full description */
+	object_desc(o_name, sizeof(o_name), i_ptr, ODESC_PREFIX | ODESC_FULL);
+
+	/* Real store */
+	if (this_store != STORE_HOME)
+	{
+		/* Extract the value of the items */
+		u32b price = price_item(i_ptr, TRUE, amt);
+
+		screen_save();
+
+		/* Show price */
+		prt(format(""Price: %d"", price), 1, 0);
+
+		/* Confirm sale */
+		if (!store_get_check(format(""Sell %s? [ESC, any other key to accept]"", o_name)))
+		{
+			screen_load();
+			return;
+		}
+
+		screen_load();
+
+		cmd_insert(CMD_SELL, item, amt);
+
+		store_flags |= STORE_KEEP_PROMPT;
+	}
+
+	/* Player is at home */
+	else
+	{
+		cmd_insert(CMD_STASH, item, amt);
+	}
+}",FALSE,CWE_120
+63,63,63_vdisc.c,"whlp_rdadds(rdstringc *rs, const wchar_t *text, whlpconf *conf,
+			charset_state *state)
+{
+    charset_state ourstate = CHARSET_INIT_STATE;
+    int textlen = text ? ustrlen(text) : 0;
+    char outbuf[256];
+    int ret;
+
+    if (!state)
+	state = &ourstate;
+
+    while (textlen > 0 &&
+	   (ret = charset_from_unicode(&text, &textlen, outbuf,
+				       lenof(outbuf)-1,
+				       conf->charset, state, NULL)) > 0) {
+	outbuf[ret] = '\0';
+	rdaddsc(rs, outbuf);
+    }
+
+    if (text == NULL || state == &ourstate) {
+	if ((ret = charset_from_unicode(NULL, 0, outbuf, lenof(outbuf)-1,
+					conf->charset, state, NULL)) > 0) {
+	    outbuf[ret] = '\0';
+	    rdaddsc(rs, outbuf);
+	}
+    }
+}",FALSE,CWE_120
+64,64,64_vdisc.c,"git_buf_puts_escaped(
+	git_buf *buf, const char *string, const char *esc_chars, const char *esc_with)
+{
+	const char *scan;
+	size_t total = 0, esc_len = strlen(esc_with), count;
+
+	if (!string)
+		return 0;
+
+	for (scan = string; *scan; ) {
+		/* count run of non-escaped characters */
+		count = strcspn(scan, esc_chars);
+		total += count;
+		scan += count;
+		/* count run of escaped characters */
+		count = strspn(scan, esc_chars);
+		total += count * (esc_len + 1);
+		scan += count;
+	}
+
+	ENSURE_SIZE(buf, buf->size + total + 1);
+
+	for (scan = string; *scan; ) {
+		count = strcspn(scan, esc_chars);
+
+		memmove(buf->ptr + buf->size, scan, count);
+		scan += count;
+		buf->size += count;
+
+		for (count = strspn(scan, esc_chars); count > 0; --count) {
+			/* copy escape sequence */
+			memmove(buf->ptr + buf->size, esc_with, esc_len);
+			buf->size += esc_len;
+			/* copy character to be escaped */
+			buf->ptr[buf->size] = *scan;
+			buf->size++;
+			scan++;
+		}
+	}
+
+	buf->ptr[buf->size] = '\0';
+
+	return 0;
+}",FALSE,CWE_120
+65,65,65_vdisc.c,"s_imscale_process(stream_state *st, stream_cursor_read *pr,
+                stream_cursor_write *pw, bool last)
+{
+    stream_imscale_state *const ss = (stream_imscale_state *) st;
+
+    while (1) {
+        /* deliver data from dst buffer */
+        if (ss->dst_offset < ss->dst_size) {
+            uint ncopy = min(pw->limit - pw->ptr,
+                             ss->dst_size - ss->dst_offset);
+
+            if (ncopy == 0)
+                return 1;
+            memcpy(pw->ptr + 1, (byte *)ss->dst + ss->dst_offset, ncopy);
+            pw->ptr += ncopy;
+            ss->dst_offset += ncopy;
+        }
+
+        /* output a row, if possible */
+        if (ss->dst_offset == ss->dst_size &&
+            ss->dst_y < ss->src_y * 4 - 6) {
+            zoom_line(ss);
+            ss->dst_offset = 0;
+            ss->dst_y += 1;
+        }
+
+        /* input into window */
+        if (ss->dst_y >= ss->src_y * 4 - 6) {
+            int w = ss->src_size + 2;
+            uint rleft = pr->limit - pr->ptr;
+            uint ncopy = min(rleft, ss->src_size - ss->src_offset);
+
+            if (ss->src_y >= ss->params.HeightIn) {
+                last = true;
+                ncopy = 0;
+            }
+            if (rleft == 0 && !last)
+                return 0; /* need more input */
+          /*  if (rleft == 0)
+                return EOFC;  */  /* end of file.  pass along in stream */
+            if (ss->src_offset == 0) {
+                /* could maintain window as ring (y mod 4 addressing),
+                   but this is simpler */
+                memmove(ss->window, ss->window + w, 3 * w);
+            }
+            if (ncopy) {
+                memcpy(ss->window + 3 * w + ss->src_offset + 1,
+                       pr->ptr + 1,
+                       ncopy);
+                ss->src_offset += ncopy;
+                pr->ptr += ncopy;
+            } else {
+                memset(ss->window + 3 * w, 0xff, w);
+                ss->src_offset += ss->src_size;
+            }
+            if (ss->src_offset == ss->src_size) {
+                ss->src_offset = 0;
+                ss->src_y += 1;
+            }
+        }
+    }
+}",TRUE,CWE_120
+66,66,66_vdisc.c,"ompi_btl_openib_connect_base_select_for_local_port(mca_btl_openib_module_t *btl)
+{
+    char *msg = NULL;
+    int i, rc, cpc_index, len;
+    ompi_btl_openib_connect_base_module_t **cpcs;
+
+    cpcs = (ompi_btl_openib_connect_base_module_t **) calloc(num_available,
+                  sizeof(ompi_btl_openib_connect_base_module_t *));
+    if (NULL == cpcs) {
+        return OMPI_ERR_OUT_OF_RESOURCE;
+    }
+
+    /* Go through all available CPCs and query them to see if they
+       want to run on this module.  If they do, save them to a running
+       array. */
+    for (len = 1, i = 0; NULL != available[i]; ++i) {
+        len += strlen(available[i]->cbc_name) + 2;
+    }
+    msg = (char *) malloc(len);
+    if (NULL == msg) {
+        return OMPI_ERR_OUT_OF_RESOURCE;
+    }
+    msg[0] = '\0';
+    for (cpc_index = i = 0; NULL != available[i]; ++i) {
+        if (i > 0) {
+            strcat(msg, "", "");
+        }
+        strcat(msg, available[i]->cbc_name);
+
+        rc = available[i]->cbc_query(btl, &cpcs[cpc_index]);
+        if (OMPI_ERR_NOT_SUPPORTED == rc || OMPI_ERR_UNREACH == rc) {
+            continue;
+        } else if (OMPI_SUCCESS != rc) {
+            free(cpcs);
+            free(msg);
+            return rc;
+        }
+        opal_output(-1, ""match cpc for local port: %s"",
+                    available[i]->cbc_name);
+
+        /* If the CPC wants to use the CTS protocol, check to ensure
+           that QP 0 is PP; if it's not, we can't use this CPC (or the
+           CTS protocol) */
+        if (cpcs[cpc_index]->cbm_uses_cts &&
+            !BTL_OPENIB_QP_TYPE_PP(0)) {
+            BTL_VERBOSE((""this CPC only supports when the first btl_openib_receive_queues QP is a PP QP""));
+            continue;
+        }
+
+        /* This CPC has indicated that it wants to run on this openib
+           BTL module.  Woo hoo! */
+        ++cpc_index;
+    }
+
+    /* If we got an empty array, then no CPCs were eligible.  Doh! */
+    if (0 == cpc_index) {
+        opal_show_help(""help-mpi-btl-openib-cpc-base.txt"",
+                       ""no cpcs for port"", true,
+                       ompi_process_info.nodename,
+                       ibv_get_device_name(btl->device->ib_dev),
+                       btl->port_num, msg);
+        free(cpcs);
+        free(msg);
+        return OMPI_ERR_NOT_SUPPORTED;
+    }
+    free(msg);
+
+    /* We got at least one eligible CPC; save the array into the
+       module's port_info */
+    btl->cpcs = cpcs;
+    btl->num_cpcs = cpc_index;
+
+    return OMPI_SUCCESS;
+}",TRUE,CWE_120
+67,67,67_vdisc.c,"afr_trace_entrylk_out (call_frame_t *frame, xlator_t *this,
+                       afr_lock_call_type_t lock_call_type,
+                       afr_lock_op_type_t lk_op_type, const char *basename,
+                       int op_ret, int op_errno, int32_t child_index)
+{
+        afr_internal_lock_t *int_lock = NULL;
+        afr_local_t         *local    = NULL;
+
+        char lock[256];
+        char lockee[256];
+        char lock_call_type_str[256];
+        char verdict[16];
+
+        local    = frame->local;
+        int_lock = &local->internal_lock;
+
+        afr_print_lockee (lockee, 256, &local->loc, local->fd, child_index);
+
+        afr_set_lock_call_type (lock_call_type, lock_call_type_str, int_lock);
+
+        afr_print_verdict (op_ret, op_errno, verdict);
+
+        gf_log (this->name, GF_LOG_INFO,
+                ""[%s %s] [%s] Lock={%s} Lockee={%s} Number={%llu}"",
+                lock_call_type_str,
+                lk_op_type == AFR_LOCK_OP ? ""LOCK REPLY"" : ""UNLOCK REPLY"",
+                verdict,
+                lock, lockee,
+                (unsigned long long) int_lock->lock_number);
+
+}",TRUE,CWE_120
+68,68,68_vdisc.c,"diskdump_get_prstatus_percpu(int cpu)
+{
+	if ((cpu < 0) || (cpu >= dd->num_prstatus_notes))
+		return NULL;
+
+	return dd->nt_prstatus_percpu[cpu];
+}",TRUE,CWE_120
+69,69,69_vdisc.c,"ihex_write_record (bfd *abfd,
+		   size_t count,
+		   unsigned int addr,
+		   unsigned int type,
+		   bfd_byte *data)
+{
+  static const char digs[] = ""0123456789ABCDEF"";
+  char buf[9 + CHUNK * 2 + 4];
+  char *p;
+  unsigned int chksum;
+  unsigned int i;
+  size_t total;
+
+#define TOHEX(buf, v) \
+  ((buf)[0] = digs[((v) >> 4) & 0xf], (buf)[1] = digs[(v) & 0xf])
+
+  buf[0] = ':';
+  TOHEX (buf + 1, count);
+  TOHEX (buf + 3, (addr >> 8) & 0xff);
+  TOHEX (buf + 5, addr & 0xff);
+  TOHEX (buf + 7, type);
+
+  chksum = count + addr + (addr >> 8) + type;
+
+  for (i = 0, p = buf + 9; i < count; i++, p += 2, data++)
+    {
+      TOHEX (p, *data);
+      chksum += *data;
+    }
+
+  TOHEX (p, (- chksum) & 0xff);
+  p[2] = '\r';
+  p[3] = '\n';
+
+  total = 9 + count * 2 + 4;
+  if (bfd_bwrite (buf, (bfd_size_type) total, abfd) != total)
+    return FALSE;
+
+  return TRUE;
+}",FALSE,CWE_120
+70,70,70_vdisc.c,"lex_double(char *str)
+{
+    union  IDdata {
+        struct _idata {
+#ifdef WORDS_BIGENDIAN
+            unsigned int  upper;
+            unsigned int  lower;
+#else
+            unsigned int  lower;
+            unsigned int  upper;
+#endif
+        } idata;
+        double  ddata;
+    } id_conv;
+    double d;
+
+    if (strncmp(str, ""0x"", 2) == 0|| strncmp(str, ""0X"", 2) == 0) {
+        if (strlen(str) == 18) {
+            char tmp0[11], tmp1[11] = ""0x"";
+            strncpy(tmp0, str, 10);
+            tmp0[10] = '\0';
+            strncpy(tmp1 + 2, str + 10, 8);
+            tmp1[10] = '\0';
+            id_conv.idata.upper = strtoul(tmp0, NULL, 16);
+            id_conv.idata.lower = strtoul(tmp1, NULL, 16);
+            d = id_conv.ddata;
+        } else {
+            fprintf(stderr, ""Unexpected length\n"");
+            exit(-1);
+        }
+    } else {
+        d = atof(str);
+    }
+
+    return d;
+}",FALSE,CWE_120
+71,71,71_vdisc.c,"show_available_freqs(struct cpufreq_policy *policy, char *buf,
+				    bool show_boost)
+{
+	ssize_t count = 0;
+	struct cpufreq_frequency_table *pos, *table = policy->freq_table;
+
+	if (!table)
+		return -ENODEV;
+
+	cpufreq_for_each_valid_entry(pos, table) {
+		/*
+		 * show_boost = true and driver_data = BOOST freq
+		 * display BOOST freqs
+		 *
+		 * show_boost = false and driver_data = BOOST freq
+		 * show_boost = true and driver_data != BOOST freq
+		 * continue - do not display anything
+		 *
+		 * show_boost = false and driver_data != BOOST freq
+		 * display NON BOOST freqs
+		 */
+		if (show_boost ^ (pos->flags & CPUFREQ_BOOST_FREQ))
+			continue;
+
+		count += sprintf(&buf[count], ""%d "", pos->frequency);
+	}
+	count += sprintf(&buf[count], ""\n"");
+
+	return count;
+
+}",FALSE,CWE_120
+72,72,72_vdisc.c,"mdiobus_read(struct mii_bus *bus, int addr, u32 regnum)
+{
+	int retval;
+
+	BUG_ON(in_interrupt());
+
+	mutex_lock(&bus->mdio_lock);
+	retval = bus->read(bus, addr, regnum);
+	mutex_unlock(&bus->mdio_lock);
+
+	return retval;
+}",FALSE,CWE_120
+73,73,73_vdisc.c,"hawki_imagelist_save(
+        cpl_frameset                *   allframes,
+        const cpl_parameterlist     *   parlist,
+        const cpl_frameset          *   usedframes,
+        const cpl_imagelist         *   images,
+        const char                  *   recipe,
+        const char                  *   procat,
+        const char                  *   protype,
+        const cpl_propertylist      *   applist,
+        const cpl_propertylist      **  applists,
+        const char                  *   filename)
+{
+    const char          *   fname;
+    cpl_propertylist    *   pro_list;
+    cpl_type_bpp            pixeltype;
+    char                    sval[16];
+    int                     chip_nb;
+    int                     iext;
+
+    /* Test entries */
+    if (allframes == NULL) return -1 ;
+
+    /* Get a suitable reference frame */
+    if((fname = hawki_get_extref_file(allframes)) == NULL)
+    {
+        cpl_msg_error(__func__, ""Could not find a suitable reference frame"");
+        return -1;
+    }
+
+    /* Add the PRO keys */
+    if (applist != NULL) pro_list = cpl_propertylist_duplicate(applist) ;
+    else pro_list = cpl_propertylist_new() ;
+    if (protype != NULL)
+        cpl_propertylist_append_string(pro_list, CPL_DFS_PRO_TYPE, protype) ;
+    if (procat != NULL)
+        cpl_propertylist_append_string(pro_list, CPL_DFS_PRO_CATG, procat) ;
+
+    /* File with extensions */
+    if (cpl_dfs_save_image(allframes, NULL, parlist, usedframes, NULL, NULL,
+                CPL_BPP_IEEE_FLOAT, recipe, pro_list, NULL, 
+                PACKAGE ""/"" PACKAGE_VERSION,
+                filename) != CPL_ERROR_NONE) {
+        cpl_msg_error(__func__, ""Cannot save the empty primary HDU of file %s"",
+                filename);
+        cpl_propertylist_delete(pro_list);
+        return -1 ;
+    }
+
+    /* Delete PRO LIST */
+    cpl_propertylist_delete(pro_list);
+
+    /* Get the file type */
+    if (cpl_image_get_type(cpl_imagelist_get_const(images, 0)) == CPL_TYPE_INT)
+        pixeltype = CPL_BPP_32_SIGNED ;
+    else
+        pixeltype = CPL_BPP_IEEE_FLOAT ;
+
+    /* Save the extensions */
+    for (iext=0 ; iext<HAWKI_NB_DETECTORS ; iext++) {
+        cpl_propertylist    *   qc_ext_list;
+
+        /* Get the chip number to store in this extension */
+        if ((chip_nb = hawki_get_detector_from_ext(fname, iext+1)) == -1) {
+            cpl_msg_error(__func__, ""Cannot get the chip for extension %d when ""
+                    ""writing file %s"", iext+1, filename);
+            return -1 ;
+        }
+        if ((applists != NULL) && (applists[chip_nb-1] != NULL))
+            qc_ext_list = cpl_propertylist_duplicate(applists[chip_nb-1]) ;
+        else
+            qc_ext_list = cpl_propertylist_new() ;
+
+        snprintf(sval, 16, ""CHIP%d.INT1"", chip_nb) ;
+        cpl_propertylist_prepend_string(qc_ext_list, ""EXTNAME"", sval) ;
+        if(cpl_image_save(cpl_imagelist_get_const(images, chip_nb-1), filename,
+                       pixeltype, qc_ext_list, CPL_IO_EXTEND) != CPL_ERROR_NONE)
+        {
+            cpl_msg_error(__func__, ""Cannot save extension %d of file %s"",
+                    iext+1, filename);
+            cpl_propertylist_delete(qc_ext_list) ;
+            return -1;
+        }
+        cpl_propertylist_delete(qc_ext_list) ;
+    }
+
+    return 0 ;
+}",FALSE,CWE_120
+74,74,74_vdisc.c,"int32_to_gstring_buf(gint32 v, char *dst, size_t size)
+{
+	char buf[UINT32_DEC_GRP_BUFLEN + 1];
+	char *p;
+	bool neg;
+	unsigned n;
+
+	g_assert(0 == size || NULL != dst);
+	g_assert(size <= INT_MAX);
+
+	p = buf;
+	neg = v < 0;
+	n = 0;
+
+	do {
+		int d = v % 10;
+
+		v /= 10;
+		if (0 == n++ % 3 && n != 1)
+			*p++ = ',';
+		*p++ = dec_digit(neg ? -d : d);
+	} while (0 != v);
+
+	if (neg) {
+		*p++ = '-';
+	}
+	return reverse_strlcpy(dst, size, buf, p - buf);
+}",TRUE,CWE_120
+75,75,75_vdisc.c,"enic_set_mac_addr(struct net_device *netdev, char *addr)
+{
+	struct enic *enic = netdev_priv(netdev);
+
+	if (enic_is_dynamic(enic) || enic_is_sriov_vf(enic)) {
+		if (!is_valid_ether_addr(addr) && !is_zero_ether_addr(addr))
+			return -EADDRNOTAVAIL;
+	} else {
+		if (!is_valid_ether_addr(addr))
+			return -EADDRNOTAVAIL;
+	}
+
+	memcpy(netdev->dev_addr, addr, netdev->addr_len);
+
+	return 0;
+}",FALSE,CWE_120
+76,76,76_vdisc.c,"afs_vlocation_cache_get_aux(const void *cookie_netfs_data,
+					    void *buffer, uint16_t bufmax)
+{
+	const struct afs_vlocation *vlocation = cookie_netfs_data;
+	uint16_t dlen;
+
+	_enter(""{%s},%p,%u"", vlocation->vldb.name, buffer, bufmax);
+
+	dlen = sizeof(struct afs_cache_vlocation);
+	dlen -= offsetof(struct afs_cache_vlocation, nservers);
+	if (dlen > bufmax)
+		return 0;
+
+	memcpy(buffer, (uint8_t *)&vlocation->vldb.nservers, dlen);
+
+	_leave("" = %u"", dlen);
+	return dlen;
+}",FALSE,CWE_120
+77,77,77_vdisc.c,"get_action_timeout(stonith_device_t * device, const char *action, int default_timeout)
+{
+    char buffer[512] = { 0, };
+    char *value = NULL;
+
+    CRM_CHECK(action != NULL, return default_timeout);
+
+    if (!device->params) {
+        return default_timeout;
+    }
+
+    snprintf(buffer, sizeof(buffer) - 1, ""pcmk_%s_timeout"", action);
+    value = g_hash_table_lookup(device->params, buffer);
+
+    if (!value) {
+        return default_timeout;
+    }
+
+    return atoi(value);
+}",FALSE,CWE_120
+78,78,78_vdisc.c,"define_ipv6_node_context(void)
+{
+	char *id;
+	int rc = 0;
+	struct in6_addr addr, mask;
+	ocontext_t *newc, *c, *l, *head;
+
+#ifdef SEPOL_TARGET_XEN
+	if (policydbp->target_platform != SEPOL_TARGET_SELINUX) {
+		yyerror(""nodecon not supported for target"");
+		return -1;
+	}
+#endif
+
+	if (pass == 1) {
+		free(queue_remove(id_queue));
+		free(queue_remove(id_queue));
+		parse_security_context(NULL);
+		goto out;
+	}
+
+	id = queue_remove(id_queue);
+	if (!id) {
+		yyerror(""failed to read ipv6 address"");
+		rc = -1;
+		goto out;
+	}
+
+	rc = inet_pton(AF_INET6, id, &addr);
+	free(id);
+	if (rc < 1) {
+		yyerror(""failed to parse ipv6 address"");
+		if (rc == 0)
+			rc = -1;
+		goto out;
+	}
+
+	id = queue_remove(id_queue);
+	if (!id) {
+		yyerror(""failed to read ipv6 address"");
+		rc = -1;
+		goto out;
+	}
+
+	rc = inet_pton(AF_INET6, id, &mask);
+	free(id);
+	if (rc < 1) {
+		yyerror(""failed to parse ipv6 mask"");
+		if (rc == 0)
+			rc = -1;
+		goto out;
+	}
+
+	newc = malloc(sizeof(ocontext_t));
+	if (!newc) {
+		yyerror(""out of memory"");
+		rc = -1;
+		goto out;
+	}
+
+	memset(newc, 0, sizeof(ocontext_t));
+	memcpy(&newc->u.node6.addr[0], &addr.s6_addr32[0], 16);
+	memcpy(&newc->u.node6.mask[0], &mask.s6_addr32[0], 16);
+
+	if (parse_security_context(&newc->context[0])) {
+		free(newc);
+		rc = -1;
+		goto out;
+	}
+
+	/* Create order of most specific to least retaining
+	   the order specified in the configuration. */
+	head = policydbp->ocontexts[OCON_NODE6];
+	for (l = NULL, c = head; c; l = c, c = c->next) {
+		if (memcmp(&newc->u.node6.mask, &c->u.node6.mask, 16) > 0)
+			break;
+	}
+
+	newc->next = c;
+
+	if (l)
+		l->next = newc;
+	else
+		policydbp->ocontexts[OCON_NODE6] = newc;
+
+	rc = 0;
+      out:
+	return rc;
+}",FALSE,CWE_120
+79,79,79_vdisc.c,"getTempCursor(BtCursor *pCur, BtCursor *pTempCur){
+  memcpy(pTempCur, pCur, sizeof(*pCur));
+  pTempCur->pNext = 0;
+  pTempCur->pPrev = 0;
+  if( pTempCur->pPage ){
+    sqlitepager_ref(pTempCur->pPage);
+  }
+}",FALSE,CWE_120
+80,80,80_vdisc.c,"_TTF_BoundedPrintLeft( 
+		_TTF_font_t	font ,
+		const char *	text ,
+		unsigned int	cmode ,
+		FNT_window_t	box ,
+		const float *	color
+	)
+{
+	const char *	ptr		= text;
+	unsigned int	cHeight		= 0;
+	unsigned int	maxWidth	= 0;
+
+	qglTranslatef( box->x , box->y , 0 );
+	while ( *ptr && ( box->height == 0 || cHeight + font->height < box->height ) ) {
+		const float *	curColor	= color;
+		unsigned int	lineWidth	= box->width;
+		int		read;
+
+		// Print current line
+		qglPushMatrix( );
+		qglTranslatef( 0 , (float) cHeight , 0 );
+		_TTF_PrintUntilEOL( font , ptr , cmode , color , &lineWidth , &read , &curColor );
+		qglPopMatrix( );
+
+		// Update height and maximal width
+		cHeight += font->height;
+		if ( lineWidth > maxWidth ) {
+			maxWidth = lineWidth;
+		}
+
+		// Find end of line
+		ptr += read - 1;
+		while ( *ptr ) {
+			char c = *ptr;
+			ptr ++;
+			if ( c == '\n' ) {
+				break;
+			}
+		}
+	}
+
+	box->width = maxWidth;
+	box->height = cHeight;
+}",TRUE,CWE_120
+81,81,81_vdisc.c,"dev_of_fd(int fd)
+{
+    struct stat st;
+    int ret, orig_errno;
+
+    orig_errno = errno;
+    ret = fstat(fd, &st);
+    errno = orig_errno;
+    if (ret < 0)
+	return 0;
+    if (S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode))
+	return st.st_rdev;
+    return 0;
+}",TRUE,CWE_120
+82,82,82_vdisc.c,"update_state(const char *argv0, const char *iface, const char *state)
+{
+    FILE *tmp_fp;
+
+    FILE *lock_fp;
+    FILE *state_fp;
+    char buf[80];
+    char *p;
+
+    lock_fp = lock_state(argv0);
+
+    state_fp = fopen(statefile, no_act ? ""r"" : ""a+"");
+    if (state_fp == NULL) {
+        if (!no_act) {
+            fprintf(stderr, ""%s: failed to open statefile %s: %s\n"", argv0, statefile, strerror(errno));
+            exit(1);
+        } else {
+            goto noact;
+        }
+    }
+
+    if (!no_act) {
+        int flags;
+
+        if ((flags = fcntl(fileno(state_fp), F_GETFD)) < 0 || fcntl(fileno(state_fp), F_SETFD, flags | FD_CLOEXEC) < 0) {
+            fprintf(stderr, ""%s: failed to set FD_CLOEXEC on statefile %s: %s\n"", argv0, statefile, strerror(errno));
+            exit(1);
+        }
+
+        if (lock_fd(fileno(state_fp)) < 0) {
+            fprintf(stderr, ""%s: failed to lock statefile %s: %s\n"", argv0, statefile, strerror(errno));
+            exit(1);
+        }
+    }
+
+    if (no_act)
+        goto noact;
+
+    tmp_fp = fopen(tmpstatefile, ""w"");
+    if (tmp_fp == NULL) {
+        fprintf(stderr, ""%s: failed to open temporary statefile %s: %s\n"", argv0, tmpstatefile, strerror(errno));
+        exit(1);
+    }
+
+    while ((p = fgets(buf, sizeof buf, state_fp)) != NULL) {
+        char *pch;
+
+        pch = buf + strlen(buf) - 1;
+        while (pch > buf && isspace(*pch))
+            pch--;
+        *(pch + 1) = '\0';
+
+        pch = buf;
+        while (isspace(*pch))
+            pch++;
+
+        if (strncmp(iface, pch, strlen(iface)) == 0) {
+            if (pch[strlen(iface)] == '=') {
+                if (state != NULL) {
+                    fprintf(tmp_fp, ""%s=%s\n"", iface, state);
+                    state = NULL;
+                }
+
+                continue;
+            }
+        }
+
+        fprintf(tmp_fp, ""%s\n"", pch);
+    }
+
+    if (state != NULL)
+        fprintf(tmp_fp, ""%s=%s\n"", iface, state);
+
+    fclose(tmp_fp);
+    if (rename(tmpstatefile, statefile)) {
+        fprintf(stderr, ""%s: failed to overwrite statefile %s: %s\n"", argv0, statefile, strerror(errno));
+        exit(1);
+    }
+
+  noact:
+    if (state_fp != NULL) {
+        fclose(state_fp);
+        state_fp = NULL;
+    }
+
+    if (lock_fp != NULL) {
+        fclose(lock_fp);
+        lock_fp = NULL;
+    }
+}",TRUE,CWE_120
+83,83,83_vdisc.c,"Aerror(const res_state statp, FILE *file, const char *string, int error,
+       const struct sockaddr *address, int alen)
+{
+	int save = errno;
+	char hbuf[NI_MAXHOST];
+	char sbuf[NI_MAXSERV];
+
+	alen = alen;
+
+	if ((statp->options & RES_DEBUG) != 0U) {
+		if (getnameinfo(address, alen, hbuf, sizeof(hbuf),
+		    sbuf, sizeof(sbuf), niflags)) {
+			strncpy(hbuf, ""?"", sizeof(hbuf) - 1);
+			hbuf[sizeof(hbuf) - 1] = '\0';
+			strncpy(sbuf, ""?"", sizeof(sbuf) - 1);
+			sbuf[sizeof(sbuf) - 1] = '\0';
+		}
+		fprintf(file, ""res_send: %s ([%s].%s): %s\n"",
+			string, hbuf, sbuf, strerror(error));
+	}
+	errno = save;
+}",TRUE,CWE_120
+84,84,84_vdisc.c,"checknologin(void)
+{
+    FILE *f;
+    char buf[1024];
+
+    f = fopen(_PATH_NOLOGIN, ""r"");
+    if(f == NULL)
+	return;
+    while(fgets(buf, sizeof(buf), f))
+	fputs(buf, stdout);
+    fclose(f);
+    exit(0);
+}",FALSE,CWE_120
+85,85,85_vdisc.c,"i2400m_firmware_check(struct i2400m *i2400m)
+{
+	int result;
+	struct device *dev = i2400m_dev(i2400m);
+	struct sk_buff *ack_skb;
+	struct i2400m_l3l4_hdr *cmd;
+	const struct i2400m_l3l4_hdr *ack;
+	size_t ack_len;
+	const struct i2400m_tlv_hdr *tlv;
+	const struct i2400m_tlv_l4_message_versions *l4mv;
+	char strerr[32];
+	unsigned major, minor, branch;
+
+	result = -ENOMEM;
+	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
+	if (cmd == NULL)
+		goto error_alloc;
+	cmd->type = cpu_to_le16(I2400M_MT_GET_LM_VERSION);
+	cmd->length = 0;
+	cmd->version = cpu_to_le16(I2400M_L3L4_VERSION);
+
+	ack_skb = i2400m_msg_to_dev(i2400m, cmd, sizeof(*cmd));
+	if (IS_ERR(ack_skb)) {
+		result = PTR_ERR(ack_skb);
+		dev_err(dev, ""Failed to issue 'get lm version' command: %-d\n"",
+			result);
+		goto error_msg_to_dev;
+	}
+	ack = wimax_msg_data_len(ack_skb, &ack_len);
+	result = i2400m_msg_check_status(ack, strerr, sizeof(strerr));
+	if (result < 0) {
+		dev_err(dev, ""'get lm version' (0x%04x) command failed: ""
+			""%d - %s\n"", I2400M_MT_GET_LM_VERSION, result,
+			strerr);
+		goto error_cmd_failed;
+	}
+	tlv = i2400m_tlv_find(i2400m, ack->pl, ack_len - sizeof(*ack),
+			      I2400M_TLV_L4_MESSAGE_VERSIONS, sizeof(*l4mv));
+	if (tlv == NULL) {
+		dev_err(dev, ""get lm version: TLV not found (0x%04x)\n"",
+			I2400M_TLV_L4_MESSAGE_VERSIONS);
+		result = -EIO;
+		goto error_no_tlv;
+	}
+	l4mv = container_of(tlv, typeof(*l4mv), hdr);
+	major = le16_to_cpu(l4mv->major);
+	minor = le16_to_cpu(l4mv->minor);
+	branch = le16_to_cpu(l4mv->branch);
+	result = -EINVAL;
+	if (major != I2400M_HDIv_MAJOR) {
+		dev_err(dev, ""unsupported major fw version ""
+			""%u.%u.%u\n"", major, minor, branch);
+		goto error_bad_major;
+	}
+	result = 0;
+	if (minor > I2400M_HDIv_MINOR_2 || minor < I2400M_HDIv_MINOR)
+		dev_warn(dev, ""untested minor fw version %u.%u.%u\n"",
+			 major, minor, branch);
+	/* Yes, we ignore the branch -- we don't have to track it */
+	i2400m->fw_version = major << 16 | minor;
+	dev_info(dev, ""firmware interface version %u.%u.%u\n"",
+		 major, minor, branch);
+error_bad_major:
+error_no_tlv:
+error_cmd_failed:
+	kfree_skb(ack_skb);
+error_msg_to_dev:
+	kfree(cmd);
+error_alloc:
+	return result;
+}",FALSE,CWE_120
+86,86,86_vdisc.c,"try_file_to_buffer(char *buffer, size_t bufsiz, const char *format, ...)
+{
+	char path[4096];
+	int fd;
+	size_t len = 0;
+	ssize_t nread = 0;
+	va_list pa;
+
+	if (G_UNLIKELY(bufsiz <= sizeof(char*)))
+	  g_warning(""Huhu, bufsiz of %lu looks bad"", (gulong)bufsiz);
+
+	va_start(pa, format);
+
+	/* C99 also provides vsnprintf */
+	g_vsnprintf(path, sizeof path, format, pa);
+
+	va_end(pa);
+
+	bufsiz--; /* reserve 1 for trailing NUL */
+	buffer [0] = '\0';
+
+	if((fd = open (path, O_RDONLY)) < 0)
+		return TRY_FILE_TO_BUFFER_OPEN;
+
+	while (len < bufsiz) {
+		nread = read (fd, buffer + len, bufsiz - len);
+
+		if (G_UNLIKELY(nread < 0)) {
+			if (errno == EINTR)
+				continue;
+			else
+				break;
+		}
+
+		len += nread;
+
+		if (nread == 0)
+			break;
+	}
+
+	close (fd);
+
+	if (nread < 0)
+		return TRY_FILE_TO_BUFFER_READ;
+
+	buffer [len] = '\0';
+
+	return TRY_FILE_TO_BUFFER_OK;
+}",FALSE,CWE_120
+87,87,87_vdisc.c,"sm_client_xsmp_startup (EggSMClient *client,
+			const char  *client_id)
+{
+  EggSMClientXSMP *xsmp = (EggSMClientXSMP *)client;
+  SmcCallbacks callbacks;
+  char *ret_client_id;
+  char error_string_ret[256];
+
+  xsmp->client_id = g_strdup (client_id);
+
+  ice_init ();
+  SmcSetErrorHandler (smc_error_handler);
+
+  callbacks.save_yourself.callback      = xsmp_save_yourself;
+  callbacks.die.callback                = xsmp_die;
+  callbacks.save_complete.callback      = xsmp_save_complete;
+  callbacks.shutdown_cancelled.callback = xsmp_shutdown_cancelled;
+
+  callbacks.save_yourself.client_data      = xsmp;
+  callbacks.die.client_data                = xsmp;
+  callbacks.save_complete.client_data      = xsmp;
+  callbacks.shutdown_cancelled.client_data = xsmp;
+
+  client_id = NULL;
+  error_string_ret[0] = '\0';
+  xsmp->connection =
+    SmcOpenConnection (NULL, xsmp, SmProtoMajor, SmProtoMinor,
+		       SmcSaveYourselfProcMask | SmcDieProcMask |
+		       SmcSaveCompleteProcMask |
+		       SmcShutdownCancelledProcMask,
+		       &callbacks,
+		       xsmp->client_id, &ret_client_id,
+		       sizeof (error_string_ret), error_string_ret);
+
+  if (!xsmp->connection)
+    {
+      g_warning (""Failed to connect to the session manager: %s\n"",
+		 error_string_ret[0] ?
+		 error_string_ret : ""no error message given"");
+      xsmp->state = XSMP_STATE_CONNECTION_CLOSED;
+      return;
+    }
+
+  /* We expect a pointless initial SaveYourself if either (a) we
+   * didn't have an initial client ID, or (b) we DID have an initial
+   * client ID, but the server rejected it and gave us a new one.
+   */
+  if (!xsmp->client_id ||
+      (ret_client_id && strcmp (xsmp->client_id, ret_client_id) != 0))
+    xsmp->expecting_initial_save_yourself = TRUE;
+
+  if (ret_client_id)
+    {
+      g_free (xsmp->client_id);
+      xsmp->client_id = g_strdup (ret_client_id);
+      free (ret_client_id);
+
+#if !GTK_CHECK_VERSION(2,91,7) && !GTK_CHECK_VERSION(3,0,0)
+      gdk_set_sm_client_id (xsmp->client_id);
+#else
+      gdk_x11_set_sm_client_id (xsmp->client_id);
+#endif
+
+      g_debug (""Got client ID \""%s\"""", xsmp->client_id);
+    }
+
+  xsmp->state = XSMP_STATE_IDLE;
+
+  /* Do not set the initial properties until we reach the main loop,
+   * so that the application has a chance to call
+   * egg_set_desktop_file(). (This may also help the session manager
+   * have a better idea of when the application is fully up and
+   * running.)
+   */
+  xsmp->waiting_to_set_initial_properties = TRUE;
+  xsmp->idle = g_idle_add (sm_client_xsmp_set_initial_properties, client);
+}",FALSE,CWE_120
+88,88,88_vdisc.c,"efreet_menu_directory_dir_scan(const char *path, const char *relative_path,
+                                Eina_Hash *cache)
+{
+    Efreet_Desktop *desktop;
+    char buf2[PATH_MAX];
+    Eina_Iterator *it;
+    Eina_File_Direct_Info *info;
+    char *ext;
+
+    it = eina_file_direct_ls(path);
+    if (!it) return 1;
+
+    EINA_ITERATOR_FOREACH(it, info)
+    {
+        const char *fname;
+
+        fname = info->path + info->name_start;
+        if (relative_path)
+            snprintf(buf2, sizeof(buf2), ""%s/%s"", relative_path, fname);
+        else
+            strcpy(buf2, fname);
+
+        if (ecore_file_is_dir(info->path))
+            efreet_menu_directory_dir_scan(info->path, buf2, cache);
+
+        else
+        {
+            ext = strrchr(fname, '.');
+            if (!ext || strcmp(ext, "".directory"")) continue;
+
+            desktop = efreet_desktop_get(info->path);
+            if (!desktop || desktop->type != EFREET_DESKTOP_TYPE_DIRECTORY)
+            {
+                efreet_desktop_free(desktop);
+                continue;
+            }
+
+            eina_hash_del(cache, buf2, NULL);
+            eina_hash_add(cache, buf2, desktop);
+        }
+    }
+    eina_iterator_free(it);
+
+    return 1;
+}",FALSE,CWE_120
+89,89,89_vdisc.c,"fillin_groups( void )
+{
+    char name[ MAX_VAR_LEN ],
+         cbname[ MAX_VAR_LEN ],
+         argname[ MAX_VAR_LEN ];
+    FL_OBJECT *obj,
+              *obj2;
+    int i;
+
+    if ( cur_form == NULL )
+    {
+        fl_clear_browser( fd_control->groupbrowser );
+        return;
+    }
+
+    fl_freeze_form( fd_control->groupbrowser->form );
+    fl_clear_browser( fd_control->groupbrowser );
+
+    /* Check whether groups are empty. */
+
+    obj = cur_form->first;
+    while ( obj != NULL )
+    {
+        obj2 = obj;
+        obj = obj->next;
+        if (    obj2->objclass == FL_END_GROUP
+             && obj2->prev != NULL
+             && obj2->prev->objclass == FL_BEGIN_GROUP )
+        {
+            fl_delete_object( obj2->prev );
+            fl_delete_object( obj2 );
+        }
+    }
+
+    /* Put the still existing groups in the list */
+
+    for ( i = 0, obj = cur_form->first; obj; obj = obj->next )
+        if ( obj->objclass == FL_BEGIN_GROUP )
+            i++;
+
+    if ( i > 0 )
+    {
+        begobj = fl_realloc( begobj, ( i + 1 ) * sizeof *begobj );
+
+        for ( i = 1, obj = cur_form->first; obj; obj = obj->next )
+            if ( obj->objclass == FL_BEGIN_GROUP )
+            {
+                begobj[ i ] = obj;
+                get_object_name( obj, name, cbname, argname );
+                if ( ! *name )
+                    strcpy( name, ""<no name>"" );
+                fl_add_browser_line( fd_control->groupbrowser, name );
+                if ( is_selected( obj ) )
+                    fl_select_browser_line( fd_control->groupbrowser, i );
+            }
+            else if ( obj->objclass == FL_END_GROUP )
+                i++;
+    }
+
+    fl_unfreeze_form( fd_control->groupbrowser->form );
+}",TRUE,CWE_120
+90,90,90_vdisc.c,"lo_import_internal(PGconn *conn, const char *filename, Oid oid)
+{
+	int			fd;
+	int			nbytes,
+				tmp;
+	char		buf[LO_BUFSIZE];
+	Oid			lobjOid;
+	int			lobj;
+	char		sebuf[256];
+
+	/*
+	 * open the file to be read in
+	 */
+	fd = open(filename, O_RDONLY | PG_BINARY, 0666);
+	if (fd < 0)
+	{							/* error */
+		printfPQExpBuffer(&conn->errorMessage,
+						  libpq_gettext(""could not open file \""%s\"": %s\n""),
+						  filename, pqStrerror(errno, sebuf, sizeof(sebuf)));
+		return InvalidOid;
+	}
+
+	/*
+	 * create an inversion object
+	 */
+	if (oid == InvalidOid)
+		lobjOid = lo_creat(conn, INV_READ | INV_WRITE);
+	else
+		lobjOid = lo_create(conn, oid);
+
+	if (lobjOid == InvalidOid)
+	{
+		/* we assume lo_create() already set a suitable error message */
+		(void) close(fd);
+		return InvalidOid;
+	}
+
+	lobj = lo_open(conn, lobjOid, INV_WRITE);
+	if (lobj == -1)
+	{
+		/* we assume lo_open() already set a suitable error message */
+		(void) close(fd);
+		return InvalidOid;
+	}
+
+	/*
+	 * read in from the file and write to the large object
+	 */
+	while ((nbytes = read(fd, buf, LO_BUFSIZE)) > 0)
+	{
+		tmp = lo_write(conn, lobj, buf, nbytes);
+		if (tmp != nbytes)
+		{
+			/*
+			 * If lo_write() failed, we are now in an aborted transaction so
+			 * there's no need for lo_close(); furthermore, if we tried it
+			 * we'd overwrite the useful error result with a useless one. So
+			 * just nail the doors shut and get out of town.
+			 */
+			(void) close(fd);
+			return InvalidOid;
+		}
+	}
+
+	if (nbytes < 0)
+	{
+		/* We must do lo_close before setting the errorMessage */
+		int			save_errno = errno;
+
+		(void) lo_close(conn, lobj);
+		(void) close(fd);
+		printfPQExpBuffer(&conn->errorMessage,
+					  libpq_gettext(""could not read from file \""%s\"": %s\n""),
+						  filename,
+						  pqStrerror(save_errno, sebuf, sizeof(sebuf)));
+		return InvalidOid;
+	}
+
+	(void) close(fd);
+
+	if (lo_close(conn, lobj) != 0)
+	{
+		/* we assume lo_close() already set a suitable error message */
+		return InvalidOid;
+	}
+
+	return lobjOid;
+}",TRUE,CWE_120
+91,91,91_vdisc.c,"fuse_sync_compat_args(struct fuse_args *args)
+{
+	struct fuse_ll_compat_conf conf;
+
+	memset(&conf, 0, sizeof(conf));
+	if (fuse_opt_parse(args, &conf, fuse_ll_opts_compat, NULL) == -1)
+		return -1;
+
+	if (fuse_opt_insert_arg(args, 1, ""-osync_read""))
+		return -1;
+
+	if (conf.set_max_read) {
+		char tmpbuf[64];
+
+		sprintf(tmpbuf, ""-omax_readahead=%u"", conf.max_read);
+		if (fuse_opt_insert_arg(args, 1, tmpbuf) == -1)
+			return -1;
+	}
+	return 0;
+}",TRUE,CWE_120
+92,92,92_vdisc.c,"expandTilde(AtomPtr filename)
+{
+    char *buf;
+    char *home;
+    int len;
+    AtomPtr ret;
+
+    if(filename == NULL || filename->length < 1 ||
+       filename->string[0] != '~' || filename->string[1] != '/')
+        return filename;
+    
+    home = getenv(""HOME"");
+    if(home == NULL) {
+        return NULL;
+    }
+    len = strlen(home);
+    buf = malloc(len + 1 + 1 + filename->length - 2);
+    if(buf == NULL) {
+        do_log(L_ERROR, ""Could not allocate buffer.\n"");
+        return NULL;
+    }
+
+    memcpy(buf, home, len);
+    if(buf[len - 1] != '/')
+        buf[len++] = '/';
+    memcpy(buf + len, filename->string + 2, filename->length - 2);
+    len += filename->length - 2;
+    ret = internAtomN(buf, len);
+    free(buf);
+    if(ret != NULL)
+        releaseAtom(filename);
+    return ret;
+}",TRUE,CWE_120
+93,93,93_vdisc.c,"krb5_gss_export_name(OM_uint32 *minor_status, const gss_name_t input_name,
+                     gss_buffer_t exported_name)
+{
+    krb5_context context;
+    krb5_error_code code;
+    size_t length;
+    char *str;
+    unsigned char *cp;
+
+    if (minor_status)
+        *minor_status = 0;
+
+    code = krb5_gss_init_context(&context);
+    if (code) {
+        if (minor_status)
+            *minor_status = code;
+        return GSS_S_FAILURE;
+    }
+
+    exported_name->length = 0;
+    exported_name->value = NULL;
+
+    if ((code = krb5_unparse_name(context, ((krb5_gss_name_t) input_name)->princ,
+                                  &str))) {
+        if (minor_status)
+            *minor_status = code;
+        save_error_info((OM_uint32)code, context);
+        krb5_free_context(context);
+        return(GSS_S_FAILURE);
+    }
+
+    krb5_free_context(context);
+    length = strlen(str);
+    exported_name->length = 10 + length + gss_mech_krb5->length;
+    exported_name->value = gssalloc_malloc(exported_name->length);
+    if (!exported_name->value) {
+        free(str);
+        if (minor_status)
+            *minor_status = ENOMEM;
+        return(GSS_S_FAILURE);
+    }
+    cp = exported_name->value;
+
+    /* Note: we assume the OID will be less than 128 bytes... */
+    *cp++ = 0x04; *cp++ = 0x01;
+    store_16_be(gss_mech_krb5->length+2, cp);
+    cp += 2;
+    *cp++ = 0x06;
+    *cp++ = (gss_mech_krb5->length) & 0xFF;
+    memcpy(cp, gss_mech_krb5->elements, gss_mech_krb5->length);
+    cp += gss_mech_krb5->length;
+    store_32_be(length, cp);
+    cp += 4;
+    memcpy(cp, str, length);
+
+    free(str);
+
+    return(GSS_S_COMPLETE);
+}",FALSE,CWE_120
+94,94,94_vdisc.c,"qmonSubmitGetScript(Widget w, XtPointer cld, XtPointer cad)
+{
+   static char filename[4*BUFSIZ];
+   static char directory[4*BUFSIZ];
+   static char pattern[BUFSIZ];
+   Boolean status = False;
+ 
+   DENTER(GUI_LAYER, ""qmonSubmitGetScript"");
+
+   status = XmtAskForFilename(w, NULL,
+                              ""@{Please type or select a filename}"",
+                              NULL, NULL,
+                              filename, sizeof(filename),
+                              directory, sizeof(directory),
+                              pattern, sizeof(pattern),
+                              NULL);
+
+   if (status == True)  {
+      qmonSubmitReadScript(w, filename, NULL, 1);
+   }
+
+   DEXIT;
+}",FALSE,CWE_120
+95,95,95_vdisc.c,"is_shell_script(char *s)
+{
+        int fd;
+        char interp[2];
+        struct stat sbuf;
+
+        if ((fd = open(s, O_RDONLY)) < 0) 
+                return FALSE;
+        
+        if (isatty(fd)) 
+                return FALSE;
+        
+        if (read(fd, interp, 2) != 2) {
+                close(fd);
+                return FALSE;
+        }
+
+        if (!STRNEQ(interp, ""#!"")) {
+                close(fd);
+                return FALSE;
+        }
+
+        close(fd);
+
+        if (stat(s, &sbuf) == -1) 
+		return FALSE;
+
+        if (!(sbuf.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH))) 
+		return FALSE;
+        
+        return TRUE;
+}",FALSE,CWE_120
+96,96,96_vdisc.c,"InitializeWalls(size_t size)
+{
+  m_size = size;
+  m_wall      = (bool*)   malloc(sizeof(bool) * size);
+  m_localWall = (size_t*) malloc(sizeof(size_t) * size);
+
+  for (size_t pos = 0 ; pos < m_size ; pos++) {
+    m_wall[pos] = false;
+    m_localWall[pos] = NOT_A_ZONE;
+  }
+}",FALSE,CWE_120
+97,97,97_vdisc.c,"read_list(ScmObj port, scm_ichar_t closing_paren)
+{
+    ScmObj lst, elm, cdr;
+    ScmQueue q;
+#if SCM_DEBUG
+    ScmBaseCharPort *basecport;
+    size_t start_line, cur_line;
+#endif
+    scm_ichar_t c;
+    int err;
+    char dot_buf[sizeof(""..."")];
+    DECLARE_INTERNAL_FUNCTION(""read"");
+
+#if SCM_DEBUG
+    CDBG((SCM_DBG_PARSER, ""read_list""));
+    basecport = SCM_PORT_TRY_DYNAMIC_CAST(ScmBaseCharPort,
+                                          SCM_PORT_IMPL(port));
+    start_line = (basecport) ? ScmBaseCharPort_line_number(basecport) : 0;
+#endif
+
+    for (lst = SCM_NULL, SCM_QUEUE_POINT_TO(q, lst);
+         ;
+#if SCM_CONST_LIST_LITERAL
+         SCM_QUEUE_CONST_ADD(q, elm)
+#else
+         SCM_QUEUE_ADD(q, elm)
+#endif
+         )
+    {
+        c = skip_comment_and_space(port);
+
+        CDBG((SCM_DBG_PARSER, ""read_list c = [~C]"", c));
+
+        if (c == SCM_ICHAR_EOF) {
+#if SCM_DEBUG
+            if (basecport && start_line) {
+                cur_line = ScmBaseCharPort_line_number(basecport);
+                ERR(""EOF inside list at line ~ZU (started from line ~ZU)"",
+                    cur_line, start_line);
+            } else
+#endif
+                ERR(""EOF inside list"");
+        } else if (c == closing_paren) {
+            DISCARD_LOOKAHEAD(port);
+            return lst;
+        } else if (c == '.') {
+            /* Since expressions that beginning with a dot are limited to '.',
+             * '...' and numbers in R5RS (See ""7.1.1 Lexical structure""), the
+             * fixed size buffer can safely buffer them. */
+            read_token(port, &err, dot_buf, sizeof(dot_buf), SCM_CH_DELIMITER);
+
+            if (dot_buf[1] == '\0') {
+#if !SCM_STRICT_R5RS
+                /* Although implicit delimiter around the dot is allowd by
+                 * R5RS, some other implementation doesn't parse so
+                 * (e.g. '(""foo"".""bar"") is parsed as 3 element list which 2nd
+                 * elem is dot as symbol). To avoid introducing such
+                 * incompatibility problem into codes of SigScheme users,
+                 * require explicit whitespace around the dot. */
+                c = scm_port_peek_char(port);
+                if (!ICHAR_WHITESPACEP(c))
+                    ERR(""implicit dot delimitation is disabled to avoid compatibility problem"");
+#endif
+                if (NULLP(lst))
+                    ERR("".(dot) at the start of the list"");
+
+                cdr = read_sexpression(port);
+                c = skip_comment_and_space(port);
+                DISCARD_LOOKAHEAD(port);
+                if (c != closing_paren)
+                    ERR(""bad dot syntax"");
+
+                SCM_QUEUE_SLOPPY_APPEND(q, cdr);
+                return lst;
+            } else if (strcmp(dot_buf, ""..."") == 0) {
+                elm = SYM_ELLIPSIS;
+            } else {
+                ERR(""bad dot syntax"");
+            }
+        } else {
+            elm = read_sexpression(port);
+        }
+    }
+}",FALSE,CWE_120
+98,98,98_vdisc.c,"show_pwm1(struct device *dev, struct device_attribute *devattr,
+			 char *buf)
+{
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	struct lm63_data *data = lm63_update_device(dev);
+	int nr = attr->index;
+	int pwm;
+
+	if (data->pwm_highres)
+		pwm = data->pwm1[nr];
+	else
+		pwm = data->pwm1[nr] >= 2 * data->pwm1_freq ?
+		       255 : (data->pwm1[nr] * 255 + data->pwm1_freq) /
+		       (2 * data->pwm1_freq);
+
+	return sprintf(buf, ""%d\n"", pwm);
+}",TRUE,CWE_120
+99,99,99_vdisc.c,"SetDocRoot(char *name)
+
+{ char file[CF_BUFSIZE];
+  FILE *fout,*fin;
+  struct stat sb;
+
+if (LOOKUP)
+   {
+   CfOut(cf_verbose, """",""Ignoring document root in lookup mode"");
+   return;
+   }
+
+snprintf(file,CF_BUFSIZE-1,""%s/document_root.dat"",CFWORKDIR);
+MapName(file);
+
+if (cfstat(file,&sb) == -1 && strlen(name) > 0)
+   {
+   if ((fout = fopen(file,""w"")) == NULL)
+      {
+      CfOut(cf_error,""fopen"",""Unable to write document root file! (%s)"",file);
+      return;
+      }
+
+   fprintf(fout,""%s"",name);
+   fclose(fout);
+   CfOut(cf_verbose,"""","" -> Setting document root for a knowledge base to %s"",name);
+   strcpy(DOCROOT,name);
+   NewScalar(""sys"",""doc_root"",DOCROOT,cf_str);
+   }
+else
+   {
+   if ((fin = fopen(file,""r"")) == NULL)
+      {
+      }
+   else
+      {      
+      file[0] = 0;
+      fscanf(fin,""%255s"",file);
+      fclose(fin);
+      CfOut(cf_verbose,"""","" -> Assuming document root for a knowledge base in %s"",file);
+      strcpy(DOCROOT,name);
+      NewScalar(""sys"",""doc_root"",DOCROOT,cf_str);
+      }
+   }
+}",TRUE,CWE_120
+100,100,100_vdisc.c,"async_chainiv_givencrypt_tail(struct skcipher_givcrypt_request *req)
+{
+	struct crypto_ablkcipher *geniv = skcipher_givcrypt_reqtfm(req);
+	struct async_chainiv_ctx *ctx = crypto_ablkcipher_ctx(geniv);
+	struct ablkcipher_request *subreq = skcipher_givcrypt_reqctx(req);
+	unsigned int ivsize = crypto_ablkcipher_ivsize(geniv);
+
+	memcpy(req->giv, ctx->iv, ivsize);
+	memcpy(subreq->info, ctx->iv, ivsize);
+
+	ctx->err = crypto_ablkcipher_encrypt(subreq);
+	if (ctx->err)
+		goto out;
+
+	memcpy(ctx->iv, subreq->info, ivsize);
+
+out:
+	return async_chainiv_schedule_work(ctx);
+}",TRUE,CWE_120
