@@ -8,15 +8,17 @@ This project involves the application of three Machine Learning (ML) methods acr
 
 ## How to Use
 
-1. **View the Code and Reports**: 
+### 1. Accessing Data Files:
+   - **OneDrive Link**: The extracted CSV files required for running the code are available on [OneDrive](https://atlantictu-my.sharepoint.com/:f:/g/personal/l00179090_atu_ie/Ev35_2otjnJJtZCBh5JK47wBr6hZILMrKArTp5xqqX2uqA?e=t072Yz). These files have been pre-processed from the original datasets and can be directly downloaded to use with the provided code.
+   - **Direct Download**: Downloading these files from OneDrive will save time compared to extracting the raw data from the OSF repository [this OSF repository](https://osf.io/d45bw/).
+
+### 2. Viewing the Code and Reports:
    - You can directly view the code and XML reports within this repository.
    - The reports provide an overview of model performance, including metrics and visualizations.
 
-
-### 2. Running the Code Locally:
-   - **Download the Code**: Download the relevant files from this repository to execute the ML methods on your local machine.
+### 3. Running the Code Locally:
+   - **Download the Code**: Download the relevant files from [this GitHub repository](https://github.com/HonneshMuppala/projectMLcode) to execute the ML methods on your local machine.
    - **Install Necessary Packages**: Install all required packages and libraries using the provided `requirements.txt` file.
-   - **Dataset Preparation**: The datasets used in this project were sourced from [this OSF repository](https://osf.io/d45bw/) and extracted into CSV files. These CSV files are referenced in the code as paths.
    - **Execution Order**: To replicate the results, execute the ML methods in the provided order after setting up your environment.
-   
+   - 
 This setup allows users to view results online or replicate the experiment locally for further analysis.
