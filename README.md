@@ -18,7 +18,7 @@ This project involves the application of three Machine Learning (ML) methods acr
 
 ### 3. Running the Code Locally:
    - **Download the Code**: Download the relevant files from [this GitHub repository](https://github.com/HonneshMuppala/projectMLcode) to execute the ML methods on your local machine.
-   - **Install Necessary Packages**: Install all required packages and libraries using the provided `requirements.txt` file.
+   - **Install Necessary Packages**: Install all required packages and libraries using the provided info.
    - **Execution Order**: To replicate the results, execute the ML methods in the provided order after setting up your environment.
    - 
 This setup allows users to view results online or replicate the experiment locally for further analysis.
